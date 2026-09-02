@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: shottrack
+      POSTGRES_USER: shottrack
+      POSTGRES_PASSWORD: shottrack
+    ports:
+      - "5432:5432"
+    volumes:
+      - shottrack_pgdata:/var/lib/postgresql/data
+
+volumes:
+  shottrack_pgdata:

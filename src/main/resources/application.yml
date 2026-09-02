@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: shottrack-backend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/shottrack
+    username: shottrack
+    password: shottrack
+  jpa:
+    hibernate:
+      ddl-auto: validate   # schema é sempre via Flyway, nunca auto-gerado
+    open-in-view: false
+  flyway:
+    enabled: true
+
+server:
+  port: 8080
