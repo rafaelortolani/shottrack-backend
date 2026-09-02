@@ -1,4 +1,4 @@
-package com.shottrack.backend.user.dto;
+package com.shottrack.backend.application.user.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

@@ -1,8 +1,9 @@
-package com.shottrack.backend.user;
+package com.shottrack.backend.application.user;
 
+import com.shottrack.backend.application.user.dto.UserRegisterRequest;
+import com.shottrack.backend.application.user.dto.UserResponse;
+import com.shottrack.backend.application.user.usecase.UserService;
 import com.shottrack.backend.common.web.ApiResponse;
-import com.shottrack.backend.user.dto.UserRegisterRequest;
-import com.shottrack.backend.user.dto.UserResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

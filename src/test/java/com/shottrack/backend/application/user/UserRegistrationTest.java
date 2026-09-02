@@ -1,7 +1,7 @@
-package com.shottrack.backend.user;
+package com.shottrack.backend.application.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.shottrack.backend.user.dto.UserRegisterRequest;
+import com.shottrack.backend.application.user.dto.UserRegisterRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;

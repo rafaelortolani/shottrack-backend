@@ -1,6 +1,9 @@
 package com.shottrack.backend.common.exception;
 
 import com.shottrack.backend.common.web.ApiResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -8,12 +11,16 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class ApiExceptionHandler {
+
+    private final MessageSource messageSource;
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Object>> handleBusiness(BusinessException ex) {
+        String message = messageSource.getMessage(ex.getCode(), null, LocaleContextHolder.getLocale());
         return ResponseEntity.status(ex.getStatus())
-                .body(ApiResponse.error(ex.getCode(), ex.getMessage()));
+                .body(ApiResponse.error(ex.getCode(), message));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

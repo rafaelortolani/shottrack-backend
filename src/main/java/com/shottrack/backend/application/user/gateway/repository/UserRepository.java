@@ -1,5 +1,6 @@
-package com.shottrack.backend.user;
+package com.shottrack.backend.application.user.gateway.repository;
 
+import com.shottrack.backend.application.user.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

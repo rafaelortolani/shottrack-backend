@@ -1,6 +1,12 @@
 spring:
   application:
     name: shottrack-backend
+  messages:
+    basename: messages
+    fallback-to-system-locale: false
+  web:
+    locale: pt
+    locale-resolver: accept-header
   datasource:
     url: jdbc:postgresql://localhost:5432/shottrack
     username: shottrack
