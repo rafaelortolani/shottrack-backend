@@ -9,8 +9,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Config mínima. Login/autenticação ainda não existe (é o próximo use case) —
- * por enquanto só liberamos o cadastro publicamente e desligamos CSRF (API stateless).
+ * Config mínima. UC02 (login) já emite o JWT, mas ainda não existe um filtro que
+ * valide o token e restrinja endpoints com ele — por enquanto tudo continua
+ * público e CSRF desligado (API stateless). Restringir endpoints de negócio ao
+ * Authorization: Bearer <token> é trabalho do próximo use case que precisar disso.
  */
 @Configuration
 public class SecurityConfig {
@@ -25,8 +27,8 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/users").permitAll()
-                        .anyRequest().permitAll() // será restringido quando o login (UC02) existir
+                        .requestMatchers("/api/users", "/api/auth/**").permitAll()
+                        .anyRequest().permitAll() // será restringido quando um endpoint exigir o JWT
                 );
         return http.build();
     }
