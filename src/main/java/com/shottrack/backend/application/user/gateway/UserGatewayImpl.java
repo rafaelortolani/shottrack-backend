@@ -5,6 +5,8 @@ import com.shottrack.backend.application.user.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+
 @Component
 @RequiredArgsConstructor
 class UserGatewayImpl implements UserGateway {
@@ -14,6 +16,11 @@ class UserGatewayImpl implements UserGateway {
     @Override
     public boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
+    }
+
+    @Override
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
 
     @Override

@@ -89,9 +89,12 @@ application/
 - Endpoints públicos (sem login necessário) são liberados explicitamente em `SecurityConfig`.
 - Senha sempre via `PasswordEncoder` (BCrypt) — nunca texto plano, nunca no log.
 
-## Testes
-- Todo use case novo ganha um teste de integração com `@SpringBootTest` + `MockMvc`,
-  cobrindo: caso de sucesso, e pelo menos uma regra de negócio violada.
-- Como os testes rodam contra o Postgres real (`docker-compose.yml`), a classe de teste leva
-  `@Transactional` pra isolar cada `@Test`: o Spring dá rollback ao final de cada método,
-  então dados de uma execução nunca vazam pra outra.
+## Testes (obrigatório)
+Toda funcionalidade nova é entregue com teste automatizado — sem exceção,
+mesmo em protótipo. Nunca considerar um use case implementado sem isso.
+
+- `@SpringBootTest` + `MockMvc`, cobrindo: o fluxo principal E cada um dos
+  fluxos alternativos/erro listados no use case correspondente — não apenas
+  um exemplo representativo.
+- Como os testes rodam contra o Postgres real (`docker-compose.yml`), a classe
+  de teste leva `@Transactional` pra isolar cada `@Test` (rollback automático).
