@@ -1,6 +1,7 @@
 package com.shottrack.backend.application.user.usecase;
 
 import com.shottrack.backend.application.user.dto.ChangeEmailRequest;
+import com.shottrack.backend.application.user.dto.ChangePasswordRequest;
 import com.shottrack.backend.application.user.dto.ConfirmEmailChangeRequest;
 import com.shottrack.backend.application.user.dto.UpdateNameRequest;
 import com.shottrack.backend.application.user.dto.UserRegisterRequest;
@@ -95,6 +96,21 @@ public class UserService {
         User user = findUserOrThrow(userId);
         user.setEmail(verification.getNewEmail());
         return userMapper.toResponse(userGateway.save(user));
+    }
+
+    public void changePassword(UUID userId, ChangePasswordRequest request) {
+        User user = findUserOrThrow(userId);
+
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new BusinessException("INVALID_CURRENT_PASSWORD", HttpStatus.UNAUTHORIZED);
+        }
+
+        if (passwordEncoder.matches(request.newPassword(), user.getPasswordHash())) {
+            throw new BusinessException("PASSWORD_UNCHANGED", HttpStatus.BAD_REQUEST);
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userGateway.save(user);
     }
 
     private User findUserOrThrow(UUID userId) {

@@ -32,6 +32,8 @@ public class User extends AbstractBaseEntity {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Setter
+    @NonNull
     @Column(name = "password_hash", nullable = false)
-    private final String passwordHash;
+    private String passwordHash;
 }
