@@ -1,6 +1,7 @@
 package com.shottrack.backend.application.user;
 
 import com.shottrack.backend.application.user.dto.ChangeEmailRequest;
+import com.shottrack.backend.application.user.dto.ChangePasswordRequest;
 import com.shottrack.backend.application.user.dto.ConfirmEmailChangeRequest;
 import com.shottrack.backend.application.user.dto.UpdateNameRequest;
 import com.shottrack.backend.application.user.dto.UserRegisterRequest;
@@ -58,5 +59,13 @@ public class UserController {
         UUID userId = (UUID) authentication.getPrincipal();
         UserResponse response = userService.confirmEmailChange(userId, request);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @PatchMapping("/me/password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(Authentication authentication,
+                                                               @Valid @RequestBody ChangePasswordRequest request) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        userService.changePassword(userId, request);
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }
