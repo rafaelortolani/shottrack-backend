@@ -1,0 +1,6 @@
+# Ativado com SPRING_PROFILES_ACTIVE=dev. Habilita o DevAutoLoginFilter
+# (ver SecurityConfig) — requisições sem token são autenticadas com um
+# usuário fixo de teste, pra explorar o Swagger sem precisar logar manualmente.
+logging:
+  level:
+    com.shottrack.backend: DEBUG

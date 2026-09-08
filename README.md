@@ -50,6 +50,19 @@ As convenções completas (DTOs, erros, Lombok, testes) estão documentadas em
 3. A API sobe em `http://localhost:8080`. O Mailpit (visualização de emails
    enviados em dev) fica em `http://localhost:8025`.
 
+### Profile dev (sem precisar logar pra testar)
+
+Com `SPRING_PROFILES_ACTIVE=dev`, toda requisição sem um Bearer token válido é
+autenticada automaticamente com um usuário fixo de teste
+(`dev@shottrack.com`) — dá pra explorar os endpoints protegidos direto no
+Swagger sem precisar cadastrar/logar antes. Um token real, se enviado,
+continua tendo prioridade.
+
+```bash
+export SPRING_PROFILES_ACTIVE=dev
+./mvnw spring-boot:run
+```
+
 ## Rodando os testes
 
 ```bash
