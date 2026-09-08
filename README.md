@@ -12,6 +12,7 @@ evolução de desempenho.
 - PostgreSQL (schema versionado via Flyway)
 - Mailpit (SMTP fake para desenvolvimento local)
 - JWT (autenticação stateless, com refresh token)
+- springdoc-openapi (documentação/Swagger UI)
 
 ## Arquitetura
 
@@ -63,6 +64,16 @@ As convenções completas (DTOs, erros, Lombok, testes) estão documentadas em
 |---|---|---|---|
 | POST | `/api/users` | Cadastro de usuário | [UC01](docs/use-cases/UC01-cadastro-usuario.md) |
 | POST | `/api/auth/login` | Login (retorna access + refresh token) | [UC02](docs/use-cases/UC02-login.md) |
+| POST | `/api/auth/refresh` | Renova o access token (rotação do refresh token) | [UC02](docs/use-cases/UC02-login.md) |
+| GET | `/api/users/me` | Consulta o perfil do usuário autenticado | [UC03](docs/use-cases/UC03-consultar-perfil.md) |
+| PATCH | `/api/users/me` | Edita o nome do usuário autenticado | [UC04](docs/use-cases/UC04-editar-perfil.md) |
+| POST | `/api/users/me/email` | Inicia a troca de email (envia código de verificação) | [UC04](docs/use-cases/UC04-editar-perfil.md) |
+| POST | `/api/users/me/email/confirmation` | Confirma o código e efetiva a troca de email | [UC04](docs/use-cases/UC04-editar-perfil.md) |
+| PATCH | `/api/users/me/password` | Altera a senha do usuário autenticado | [UC05](docs/use-cases/UC05-alterar-senha.md) |
+
+A partir de `/swagger-ui/index.html` (app rodando localmente) dá pra explorar e
+testar todos os endpoints, inclusive os protegidos por JWT (botão
+"Authorize").
 
 ### Exemplo — cadastro
 
@@ -91,7 +102,7 @@ curl -X POST http://localhost:8080/api/auth/login \
 
 - [x] UC01 — Cadastro de usuário
 - [x] UC02 — Login (JWT + refresh token com rotação)
-- [ ] UC03 — Consultar perfil
-- [ ] UC04 — Editar perfil (incluindo troca de email verificada)
-- [ ] UC05 — Alterar senha
+- [x] UC03 — Consultar perfil
+- [x] UC04 — Editar perfil (incluindo troca de email verificada)
+- [x] UC05 — Alterar senha
 - [ ] Verificação de email no cadastro (adiado — [ADR-0002](docs/adr/0002-verificacao-email-adiada.md))
