@@ -22,6 +22,10 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  mail:
+    # Mailpit (docker-compose.yml) em desenvolvimento — SMTP fake, sem auth/TLS.
+    host: localhost
+    port: 1025
 
 server:
   port: 8080
