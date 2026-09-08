@@ -1,5 +1,7 @@
 package com.shottrack.backend.common.security;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -12,6 +14,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -55,5 +58,20 @@ public class JwtTokenProvider {
 
     public Instant refreshTokenExpiresAt() {
         return Instant.now().plus(refreshTokenExpiration);
+    }
+
+    /**
+     * Valida assinatura e expiração do access token e extrai o id do usuário (claim `sub`).
+     * Vazio se o token for nulo, malformado, expirado ou tiver assinatura inválida.
+     */
+    public Optional<UUID> parseAccessToken(String token) {
+        try {
+            Claims claims = Jwts.parser().verifyWith(signingKey).build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            return Optional.of(UUID.fromString(claims.getSubject()));
+        } catch (JwtException | IllegalArgumentException e) {
+            return Optional.empty();
+        }
     }
 }

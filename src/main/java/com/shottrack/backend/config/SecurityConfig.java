@@ -1,21 +1,29 @@
 package com.shottrack.backend.config;
 
+import com.shottrack.backend.common.security.JwtAuthenticationEntryPoint;
+import com.shottrack.backend.common.security.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Config mínima. UC02 (login) já emite o JWT, mas ainda não existe um filtro que
- * valide o token e restrinja endpoints com ele — por enquanto tudo continua
- * público e CSRF desligado (API stateless). Restringir endpoints de negócio ao
- * Authorization: Bearer <token> é trabalho do próximo use case que precisar disso.
+ * Stateless: CSRF desligado e sem sessão — a única forma de autenticar um endpoint
+ * protegido é via Authorization: Bearer <token>, validado pelo JwtAuthenticationFilter
+ * (ADR-0001). Rotas de cadastro/login/refresh continuam públicas.
  */
 @Configuration
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -26,10 +34,13 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/users", "/api/auth/**").permitAll()
-                        .anyRequest().permitAll() // será restringido quando um endpoint exigir o JWT
-                );
+                        .anyRequest().authenticated()
+                )
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }
