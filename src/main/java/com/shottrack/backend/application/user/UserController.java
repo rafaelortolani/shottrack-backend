@@ -8,7 +8,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/users")
@@ -21,5 +24,12 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserResponse>> register(@Valid @RequestBody UserRegisterRequest request) {
         UserResponse response = userService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> me(Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        UserResponse response = userService.getProfile(userId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }

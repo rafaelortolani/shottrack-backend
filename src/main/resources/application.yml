@@ -1,6 +1,11 @@
 spring:
   application:
     name: shottrack-backend
+  autoconfigure:
+    # autenticação é toda via JwtAuthenticationFilter (sem UserDetailsService/AuthenticationManager) —
+    # sem isso o Spring Boot autoconfigura um usuário em memória com senha aleatória, gerando ruído no log.
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   messages:
     basename: messages
     fallback-to-system-locale: false

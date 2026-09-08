@@ -11,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -29,5 +31,12 @@ public class UserService {
         User saved = userGateway.save(user);
 
         return userMapper.toResponse(saved);
+    }
+
+    public UserResponse getProfile(UUID userId) {
+        User user = userGateway.findById(userId)
+                .orElseThrow(() -> new BusinessException("UNAUTHORIZED", HttpStatus.UNAUTHORIZED));
+
+        return userMapper.toResponse(user);
     }
 }
