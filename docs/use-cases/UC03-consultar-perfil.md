@@ -14,8 +14,8 @@ Usuário logado (UC02) com access token válido.
 - 1a. Token ausente ou inválido → erro `UNAUTHORIZED`
 
 ## Definição de pronto
-- [ ] Teste cobrindo o fluxo principal
-- [ ] Teste cobrindo o fluxo alternativo (1a)
+- [x] Teste cobrindo o fluxo principal
+- [x] Teste cobrindo o fluxo alternativo (1a)
 
 ## Referências
 - ADR-0001 (autenticação JWT)

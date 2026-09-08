@@ -26,9 +26,9 @@ Usuário logado (UC02) com access token válido.
 - 4b. Código expirado → erro `VERIFICATION_CODE_EXPIRED`, atleta pode pedir reenvio
 
 ## Definição de pronto
-- [ ] Teste cobrindo o fluxo principal (editar nome)
-- [ ] Teste cobrindo o fluxo principal (trocar email, incluindo confirmação do código)
-- [ ] Teste para CADA fluxo alternativo listado acima
+- [x] Teste cobrindo o fluxo principal (editar nome)
+- [x] Teste cobrindo o fluxo principal (trocar email, incluindo confirmação do código)
+- [x] Teste para CADA fluxo alternativo listado acima
 
 ## Referências
 - ADR-0001 (autenticação JWT)

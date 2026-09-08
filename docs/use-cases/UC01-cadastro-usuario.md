@@ -22,5 +22,5 @@ Nenhuma.
 - Nenhuma (não depende de nenhuma decisão registrada em ADR)
 
 ## Definição de pronto
-- [ ] Teste cobrindo o fluxo principal
-- [ ] Um teste para CADA fluxo alternativo listado acima
+- [x] Teste cobrindo o fluxo principal
+- [x] Um teste para CADA fluxo alternativo listado acima

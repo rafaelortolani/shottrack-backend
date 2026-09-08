@@ -19,8 +19,8 @@ Usuário logado (UC02) com access token válido.
 - 3b. Nova senha igual à atual → erro `PASSWORD_UNCHANGED`
 
 ## Definição de pronto
-- [ ] Teste cobrindo o fluxo principal
-- [ ] Teste para CADA fluxo alternativo listado acima
+- [x] Teste cobrindo o fluxo principal
+- [x] Teste para CADA fluxo alternativo listado acima
 
 ## Referências
 - ADR-0001 (autenticação JWT)
