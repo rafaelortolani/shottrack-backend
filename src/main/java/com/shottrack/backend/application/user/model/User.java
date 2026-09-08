@@ -5,7 +5,9 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 
 import java.util.UUID;
 
@@ -20,11 +22,15 @@ public class User extends AbstractBaseEntity {
     @GeneratedValue
     private UUID id;
 
+    @Setter
+    @NonNull
     @Column(nullable = false)
-    private final String name;
+    private String name;
 
+    @Setter
+    @NonNull
     @Column(nullable = false, unique = true)
-    private final String email;
+    private String email;
 
     @Column(name = "password_hash", nullable = false)
     private final String passwordHash;
