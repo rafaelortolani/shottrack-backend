@@ -1,4 +1,10 @@
 services:
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "1025:1025"   # SMTP - a aplicação envia pra cá
+      - "8025:8025"   # interface web - veja os emails "enviados" aqui
+
   postgres:
     image: postgres:16
     environment:
