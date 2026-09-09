@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -16,5 +18,10 @@ class ModalityGatewayImpl implements ModalityGateway {
     @Override
     public List<Modality> findAll() {
         return modalityRepository.findAll();
+    }
+
+    @Override
+    public Optional<Modality> findById(UUID id) {
+        return modalityRepository.findById(id);
     }
 }
