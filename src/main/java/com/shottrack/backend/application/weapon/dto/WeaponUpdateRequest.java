@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.UUID;
 
-public record WeaponRegisterRequest(
+public record WeaponUpdateRequest(
         @NotNull(message = "tipo é obrigatório")
         UUID typeId,
 
