@@ -37,7 +37,7 @@ class WeaponCatalogTest {
     private String accessToken;
 
     @BeforeEach
-    void cadastraELogaUsuario() throws Exception {
+    void registerAndLoginUser() throws Exception {
         mockMvc.perform(post("/api/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new UserRegisterRequest("Atleta Catálogo", EMAIL, PASSWORD))));
@@ -52,7 +52,7 @@ class WeaponCatalogTest {
     }
 
     @Test
-    void deveListarTipos() throws Exception {
+    void shouldListTypes() throws Exception {
         mockMvc.perform(get("/api/weapon-catalog/types")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
@@ -60,7 +60,7 @@ class WeaponCatalogTest {
     }
 
     @Test
-    void deveListarMarcas() throws Exception {
+    void shouldListBrands() throws Exception {
         mockMvc.perform(get("/api/weapon-catalog/brands")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
@@ -68,7 +68,7 @@ class WeaponCatalogTest {
     }
 
     @Test
-    void deveListarModelosDeUmaMarcaValida() throws Exception {
+    void shouldListModelsOfAValidBrand() throws Exception {
         UUID glockId = brandId("Glock");
 
         mockMvc.perform(get("/api/weapon-catalog/brands/" + glockId + "/models")
@@ -78,7 +78,7 @@ class WeaponCatalogTest {
     }
 
     @Test
-    void deveRejeitarMarcaInexistente() throws Exception {
+    void shouldRejectNonExistentBrand() throws Exception {
         mockMvc.perform(get("/api/weapon-catalog/brands/" + UUID.randomUUID() + "/models")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isNotFound())
@@ -86,7 +86,7 @@ class WeaponCatalogTest {
     }
 
     @Test
-    void deveListarCalibres() throws Exception {
+    void shouldListCalibers() throws Exception {
         mockMvc.perform(get("/api/weapon-catalog/calibers")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
@@ -94,7 +94,7 @@ class WeaponCatalogTest {
     }
 
     @Test
-    void deveRejeitarRequisicaoSemToken() throws Exception {
+    void shouldRejectRequestWithoutToken() throws Exception {
         mockMvc.perform(get("/api/weapon-catalog/types"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));

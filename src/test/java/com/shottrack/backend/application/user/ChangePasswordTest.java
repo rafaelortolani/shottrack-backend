@@ -36,7 +36,7 @@ class ChangePasswordTest {
     private String accessToken;
 
     @BeforeEach
-    void cadastraELogaUsuario() throws Exception {
+    void registerAndLoginUser() throws Exception {
         mockMvc.perform(post("/api/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new UserRegisterRequest(NAME, EMAIL, PASSWORD))));
@@ -51,7 +51,7 @@ class ChangePasswordTest {
     }
 
     @Test
-    void deveAlterarSenhaEPermitirLoginComANova() throws Exception {
+    void shouldChangePasswordAndAllowLoginWithNewPassword() throws Exception {
         String novaSenha = "senhaNova123";
 
         mockMvc.perform(patch("/api/users/me/password")
@@ -73,7 +73,7 @@ class ChangePasswordTest {
     }
 
     @Test
-    void deveRejeitarRequisicaoSemToken() throws Exception {
+    void shouldRejectRequestWithoutToken() throws Exception {
         mockMvc.perform(patch("/api/users/me/password")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new ChangePasswordRequest(PASSWORD, "senhaNova123"))))
@@ -82,7 +82,7 @@ class ChangePasswordTest {
     }
 
     @Test
-    void deveRejeitarSenhaAtualIncorreta() throws Exception {
+    void shouldRejectIncorrectCurrentPassword() throws Exception {
         mockMvc.perform(patch("/api/users/me/password")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -92,7 +92,7 @@ class ChangePasswordTest {
     }
 
     @Test
-    void deveRejeitarNovaSenhaQueNaoAtendeCriterios() throws Exception {
+    void shouldRejectNewPasswordThatDoesNotMeetCriteria() throws Exception {
         mockMvc.perform(patch("/api/users/me/password")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -102,7 +102,7 @@ class ChangePasswordTest {
     }
 
     @Test
-    void deveRejeitarNovaSenhaIgualAAtual() throws Exception {
+    void shouldRejectNewPasswordEqualToCurrent() throws Exception {
         mockMvc.perform(patch("/api/users/me/password")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)

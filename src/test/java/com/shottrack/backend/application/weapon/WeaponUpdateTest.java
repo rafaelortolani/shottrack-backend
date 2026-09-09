@@ -48,7 +48,7 @@ class WeaponUpdateTest {
     private UUID weaponId;
 
     @BeforeEach
-    void preparaArmaExistente() throws Exception {
+    void prepareExistingWeapon() throws Exception {
         mockMvc.perform(post("/api/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new UserRegisterRequest("Atleta Edita Arma", EMAIL, PASSWORD))));
@@ -79,7 +79,7 @@ class WeaponUpdateTest {
     }
 
     @Test
-    void deveEditarSoOApelidoMantendoOResto() throws Exception {
+    void shouldEditOnlyNicknameKeepingTheRest() throws Exception {
         var request = new WeaponUpdateRequest(pistolaId, glockId, g17Id, caliber9mmId, "Minha 9mm de competição");
 
         mockMvc.perform(patch("/api/weapons/" + weaponId)
@@ -93,7 +93,7 @@ class WeaponUpdateTest {
     }
 
     @Test
-    void deveCorrigirTipoModeloECalibre() throws Exception {
+    void shouldCorrectTypeModelAndCaliber() throws Exception {
         var request = new WeaponUpdateRequest(revolverId, glockId, g19Id, caliber40Id, "Original");
 
         mockMvc.perform(patch("/api/weapons/" + weaponId)
@@ -107,7 +107,7 @@ class WeaponUpdateTest {
     }
 
     @Test
-    void deveRejeitarCampoObrigatorioAusente() throws Exception {
+    void shouldRejectMissingRequiredField() throws Exception {
         var request = new WeaponUpdateRequest(null, glockId, g17Id, caliber9mmId, "Original");
 
         mockMvc.perform(patch("/api/weapons/" + weaponId)
@@ -119,7 +119,7 @@ class WeaponUpdateTest {
     }
 
     @Test
-    void deveRejeitarRequisicaoSemToken() throws Exception {
+    void shouldRejectRequestWithoutToken() throws Exception {
         var request = new WeaponUpdateRequest(pistolaId, glockId, g17Id, caliber9mmId, "Original");
 
         mockMvc.perform(patch("/api/weapons/" + weaponId)
@@ -130,7 +130,7 @@ class WeaponUpdateTest {
     }
 
     @Test
-    void deveRejeitarArmaInexistenteOuDeOutroAtleta() throws Exception {
+    void shouldRejectNonExistentOrAnotherAthletesWeapon() throws Exception {
         var request = new WeaponUpdateRequest(pistolaId, glockId, g17Id, caliber9mmId, "Original");
 
         mockMvc.perform(patch("/api/weapons/" + UUID.randomUUID())
@@ -142,7 +142,7 @@ class WeaponUpdateTest {
     }
 
     @Test
-    void deveRejeitarTipoInexistente() throws Exception {
+    void shouldRejectNonExistentType() throws Exception {
         var request = new WeaponUpdateRequest(UUID.randomUUID(), glockId, g17Id, caliber9mmId, "Original");
 
         mockMvc.perform(patch("/api/weapons/" + weaponId)
@@ -154,7 +154,7 @@ class WeaponUpdateTest {
     }
 
     @Test
-    void deveRejeitarMarcaInexistente() throws Exception {
+    void shouldRejectNonExistentBrand() throws Exception {
         var request = new WeaponUpdateRequest(pistolaId, UUID.randomUUID(), g17Id, caliber9mmId, "Original");
 
         mockMvc.perform(patch("/api/weapons/" + weaponId)
@@ -166,7 +166,7 @@ class WeaponUpdateTest {
     }
 
     @Test
-    void deveRejeitarModeloInexistente() throws Exception {
+    void shouldRejectNonExistentModel() throws Exception {
         var request = new WeaponUpdateRequest(pistolaId, glockId, UUID.randomUUID(), caliber9mmId, "Original");
 
         mockMvc.perform(patch("/api/weapons/" + weaponId)
@@ -178,7 +178,7 @@ class WeaponUpdateTest {
     }
 
     @Test
-    void deveRejeitarCalibreInexistente() throws Exception {
+    void shouldRejectNonExistentCaliber() throws Exception {
         var request = new WeaponUpdateRequest(pistolaId, glockId, g17Id, UUID.randomUUID(), "Original");
 
         mockMvc.perform(patch("/api/weapons/" + weaponId)
@@ -190,7 +190,7 @@ class WeaponUpdateTest {
     }
 
     @Test
-    void deveRejeitarModeloQueNaoPertenceAMarcaInformada() throws Exception {
+    void shouldRejectModelThatDoesNotBelongToGivenBrand() throws Exception {
         UUID taurusId = idByName("/api/weapon-catalog/brands", "Taurus");
         UUID modelo856Id = idByName("/api/weapon-catalog/brands/" + taurusId + "/models", "856");
 

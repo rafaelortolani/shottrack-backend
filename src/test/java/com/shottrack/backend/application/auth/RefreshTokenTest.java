@@ -44,7 +44,7 @@ class RefreshTokenTest {
     private UUID userId;
 
     @BeforeEach
-    void cadastraUsuario() throws Exception {
+    void registerUser() throws Exception {
         var request = new UserRegisterRequest("Atleta Refresh", EMAIL, PASSWORD);
         MvcResult result = mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -75,7 +75,7 @@ class RefreshTokenTest {
     }
 
     @Test
-    void deveRotacionarTokensAoUsarRefreshTokenValido() throws Exception {
+    void shouldRotateTokensWhenUsingValidRefreshToken() throws Exception {
         String firstToken = login();
 
         String secondToken = refresh(firstToken);
@@ -89,7 +89,7 @@ class RefreshTokenTest {
     }
 
     @Test
-    void deveRevogarTodosOsTokensAoDetectarReuso() throws Exception {
+    void shouldRevokeAllTokensWhenReuseIsDetected() throws Exception {
         String firstToken = login();
         String secondToken = refresh(firstToken);
 
@@ -113,7 +113,7 @@ class RefreshTokenTest {
     }
 
     @Test
-    void deveRejeitarRefreshTokenInexistente() throws Exception {
+    void shouldRejectNonExistentRefreshToken() throws Exception {
         mockMvc.perform(post("/api/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new RefreshRequest("token-que-nao-existe"))))
@@ -122,7 +122,7 @@ class RefreshTokenTest {
     }
 
     @Test
-    void deveRejeitarRefreshTokenExpirado() throws Exception {
+    void shouldRejectExpiredRefreshToken() throws Exception {
         RefreshToken expired = new RefreshToken("token-expirado-123", userId, Instant.now().minusSeconds(60));
         refreshTokenRepository.save(expired);
 
@@ -134,7 +134,7 @@ class RefreshTokenTest {
     }
 
     @Test
-    void deveRejeitarCorpoInvalido() throws Exception {
+    void shouldRejectInvalidBody() throws Exception {
         mockMvc.perform(post("/api/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new RefreshRequest(""))))

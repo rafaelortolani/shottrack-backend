@@ -26,7 +26,7 @@ class UserRegistrationTest {
     private ObjectMapper objectMapper;
 
     @Test
-    void deveCadastrarUsuarioComDadosValidos() throws Exception {
+    void shouldRegisterUserWithValidData() throws Exception {
         var request = new UserRegisterRequest("Atleta Teste", "atleta@shottrack.com", "senha12345");
 
         mockMvc.perform(post("/api/users")
@@ -38,7 +38,7 @@ class UserRegistrationTest {
     }
 
     @Test
-    void deveRejeitarEmailDuplicado() throws Exception {
+    void shouldRejectDuplicateEmail() throws Exception {
         var request = new UserRegisterRequest("Atleta Um", "duplicado@shottrack.com", "senha12345");
 
         mockMvc.perform(post("/api/users")
@@ -53,7 +53,7 @@ class UserRegistrationTest {
     }
 
     @Test
-    void deveRejeitarSenhaCurta() throws Exception {
+    void shouldRejectShortPassword() throws Exception {
         var request = new UserRegisterRequest("Atleta Dois", "curta@shottrack.com", "123");
 
         mockMvc.perform(post("/api/users")
