@@ -3,7 +3,7 @@ package com.shottrack.backend.application.user;
 import com.shottrack.backend.application.user.dto.ChangeEmailRequest;
 import com.shottrack.backend.application.user.dto.ChangePasswordRequest;
 import com.shottrack.backend.application.user.dto.ConfirmEmailChangeRequest;
-import com.shottrack.backend.application.user.dto.UpdateNameRequest;
+import com.shottrack.backend.application.user.dto.UpdateProfileRequest;
 import com.shottrack.backend.application.user.dto.UserRegisterRequest;
 import com.shottrack.backend.application.user.dto.UserResponse;
 import com.shottrack.backend.application.user.usecase.UserService;
@@ -38,10 +38,10 @@ public class UserController {
     }
 
     @PatchMapping("/me")
-    public ResponseEntity<ApiResponse<UserResponse>> updateName(Authentication authentication,
-                                                                  @Valid @RequestBody UpdateNameRequest request) {
+    public ResponseEntity<ApiResponse<UserResponse>> updateProfile(Authentication authentication,
+                                                                      @Valid @RequestBody UpdateProfileRequest request) {
         UUID userId = (UUID) authentication.getPrincipal();
-        UserResponse response = userService.updateName(userId, request);
+        UserResponse response = userService.updateProfile(userId, request);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

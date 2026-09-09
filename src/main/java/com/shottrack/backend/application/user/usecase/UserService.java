@@ -3,13 +3,14 @@ package com.shottrack.backend.application.user.usecase;
 import com.shottrack.backend.application.user.dto.ChangeEmailRequest;
 import com.shottrack.backend.application.user.dto.ChangePasswordRequest;
 import com.shottrack.backend.application.user.dto.ConfirmEmailChangeRequest;
-import com.shottrack.backend.application.user.dto.UpdateNameRequest;
+import com.shottrack.backend.application.user.dto.UpdateProfileRequest;
 import com.shottrack.backend.application.user.dto.UserRegisterRequest;
 import com.shottrack.backend.application.user.dto.UserResponse;
 import com.shottrack.backend.application.user.gateway.EmailVerificationCodeGateway;
 import com.shottrack.backend.application.user.gateway.UserGateway;
 import com.shottrack.backend.application.user.mapper.UserMapper;
 import com.shottrack.backend.application.user.model.EmailVerificationCode;
+import com.shottrack.backend.application.user.model.ExperienceLevel;
 import com.shottrack.backend.application.user.model.User;
 import com.shottrack.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -54,9 +55,10 @@ public class UserService {
         return userMapper.toResponse(findUserOrThrow(userId));
     }
 
-    public UserResponse updateName(UUID userId, UpdateNameRequest request) {
+    public UserResponse updateProfile(UUID userId, UpdateProfileRequest request) {
         User user = findUserOrThrow(userId);
         user.setName(request.name());
+        user.setExperienceLevel(ExperienceLevel.valueOf(request.experienceLevel()));
         return userMapper.toResponse(userGateway.save(user));
     }
 

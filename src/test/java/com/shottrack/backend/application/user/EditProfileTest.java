@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.auth.dto.LoginRequest;
 import com.shottrack.backend.application.user.dto.ChangeEmailRequest;
 import com.shottrack.backend.application.user.dto.ConfirmEmailChangeRequest;
-import com.shottrack.backend.application.user.dto.UpdateNameRequest;
+import com.shottrack.backend.application.user.dto.UpdateProfileRequest;
 import com.shottrack.backend.application.user.dto.UserRegisterRequest;
 import com.shottrack.backend.application.user.gateway.repository.EmailVerificationCodeRepository;
 import com.shottrack.backend.application.user.model.EmailVerificationCode;
@@ -62,13 +62,14 @@ class EditProfileTest {
     }
 
     @Test
-    void shouldEditName() throws Exception {
+    void shouldEditNameAndExperienceLevel() throws Exception {
         mockMvc.perform(patch("/api/users/me")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new UpdateNameRequest("Novo Nome"))))
+                        .content(objectMapper.writeValueAsString(new UpdateProfileRequest("Novo Nome", "ADVANCED"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.name").value("Novo Nome"));
+                .andExpect(jsonPath("$.data.name").value("Novo Nome"))
+                .andExpect(jsonPath("$.data.experienceLevel").value("ADVANCED"));
     }
 
     @Test
@@ -76,7 +77,17 @@ class EditProfileTest {
         mockMvc.perform(patch("/api/users/me")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new UpdateNameRequest(""))))
+                        .content(objectMapper.writeValueAsString(new UpdateProfileRequest("", "BEGINNER"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void shouldRejectInvalidExperienceLevel() throws Exception {
+        mockMvc.perform(patch("/api/users/me")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateProfileRequest("Novo Nome", "EXPERT"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
     }
@@ -85,7 +96,7 @@ class EditProfileTest {
     void shouldRejectRequestWithoutToken() throws Exception {
         mockMvc.perform(patch("/api/users/me")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new UpdateNameRequest("Novo Nome"))))
+                        .content(objectMapper.writeValueAsString(new UpdateProfileRequest("Novo Nome", "BEGINNER"))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
     }
