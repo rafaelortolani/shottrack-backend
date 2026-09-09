@@ -47,7 +47,7 @@ class EditProfileTest {
     private String accessToken;
 
     @BeforeEach
-    void cadastraELogaUsuario() throws Exception {
+    void registerAndLoginUser() throws Exception {
         mockMvc.perform(post("/api/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new UserRegisterRequest(NAME, EMAIL, PASSWORD))));
@@ -62,7 +62,7 @@ class EditProfileTest {
     }
 
     @Test
-    void deveEditarNome() throws Exception {
+    void shouldEditName() throws Exception {
         mockMvc.perform(patch("/api/users/me")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -72,7 +72,7 @@ class EditProfileTest {
     }
 
     @Test
-    void deveRejeitarNomeVazio() throws Exception {
+    void shouldRejectEmptyName() throws Exception {
         mockMvc.perform(patch("/api/users/me")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -82,7 +82,7 @@ class EditProfileTest {
     }
 
     @Test
-    void deveRejeitarRequisicaoSemToken() throws Exception {
+    void shouldRejectRequestWithoutToken() throws Exception {
         mockMvc.perform(patch("/api/users/me")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new UpdateNameRequest("Novo Nome"))))
@@ -91,27 +91,27 @@ class EditProfileTest {
     }
 
     @Test
-    void deveTrocarEmailAposConfirmarCodigo() throws Exception {
-        String novoEmail = "novo.email@shottrack.com";
+    void shouldChangeEmailAfterConfirmingCode() throws Exception {
+        String newEmail = "novo.email@shottrack.com";
 
         mockMvc.perform(post("/api/users/me/email")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new ChangeEmailRequest(novoEmail))))
+                        .content(objectMapper.writeValueAsString(new ChangeEmailRequest(newEmail))))
                 .andExpect(status().isAccepted());
 
-        String codigo = codigoPendentePara(novoEmail).getCode();
+        String codigo = pendingCodeFor(newEmail).getCode();
 
         mockMvc.perform(post("/api/users/me/email/confirmation")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new ConfirmEmailChangeRequest(codigo))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.email").value(novoEmail));
+                .andExpect(jsonPath("$.data.email").value(newEmail));
     }
 
     @Test
-    void deveRejeitarTrocaParaEmailJaCadastrado() throws Exception {
+    void shouldRejectChangeToAlreadyRegisteredEmail() throws Exception {
         String emailExistente = "outro.atleta@shottrack.com";
         mockMvc.perform(post("/api/users")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -126,7 +126,7 @@ class EditProfileTest {
     }
 
     @Test
-    void deveRejeitarConfirmacaoSemToken() throws Exception {
+    void shouldRejectConfirmationWithoutToken() throws Exception {
         mockMvc.perform(post("/api/users/me/email/confirmation")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new ConfirmEmailChangeRequest("123456"))))
@@ -135,12 +135,12 @@ class EditProfileTest {
     }
 
     @Test
-    void deveRejeitarCodigoIncorreto() throws Exception {
-        String novoEmail = "codigo.incorreto@shottrack.com";
+    void shouldRejectIncorrectCode() throws Exception {
+        String newEmail = "codigo.incorreto@shottrack.com";
         mockMvc.perform(post("/api/users/me/email")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new ChangeEmailRequest(novoEmail))))
+                        .content(objectMapper.writeValueAsString(new ChangeEmailRequest(newEmail))))
                 .andExpect(status().isAccepted());
 
         mockMvc.perform(post("/api/users/me/email/confirmation")
@@ -152,15 +152,15 @@ class EditProfileTest {
     }
 
     @Test
-    void deveRejeitarCodigoExpirado() throws Exception {
-        String novoEmail = "codigo.expirado@shottrack.com";
+    void shouldRejectExpiredCode() throws Exception {
+        String newEmail = "codigo.expirado@shottrack.com";
         mockMvc.perform(post("/api/users/me/email")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new ChangeEmailRequest(novoEmail))))
+                        .content(objectMapper.writeValueAsString(new ChangeEmailRequest(newEmail))))
                 .andExpect(status().isAccepted());
 
-        EmailVerificationCode pendente = codigoPendentePara(novoEmail);
+        EmailVerificationCode pendente = pendingCodeFor(newEmail);
         ReflectionTestUtils.setField(pendente, "expiresAt", Instant.now().minusSeconds(1));
         emailVerificationCodeRepository.saveAndFlush(pendente);
 
@@ -172,9 +172,9 @@ class EditProfileTest {
                 .andExpect(jsonPath("$.error.code").value("VERIFICATION_CODE_EXPIRED"));
     }
 
-    private EmailVerificationCode codigoPendentePara(String novoEmail) {
+    private EmailVerificationCode pendingCodeFor(String newEmail) {
         return emailVerificationCodeRepository.findAll().stream()
-                .filter(v -> v.getNewEmail().equals(novoEmail) && !v.isUsed())
+                .filter(v -> v.getNewEmail().equals(newEmail) && !v.isUsed())
                 .findFirst()
                 .orElseThrow();
     }

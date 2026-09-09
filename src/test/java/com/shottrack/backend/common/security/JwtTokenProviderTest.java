@@ -21,7 +21,7 @@ class JwtTokenProviderTest {
     private final JwtTokenProvider jwtTokenProvider = new JwtTokenProvider(SECRET, 60, 7);
 
     @Test
-    void deveGerarAccessTokenComSubjectEExpiracaoDeUmaHora() {
+    void shouldGenerateAccessTokenWithSubjectAndOneHourExpiration() {
         UUID userId = UUID.randomUUID();
         Instant before = Instant.now();
 
@@ -38,7 +38,7 @@ class JwtTokenProviderTest {
     }
 
     @Test
-    void deveGerarRefreshTokensDiferentesACadaChamada() {
+    void shouldGenerateDifferentRefreshTokensOnEachCall() {
         String first = jwtTokenProvider.generateRefreshTokenValue();
         String second = jwtTokenProvider.generateRefreshTokenValue();
 
@@ -48,7 +48,7 @@ class JwtTokenProviderTest {
     }
 
     @Test
-    void deveExpirarRefreshTokenEmSeteDias() {
+    void shouldExpireRefreshTokenInSevenDays() {
         Instant before = Instant.now();
 
         Instant expiresAt = jwtTokenProvider.refreshTokenExpiresAt();

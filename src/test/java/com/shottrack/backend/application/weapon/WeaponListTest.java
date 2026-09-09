@@ -40,8 +40,8 @@ class WeaponListTest {
     private UUID caliber9mmId;
 
     @BeforeEach
-    void carregaCatalogo() throws Exception {
-        String tempToken = cadastraELoga("atleta.catalogo.list@shottrack.com");
+    void loadCatalog() throws Exception {
+        String tempToken = registerAndLogin("atleta.catalogo.list@shottrack.com");
 
         pistolaId = idByName(tempToken, "/api/weapon-catalog/types", "Pistola");
         glockId = idByName(tempToken, "/api/weapon-catalog/brands", "Glock");
@@ -50,10 +50,10 @@ class WeaponListTest {
     }
 
     @Test
-    void deveListarArmasDoAtleta() throws Exception {
-        String token = cadastraELoga("atleta.listaarmas@shottrack.com");
-        cadastraArma(token);
-        cadastraArma(token);
+    void shouldListAthletesWeapons() throws Exception {
+        String token = registerAndLogin("atleta.listaarmas@shottrack.com");
+        registerWeapon(token);
+        registerWeapon(token);
 
         mockMvc.perform(get("/api/weapons")
                         .header("Authorization", "Bearer " + token))
@@ -62,8 +62,8 @@ class WeaponListTest {
     }
 
     @Test
-    void deveRetornarListaVaziaSemArmasCadastradas() throws Exception {
-        String token = cadastraELoga("atleta.semarmas@shottrack.com");
+    void shouldReturnEmptyListWhenNoWeaponsRegistered() throws Exception {
+        String token = registerAndLogin("atleta.semarmas@shottrack.com");
 
         mockMvc.perform(get("/api/weapons")
                         .header("Authorization", "Bearer " + token))
@@ -72,17 +72,17 @@ class WeaponListTest {
     }
 
     @Test
-    void deveRejeitarRequisicaoSemToken() throws Exception {
+    void shouldRejectRequestWithoutToken() throws Exception {
         mockMvc.perform(get("/api/weapons"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
     }
 
     @Test
-    void nuncaDeveIncluirArmaDeOutroAtleta() throws Exception {
-        String tokenA = cadastraELoga("atleta.a.armas@shottrack.com");
-        String tokenB = cadastraELoga("atleta.b.armas@shottrack.com");
-        cadastraArma(tokenA);
+    void shouldNeverIncludeAnotherAthletesWeapon() throws Exception {
+        String tokenA = registerAndLogin("atleta.a.armas@shottrack.com");
+        String tokenB = registerAndLogin("atleta.b.armas@shottrack.com");
+        registerWeapon(tokenA);
 
         mockMvc.perform(get("/api/weapons")
                         .header("Authorization", "Bearer " + tokenB))
@@ -90,7 +90,7 @@ class WeaponListTest {
                 .andExpect(jsonPath("$.data.length()").value(0));
     }
 
-    private void cadastraArma(String token) throws Exception {
+    private void registerWeapon(String token) throws Exception {
         var request = new WeaponRegisterRequest(pistolaId, glockId, g17Id, caliber9mmId, null);
         mockMvc.perform(post("/api/weapons")
                 .header("Authorization", "Bearer " + token)
@@ -98,7 +98,7 @@ class WeaponListTest {
                 .content(objectMapper.writeValueAsString(request)));
     }
 
-    private String cadastraELoga(String email) throws Exception {
+    private String registerAndLogin(String email) throws Exception {
         mockMvc.perform(post("/api/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new UserRegisterRequest("Atleta Teste", email, PASSWORD))));

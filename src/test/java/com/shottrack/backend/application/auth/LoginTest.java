@@ -38,7 +38,7 @@ class LoginTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @BeforeEach
-    void cadastraUsuario() throws Exception {
+    void registerUser() throws Exception {
         var request = new UserRegisterRequest("Atleta Login", EMAIL, PASSWORD);
         mockMvc.perform(post("/api/users")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -46,7 +46,7 @@ class LoginTest {
     }
 
     @Test
-    void deveLogarComCredenciaisValidas() throws Exception {
+    void shouldLoginWithValidCredentials() throws Exception {
         var request = new LoginRequest(EMAIL, PASSWORD);
 
         MvcResult result = mockMvc.perform(post("/api/auth/login")
@@ -66,7 +66,7 @@ class LoginTest {
     }
 
     @Test
-    void deveRejeitarCamposInvalidos() throws Exception {
+    void shouldRejectInvalidFields() throws Exception {
         var request = new LoginRequest("", "");
 
         mockMvc.perform(post("/api/auth/login")
@@ -77,7 +77,7 @@ class LoginTest {
     }
 
     @Test
-    void deveRejeitarSenhaIncorreta() throws Exception {
+    void shouldRejectIncorrectPassword() throws Exception {
         var request = new LoginRequest(EMAIL, "senhaErrada123");
 
         mockMvc.perform(post("/api/auth/login")
@@ -88,7 +88,7 @@ class LoginTest {
     }
 
     @Test
-    void deveRejeitarEmailNaoCadastrado() throws Exception {
+    void shouldRejectUnregisteredEmail() throws Exception {
         var request = new LoginRequest("nao.existe@shottrack.com", PASSWORD);
 
         mockMvc.perform(post("/api/auth/login")

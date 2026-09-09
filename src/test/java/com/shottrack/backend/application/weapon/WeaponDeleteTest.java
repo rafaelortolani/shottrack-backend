@@ -35,9 +35,9 @@ class WeaponDeleteTest {
     private ObjectMapper objectMapper;
 
     @Test
-    void deveExcluirArmaComSucesso() throws Exception {
-        String token = cadastraELoga("atleta.excluiarma@shottrack.com");
-        UUID weaponId = cadastraArma(token);
+    void shouldDeleteWeaponSuccessfully() throws Exception {
+        String token = registerAndLogin("atleta.excluiarma@shottrack.com");
+        UUID weaponId = registerWeapon(token);
 
         mockMvc.perform(delete("/api/weapons/" + weaponId)
                         .header("Authorization", "Bearer " + token))
@@ -50,15 +50,15 @@ class WeaponDeleteTest {
     }
 
     @Test
-    void deveRejeitarRequisicaoSemToken() throws Exception {
+    void shouldRejectRequestWithoutToken() throws Exception {
         mockMvc.perform(delete("/api/weapons/" + UUID.randomUUID()))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
     }
 
     @Test
-    void deveRejeitarArmaInexistente() throws Exception {
-        String token = cadastraELoga("atleta.armainexistente@shottrack.com");
+    void shouldRejectNonExistentWeapon() throws Exception {
+        String token = registerAndLogin("atleta.armainexistente@shottrack.com");
 
         mockMvc.perform(delete("/api/weapons/" + UUID.randomUUID())
                         .header("Authorization", "Bearer " + token))
@@ -67,10 +67,10 @@ class WeaponDeleteTest {
     }
 
     @Test
-    void deveRejeitarExclusaoDeArmaDeOutroAtleta() throws Exception {
-        String tokenDono = cadastraELoga("atleta.donoarma@shottrack.com");
-        String tokenOutro = cadastraELoga("atleta.naoedono@shottrack.com");
-        UUID weaponId = cadastraArma(tokenDono);
+    void shouldRejectDeletionOfAnotherAthletesWeapon() throws Exception {
+        String tokenDono = registerAndLogin("atleta.donoarma@shottrack.com");
+        String tokenOutro = registerAndLogin("atleta.naoedono@shottrack.com");
+        UUID weaponId = registerWeapon(tokenDono);
 
         mockMvc.perform(delete("/api/weapons/" + weaponId)
                         .header("Authorization", "Bearer " + tokenOutro))
@@ -78,7 +78,7 @@ class WeaponDeleteTest {
                 .andExpect(jsonPath("$.error.code").value("WEAPON_NOT_FOUND"));
     }
 
-    private UUID cadastraArma(String token) throws Exception {
+    private UUID registerWeapon(String token) throws Exception {
         UUID pistolaId = idByName(token, "/api/weapon-catalog/types", "Pistola");
         UUID glockId = idByName(token, "/api/weapon-catalog/brands", "Glock");
         UUID g17Id = idByName(token, "/api/weapon-catalog/brands/" + glockId + "/models", "G17");
@@ -95,7 +95,7 @@ class WeaponDeleteTest {
         return UUID.fromString(data.get("id").asText());
     }
 
-    private String cadastraELoga(String email) throws Exception {
+    private String registerAndLogin(String email) throws Exception {
         mockMvc.perform(post("/api/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new UserRegisterRequest("Atleta Teste", email, PASSWORD))));

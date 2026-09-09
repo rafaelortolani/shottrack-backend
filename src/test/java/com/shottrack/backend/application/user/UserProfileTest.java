@@ -36,7 +36,7 @@ class UserProfileTest {
     private String accessToken;
 
     @BeforeEach
-    void cadastraELogaUsuario() throws Exception {
+    void registerAndLoginUser() throws Exception {
         mockMvc.perform(post("/api/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new UserRegisterRequest(NAME, EMAIL, PASSWORD))));
@@ -51,7 +51,7 @@ class UserProfileTest {
     }
 
     @Test
-    void deveRetornarPerfilDoUsuarioAutenticado() throws Exception {
+    void shouldReturnAuthenticatedUserProfile() throws Exception {
         mockMvc.perform(get("/api/users/me")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
@@ -62,14 +62,14 @@ class UserProfileTest {
     }
 
     @Test
-    void deveRejeitarRequisicaoSemToken() throws Exception {
+    void shouldRejectRequestWithoutToken() throws Exception {
         mockMvc.perform(get("/api/users/me"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
     }
 
     @Test
-    void deveRejeitarTokenInvalido() throws Exception {
+    void shouldRejectInvalidToken() throws Exception {
         mockMvc.perform(get("/api/users/me")
                         .header("Authorization", "Bearer token-invalido"))
                 .andExpect(status().isUnauthorized())

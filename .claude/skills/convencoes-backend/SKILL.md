@@ -7,6 +7,17 @@ description: Convenções de código do backend do ShotTrack — estrutura de ca
 
 Baseado no módulo `user`, implementado como referência (UC01 - cadastro de usuário).
 
+## Idioma
+- Identificadores de código (classes, métodos, variáveis, campos) sempre em inglês —
+  isso inclui nomes de método de teste. Nunca `deveRejeitarCodigoExpirado`, sempre
+  `shouldRejectExpiredCode`.
+- Convenção de nomes de teste: `should<comportamento esperado>` (ex:
+  `shouldRegisterUserWithValidData`, `shouldRejectDuplicateEmail`,
+  `shouldRejectRequestWithoutToken`).
+- Português continua em: texto voltado ao usuário/API consumer (`messages.properties`,
+  mensagens de `@NotBlank`/`@Email` etc.), comentários que explicam o *porquê* de uma
+  decisão (referenciando UC/ADR), e toda a documentação (`docs/use-cases`, `docs/adr`).
+
 ## Estrutura de pacotes
 Cada funcionalidade é um módulo dentro de `application`, um pacote por domínio (ex: `user`), com
 subpacotes por camada dentro do módulo:
@@ -98,3 +109,5 @@ mesmo em protótipo. Nunca considerar um use case implementado sem isso.
   um exemplo representativo.
 - Como os testes rodam contra o Postgres real (`docker-compose.yml`), a classe
   de teste leva `@Transactional` pra isolar cada `@Test` (rollback automático).
+- Nomes de método de teste em inglês, padrão `should<comportamento esperado>`
+  (ver seção Idioma).

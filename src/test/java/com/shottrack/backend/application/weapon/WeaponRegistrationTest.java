@@ -42,7 +42,7 @@ class WeaponRegistrationTest {
     private UUID caliber9mmId;
 
     @BeforeEach
-    void cadastraELogaUsuario() throws Exception {
+    void registerAndLoginUser() throws Exception {
         mockMvc.perform(post("/api/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new UserRegisterRequest("Atleta Cadastra Arma", EMAIL, PASSWORD))));
@@ -62,7 +62,7 @@ class WeaponRegistrationTest {
     }
 
     @Test
-    void deveCadastrarArmaComDadosValidos() throws Exception {
+    void shouldRegisterWeaponWithValidData() throws Exception {
         var request = new WeaponRegisterRequest(pistolaId, glockId, g17Id, caliber9mmId, null);
 
         mockMvc.perform(post("/api/weapons")
@@ -77,7 +77,7 @@ class WeaponRegistrationTest {
     }
 
     @Test
-    void deveCadastrarArmaComApelidoOpcional() throws Exception {
+    void shouldRegisterWeaponWithOptionalNickname() throws Exception {
         var request = new WeaponRegisterRequest(pistolaId, glockId, g17Id, caliber9mmId, "Minha 9mm de competição");
 
         mockMvc.perform(post("/api/weapons")
@@ -89,7 +89,7 @@ class WeaponRegistrationTest {
     }
 
     @Test
-    void deveRejeitarCampoObrigatorioAusente() throws Exception {
+    void shouldRejectMissingRequiredField() throws Exception {
         var request = new WeaponRegisterRequest(null, glockId, g17Id, caliber9mmId, null);
 
         mockMvc.perform(post("/api/weapons")
@@ -101,7 +101,7 @@ class WeaponRegistrationTest {
     }
 
     @Test
-    void deveRejeitarRequisicaoSemToken() throws Exception {
+    void shouldRejectRequestWithoutToken() throws Exception {
         var request = new WeaponRegisterRequest(pistolaId, glockId, g17Id, caliber9mmId, null);
 
         mockMvc.perform(post("/api/weapons")
@@ -112,7 +112,7 @@ class WeaponRegistrationTest {
     }
 
     @Test
-    void deveRejeitarTipoInexistente() throws Exception {
+    void shouldRejectNonExistentType() throws Exception {
         var request = new WeaponRegisterRequest(UUID.randomUUID(), glockId, g17Id, caliber9mmId, null);
 
         mockMvc.perform(post("/api/weapons")
@@ -124,7 +124,7 @@ class WeaponRegistrationTest {
     }
 
     @Test
-    void deveRejeitarMarcaInexistente() throws Exception {
+    void shouldRejectNonExistentBrand() throws Exception {
         var request = new WeaponRegisterRequest(pistolaId, UUID.randomUUID(), g17Id, caliber9mmId, null);
 
         mockMvc.perform(post("/api/weapons")
@@ -136,7 +136,7 @@ class WeaponRegistrationTest {
     }
 
     @Test
-    void deveRejeitarModeloInexistente() throws Exception {
+    void shouldRejectNonExistentModel() throws Exception {
         var request = new WeaponRegisterRequest(pistolaId, glockId, UUID.randomUUID(), caliber9mmId, null);
 
         mockMvc.perform(post("/api/weapons")
@@ -148,7 +148,7 @@ class WeaponRegistrationTest {
     }
 
     @Test
-    void deveRejeitarCalibreInexistente() throws Exception {
+    void shouldRejectNonExistentCaliber() throws Exception {
         var request = new WeaponRegisterRequest(pistolaId, glockId, g17Id, UUID.randomUUID(), null);
 
         mockMvc.perform(post("/api/weapons")
@@ -160,7 +160,7 @@ class WeaponRegistrationTest {
     }
 
     @Test
-    void deveRejeitarModeloQueNaoPertenceAMarcaInformada() throws Exception {
+    void shouldRejectModelThatDoesNotBelongToGivenBrand() throws Exception {
         UUID taurusId = idByName("/api/weapon-catalog/brands", "Taurus");
         UUID modelo856Id = idByName("/api/weapon-catalog/brands/" + taurusId + "/models", "856");
 
