@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record WeaponResponse(
         UUID id,
+        String nickname,
         WeaponTypeResponse type,
         WeaponBrandResponse brand,
         WeaponModelResponse model,

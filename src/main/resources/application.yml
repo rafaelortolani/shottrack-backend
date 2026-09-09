@@ -29,6 +29,13 @@ spring:
 
 server:
   port: 8080
+  servlet:
+    encoding:
+      # sem isso, respostas com acentuação (ex: mensagens de erro, catálogo de
+      # armas) não declaram charset no Content-Type — clients estritos (e o
+      # MockHttpServletResponse dos testes) caem no default ISO-8859-1.
+      charset: UTF-8
+      force: true
 
 app:
   jwt:

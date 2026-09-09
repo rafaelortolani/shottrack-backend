@@ -84,7 +84,7 @@ class WeaponDeleteTest {
         UUID g17Id = idByName(token, "/api/weapon-catalog/brands/" + glockId + "/models", "G17");
         UUID caliber9mmId = idByName(token, "/api/weapon-catalog/calibers", "9mm");
 
-        var request = new WeaponRegisterRequest(pistolaId, glockId, g17Id, caliber9mmId);
+        var request = new WeaponRegisterRequest(pistolaId, glockId, g17Id, caliber9mmId, null);
         var result = mockMvc.perform(post("/api/weapons")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

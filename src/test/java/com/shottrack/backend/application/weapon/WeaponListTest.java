@@ -91,7 +91,7 @@ class WeaponListTest {
     }
 
     private void cadastraArma(String token) throws Exception {
-        var request = new WeaponRegisterRequest(pistolaId, glockId, g17Id, caliber9mmId);
+        var request = new WeaponRegisterRequest(pistolaId, glockId, g17Id, caliber9mmId, null);
         mockMvc.perform(post("/api/weapons")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)

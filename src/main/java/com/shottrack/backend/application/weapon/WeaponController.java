@@ -2,6 +2,7 @@ package com.shottrack.backend.application.weapon;
 
 import com.shottrack.backend.application.weapon.dto.WeaponRegisterRequest;
 import com.shottrack.backend.application.weapon.dto.WeaponResponse;
+import com.shottrack.backend.application.weapon.dto.WeaponUpdateRequest;
 import com.shottrack.backend.application.weapon.usecase.WeaponService;
 import com.shottrack.backend.common.web.ApiResponse;
 import jakarta.validation.Valid;
@@ -33,6 +34,14 @@ public class WeaponController {
     public ResponseEntity<ApiResponse<List<WeaponResponse>>> list(Authentication authentication) {
         UUID userId = (UUID) authentication.getPrincipal();
         List<WeaponResponse> response = weaponService.listByUser(userId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<ApiResponse<WeaponResponse>> update(Authentication authentication, @PathVariable UUID id,
+                                                                 @Valid @RequestBody WeaponUpdateRequest request) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        WeaponResponse response = weaponService.update(userId, id, request);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

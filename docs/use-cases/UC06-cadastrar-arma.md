@@ -9,7 +9,9 @@ escolhidos existem no catálogo (UC09) e o modelo pertence à marca informada
 (ADR-0004).
 
 ## Fluxo principal
-1. Atleta informa tipoId, marcaId, modeloId e calibreId
+1. Atleta informa tipoId, marcaId, modeloId, calibreId e, opcionalmente, um
+   apelido (texto livre — útil pra diferenciar duas armas com o mesmo tipo/
+   marca/modelo/calibre)
 2. Sistema valida que tipo, marca, modelo e calibre existem e que o modelo
    pertence à marca informada
 3. Sistema cria a arma vinculada ao atleta autenticado e retorna seus dados
@@ -31,3 +33,4 @@ escolhidos existem no catálogo (UC09) e o modelo pertence à marca informada
 - ADR-0001 (autenticação JWT)
 - ADR-0003 (não armazenar número de registro da arma)
 - ADR-0004 (catálogo de tipo/marca/modelo/calibre via seed fixo)
+- UC10 (editar arma — inclui alterar o apelido depois do cadastro)

@@ -17,6 +17,7 @@ import org.mapstruct.Mapping;
 public interface WeaponMapper {
 
     @Mapping(target = "id", source = "weapon.id")
+    @Mapping(target = "nickname", source = "weapon.nickname")
     @Mapping(target = "createdAt", source = "weapon.createdAt")
     @Mapping(target = "type", source = "type")
     @Mapping(target = "brand", source = "brand")

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.auth.dto.LoginRequest;
 import com.shottrack.backend.application.user.dto.UserRegisterRequest;
 import com.shottrack.backend.application.weapon.dto.WeaponRegisterRequest;
+import com.shottrack.backend.application.weapon.dto.WeaponUpdateRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -24,9 +26,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-class WeaponRegistrationTest {
+class WeaponUpdateTest {
 
-    private static final String EMAIL = "atleta.cadastraarma@shottrack.com";
+    private static final String EMAIL = "atleta.editaarma@shottrack.com";
     private static final String PASSWORD = "senha12345";
 
     @Autowired
@@ -37,62 +39,78 @@ class WeaponRegistrationTest {
 
     private String accessToken;
     private UUID pistolaId;
+    private UUID revolverId;
     private UUID glockId;
     private UUID g17Id;
+    private UUID g19Id;
     private UUID caliber9mmId;
+    private UUID caliber40Id;
+    private UUID weaponId;
 
     @BeforeEach
-    void cadastraELogaUsuario() throws Exception {
+    void preparaArmaExistente() throws Exception {
         mockMvc.perform(post("/api/users")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new UserRegisterRequest("Atleta Cadastra Arma", EMAIL, PASSWORD))));
+                .content(objectMapper.writeValueAsString(new UserRegisterRequest("Atleta Edita Arma", EMAIL, PASSWORD))));
 
-        var result = mockMvc.perform(post("/api/auth/login")
+        var loginResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new LoginRequest(EMAIL, PASSWORD))))
                 .andReturn();
-
-        JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
-        accessToken = data.get("accessToken").asText();
+        accessToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                .get("data").get("accessToken").asText();
 
         pistolaId = idByName("/api/weapon-catalog/types", "Pistola");
+        revolverId = idByName("/api/weapon-catalog/types", "Revólver");
         glockId = idByName("/api/weapon-catalog/brands", "Glock");
         g17Id = idByName("/api/weapon-catalog/brands/" + glockId + "/models", "G17");
+        g19Id = idByName("/api/weapon-catalog/brands/" + glockId + "/models", "G19");
         caliber9mmId = idByName("/api/weapon-catalog/calibers", "9mm");
+        caliber40Id = idByName("/api/weapon-catalog/calibers", ".40 S&W");
+
+        var registerRequest = new WeaponRegisterRequest(pistolaId, glockId, g17Id, caliber9mmId, "Original");
+        var registerResult = mockMvc.perform(post("/api/weapons")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registerRequest)))
+                .andReturn();
+        weaponId = UUID.fromString(objectMapper.readTree(registerResult.getResponse().getContentAsString())
+                .get("data").get("id").asText());
     }
 
     @Test
-    void deveCadastrarArmaComDadosValidos() throws Exception {
-        var request = new WeaponRegisterRequest(pistolaId, glockId, g17Id, caliber9mmId, null);
+    void deveEditarSoOApelidoMantendoOResto() throws Exception {
+        var request = new WeaponUpdateRequest(pistolaId, glockId, g17Id, caliber9mmId, "Minha 9mm de competição");
 
-        mockMvc.perform(post("/api/weapons")
+        mockMvc.perform(patch("/api/weapons/" + weaponId)
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.nickname").value("Minha 9mm de competição"))
                 .andExpect(jsonPath("$.data.type.name").value("Pistola"))
-                .andExpect(jsonPath("$.data.brand.name").value("Glock"))
-                .andExpect(jsonPath("$.data.model.name").value("G17"))
-                .andExpect(jsonPath("$.data.caliber.name").value("9mm"));
+                .andExpect(jsonPath("$.data.model.name").value("G17"));
     }
 
     @Test
-    void deveCadastrarArmaComApelidoOpcional() throws Exception {
-        var request = new WeaponRegisterRequest(pistolaId, glockId, g17Id, caliber9mmId, "Minha 9mm de competição");
+    void deveCorrigirTipoModeloECalibre() throws Exception {
+        var request = new WeaponUpdateRequest(revolverId, glockId, g19Id, caliber40Id, "Original");
 
-        mockMvc.perform(post("/api/weapons")
+        mockMvc.perform(patch("/api/weapons/" + weaponId)
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.nickname").value("Minha 9mm de competição"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.type.name").value("Revólver"))
+                .andExpect(jsonPath("$.data.model.name").value("G19"))
+                .andExpect(jsonPath("$.data.caliber.name").value(".40 S&W"));
     }
 
     @Test
     void deveRejeitarCampoObrigatorioAusente() throws Exception {
-        var request = new WeaponRegisterRequest(null, glockId, g17Id, caliber9mmId, null);
+        var request = new WeaponUpdateRequest(null, glockId, g17Id, caliber9mmId, "Original");
 
-        mockMvc.perform(post("/api/weapons")
+        mockMvc.perform(patch("/api/weapons/" + weaponId)
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -102,9 +120,9 @@ class WeaponRegistrationTest {
 
     @Test
     void deveRejeitarRequisicaoSemToken() throws Exception {
-        var request = new WeaponRegisterRequest(pistolaId, glockId, g17Id, caliber9mmId, null);
+        var request = new WeaponUpdateRequest(pistolaId, glockId, g17Id, caliber9mmId, "Original");
 
-        mockMvc.perform(post("/api/weapons")
+        mockMvc.perform(patch("/api/weapons/" + weaponId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
@@ -112,10 +130,22 @@ class WeaponRegistrationTest {
     }
 
     @Test
-    void deveRejeitarTipoInexistente() throws Exception {
-        var request = new WeaponRegisterRequest(UUID.randomUUID(), glockId, g17Id, caliber9mmId, null);
+    void deveRejeitarArmaInexistenteOuDeOutroAtleta() throws Exception {
+        var request = new WeaponUpdateRequest(pistolaId, glockId, g17Id, caliber9mmId, "Original");
 
-        mockMvc.perform(post("/api/weapons")
+        mockMvc.perform(patch("/api/weapons/" + UUID.randomUUID())
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("WEAPON_NOT_FOUND"));
+    }
+
+    @Test
+    void deveRejeitarTipoInexistente() throws Exception {
+        var request = new WeaponUpdateRequest(UUID.randomUUID(), glockId, g17Id, caliber9mmId, "Original");
+
+        mockMvc.perform(patch("/api/weapons/" + weaponId)
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -125,9 +155,9 @@ class WeaponRegistrationTest {
 
     @Test
     void deveRejeitarMarcaInexistente() throws Exception {
-        var request = new WeaponRegisterRequest(pistolaId, UUID.randomUUID(), g17Id, caliber9mmId, null);
+        var request = new WeaponUpdateRequest(pistolaId, UUID.randomUUID(), g17Id, caliber9mmId, "Original");
 
-        mockMvc.perform(post("/api/weapons")
+        mockMvc.perform(patch("/api/weapons/" + weaponId)
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -137,9 +167,9 @@ class WeaponRegistrationTest {
 
     @Test
     void deveRejeitarModeloInexistente() throws Exception {
-        var request = new WeaponRegisterRequest(pistolaId, glockId, UUID.randomUUID(), caliber9mmId, null);
+        var request = new WeaponUpdateRequest(pistolaId, glockId, UUID.randomUUID(), caliber9mmId, "Original");
 
-        mockMvc.perform(post("/api/weapons")
+        mockMvc.perform(patch("/api/weapons/" + weaponId)
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -149,9 +179,9 @@ class WeaponRegistrationTest {
 
     @Test
     void deveRejeitarCalibreInexistente() throws Exception {
-        var request = new WeaponRegisterRequest(pistolaId, glockId, g17Id, UUID.randomUUID(), null);
+        var request = new WeaponUpdateRequest(pistolaId, glockId, g17Id, UUID.randomUUID(), "Original");
 
-        mockMvc.perform(post("/api/weapons")
+        mockMvc.perform(patch("/api/weapons/" + weaponId)
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -164,9 +194,9 @@ class WeaponRegistrationTest {
         UUID taurusId = idByName("/api/weapon-catalog/brands", "Taurus");
         UUID modelo856Id = idByName("/api/weapon-catalog/brands/" + taurusId + "/models", "856");
 
-        var request = new WeaponRegisterRequest(pistolaId, glockId, modelo856Id, caliber9mmId, null);
+        var request = new WeaponUpdateRequest(pistolaId, glockId, modelo856Id, caliber9mmId, "Original");
 
-        mockMvc.perform(post("/api/weapons")
+        mockMvc.perform(patch("/api/weapons/" + weaponId)
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
