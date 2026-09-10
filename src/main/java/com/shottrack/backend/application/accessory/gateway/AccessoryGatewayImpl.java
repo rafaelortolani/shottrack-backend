@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -22,5 +23,15 @@ class AccessoryGatewayImpl implements AccessoryGateway {
     @Override
     public List<Accessory> findAllByUserId(UUID userId) {
         return accessoryRepository.findAllByUserId(userId);
+    }
+
+    @Override
+    public Optional<Accessory> findById(UUID id) {
+        return accessoryRepository.findById(id);
+    }
+
+    @Override
+    public void delete(Accessory accessory) {
+        accessoryRepository.delete(accessory);
     }
 }

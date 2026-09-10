@@ -87,10 +87,26 @@ public class WeaponService {
         weaponGateway.delete(findOwnedWeaponOrThrow(userId, weaponId));
     }
 
-    private Weapon findOwnedWeaponOrThrow(UUID userId, UUID weaponId) {
+    /**
+     * Reaproveitado por outros domínios que associam algo a uma arma (ex:
+     * acessório, UC19) e precisam validar que ela existe e pertence ao
+     * atleta antes de criar a associação.
+     */
+    public Weapon findOwnedWeaponOrThrow(UUID userId, UUID weaponId) {
         return weaponGateway.findById(weaponId)
                 .filter(w -> w.getUserId().equals(userId))
                 .orElseThrow(() -> new BusinessException("WEAPON_NOT_FOUND", HttpStatus.NOT_FOUND));
+    }
+
+    /**
+     * Reaproveitado por outros domínios que precisam exibir dados de uma arma
+     * já validada como existente (ex: lista de armas associadas a um
+     * acessório, UC18/UC19) — não revalida posse, é uma leitura interna.
+     */
+    public WeaponResponse getResponseById(UUID weaponId) {
+        return weaponGateway.findById(weaponId)
+                .map(this::toResponseWithCatalog)
+                .orElseThrow();
     }
 
     private CatalogSelection resolveCatalogSelection(UUID typeId, UUID brandId, UUID modelId, UUID caliberId) {
