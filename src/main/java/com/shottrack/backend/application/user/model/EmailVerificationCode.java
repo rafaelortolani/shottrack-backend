@@ -3,9 +3,9 @@ package com.shottrack.backend.application.user.model;
 import com.shottrack.backend.common.jpa.AbstractBaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -16,7 +16,6 @@ import java.util.UUID;
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)
-@RequiredArgsConstructor
 @Entity
 @Table(name = "email_verification_codes")
 public class EmailVerificationCode extends AbstractBaseEntity {
@@ -39,6 +38,14 @@ public class EmailVerificationCode extends AbstractBaseEntity {
 
     @Column(nullable = false)
     private boolean used = false;
+
+    @Builder
+    private EmailVerificationCode(UUID userId, String newEmail, String code, Instant expiresAt) {
+        this.userId = userId;
+        this.newEmail = newEmail;
+        this.code = code;
+        this.expiresAt = expiresAt;
+    }
 
     public void markUsed() {
         this.used = true;

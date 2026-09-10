@@ -75,12 +75,50 @@ application/
 ## Lombok
 - Getters/setters são sempre gerados via Lombok (`@Getter`, `@Setter` quando necessário) — nunca declarar manualmente.
 - Entidade JPA: `@Getter` na classe (setters só se a mutabilidade for realmente necessária).
-- Construtor de injeção de dependência (campos `final` em `@Service`/`@RestController`/etc.): `@RequiredArgsConstructor` — nunca declarar o construtor manualmente.
+- Construtor de injeção de dependência (campos `final` em `@Service`/`@RestController`/etc.): `@RequiredArgsConstructor` — nunca declarar o construtor manualmente. Isso vale só pra essas classes de infraestrutura, não pra entidades (ver abaixo).
 - Construtor sem argumentos exigido pelo JPA: `@NoArgsConstructor(access = AccessLevel.PROTECTED)`.
-- Campos obrigatórios setados só na criação (ex: `name`, `email`, `passwordHash`): declarar como `final` e usar `@RequiredArgsConstructor` — nunca declarar o construtor manualmente. O Lombok gera o construtor público só com esses campos.
-- Campo gerado pelo banco (`id`) ou preenchido por auditoria (`createdAt`, `updatedAt`, etc. — ver seção Auditoria): não é `final`, fica de fora do `@RequiredArgsConstructor` automaticamente.
 - Construtor sem argumentos do JPA em entidade com campos `final`: `@NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)` — o Hibernate popula os campos `final` via reflection ao carregar do banco.
 - DTOs continuam sendo records (não usam Lombok).
+
+### Instanciação de entidade JPA: sempre via `@Builder`
+Regra única pra toda entidade, sem exceção por "não valer a pena" (nem catálogo
+de campo único como `WeaponBrand`) — mais fácil de entender tendo só um jeito
+de instanciar em vez de decidir caso a caso.
+
+- Nunca `new Entidade(...)` fora da própria classe e nunca `@RequiredArgsConstructor` numa entidade — em vez disso, um construtor **`private`** anotado com `@Builder`, listando exatamente os campos que fazem sentido na criação:
+  ```java
+  @Builder
+  private Weapon(UUID userId, @NonNull UUID typeId, @NonNull UUID brandId, @NonNull UUID modelId,
+                 @NonNull UUID caliberId, String nickname) {
+      this.userId = userId;
+      this.typeId = typeId;
+      this.brandId = brandId;
+      this.modelId = modelId;
+      this.caliberId = caliberId;
+      this.nickname = nickname;
+  }
+  ```
+  Uso: `Weapon.builder().userId(userId).typeId(typeId)....build()`.
+- `id` nunca entra no builder (gerado pelo banco). Campo de transição de estado com
+  método de domínio próprio também fica de fora (ex: `revoked` em `RefreshToken`, só
+  muda via `revoke()`; `used` em `EmailVerificationCode`, só via `markUsed()`) — expor
+  esses campos no builder permitiria criar um registro "pré-revogado"/"pré-usado" do
+  nada, quebrando o invariante.
+- Campo obrigatório: `final` (se nunca muda depois de criado) ou `@Setter` + `@NonNull`
+  (se pode ser editado depois — ex: `Weapon.typeId` no UC10). De qualquer forma, é
+  parâmetro do construtor `@Builder`; quando o campo é `@NonNull`, repetir `@NonNull`
+  no parâmetro do construtor também, pra manter a validação em tempo de criação (o
+  Lombok não propaga a anotação do campo pra um construtor escrito à mão).
+- Campo opcional: `@Setter`, sem `@NonNull`, também é parâmetro do builder.
+- Campo com valor padrão (ex: `User.experienceLevel = ExperienceLevel.BEGINNER`):
+  mantém o inicializador no campo e o construtor só sobrescreve quando o parâmetro
+  vier preenchido (`if (experienceLevel != null) { this.experienceLevel = experienceLevel; }`)
+  — **não** usar `@Builder.Default` (nesse projeto, combinado com `@Builder` num
+  construtor escrito à mão, ele gera uma chamada a um método `$default$campo()` que
+  o Lombok não chega a criar, e a compilação quebra).
+- Builder não substitui os setters existentes: edição de uma entidade já carregada do
+  banco (ex: `WeaponService.update`) continua via setter — o builder só participa da
+  criação.
 
 ## Auditoria de entidades
 - Toda entidade JPA estende `AbstractBaseEntity` (`common/jpa/AbstractBaseEntity.java`), que traz `createdAt`,

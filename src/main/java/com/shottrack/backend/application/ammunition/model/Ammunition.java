@@ -3,9 +3,9 @@ package com.shottrack.backend.application.ammunition.model;
 import com.shottrack.backend.common.jpa.AbstractBaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
@@ -17,7 +17,6 @@ import java.util.UUID;
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)
-@RequiredArgsConstructor
 @Entity
 @Table(name = "ammunitions")
 public class Ammunition extends AbstractBaseEntity {
@@ -60,4 +59,19 @@ public class Ammunition extends AbstractBaseEntity {
     @Setter
     @Column
     private String notes;
+
+    @Builder
+    private Ammunition(UUID userId, UUID manufacturerId, UUID caliberId, String nickname,
+                        BigDecimal projectileWeightGrains, BigDecimal powderCharge,
+                        String projectileType, String lot, String notes) {
+        this.userId = userId;
+        this.manufacturerId = manufacturerId;
+        this.caliberId = caliberId;
+        this.nickname = nickname;
+        this.projectileWeightGrains = projectileWeightGrains;
+        this.powderCharge = powderCharge;
+        this.projectileType = projectileType;
+        this.lot = lot;
+        this.notes = notes;
+    }
 }

@@ -123,7 +123,11 @@ class RefreshTokenTest {
 
     @Test
     void shouldRejectExpiredRefreshToken() throws Exception {
-        RefreshToken expired = new RefreshToken("token-expirado-123", userId, Instant.now().minusSeconds(60));
+        RefreshToken expired = RefreshToken.builder()
+                .token("token-expirado-123")
+                .userId(userId)
+                .expiresAt(Instant.now().minusSeconds(60))
+                .build();
         refreshTokenRepository.save(expired);
 
         mockMvc.perform(post("/api/auth/refresh")

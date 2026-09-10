@@ -30,7 +30,7 @@ public class PracticedModalityService {
             throw new BusinessException("MODALITY_ALREADY_ADDED", HttpStatus.CONFLICT);
         }
 
-        practicedModalityGateway.save(new PracticedModality(userId, modalityId));
+        practicedModalityGateway.save(PracticedModality.builder().userId(userId).modalityId(modalityId).build());
         return modalityMapper.toResponse(modality);
     }
 

@@ -34,15 +34,17 @@ public class AmmunitionService {
         AmmunitionManufacturer manufacturer = findManufacturerIfInformed(request.manufacturerId());
         WeaponCaliber caliber = findCaliberIfInformed(request.caliberId());
 
-        Ammunition ammunition = new Ammunition(userId);
-        ammunition.setManufacturerId(request.manufacturerId());
-        ammunition.setCaliberId(request.caliberId());
-        ammunition.setNickname(request.nickname());
-        ammunition.setProjectileWeightGrains(request.projectileWeightGrains());
-        ammunition.setPowderCharge(request.powderCharge());
-        ammunition.setProjectileType(request.projectileType());
-        ammunition.setLot(request.lot());
-        ammunition.setNotes(request.notes());
+        Ammunition ammunition = Ammunition.builder()
+                .userId(userId)
+                .manufacturerId(request.manufacturerId())
+                .caliberId(request.caliberId())
+                .nickname(request.nickname())
+                .projectileWeightGrains(request.projectileWeightGrains())
+                .powderCharge(request.powderCharge())
+                .projectileType(request.projectileType())
+                .lot(request.lot())
+                .notes(request.notes())
+                .build();
 
         Ammunition saved = ammunitionGateway.save(ammunition);
         return ammunitionMapper.toResponse(saved, manufacturer, caliber);
