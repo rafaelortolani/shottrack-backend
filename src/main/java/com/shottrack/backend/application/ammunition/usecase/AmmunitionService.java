@@ -2,6 +2,7 @@ package com.shottrack.backend.application.ammunition.usecase;
 
 import com.shottrack.backend.application.ammunition.dto.AmmunitionRegisterRequest;
 import com.shottrack.backend.application.ammunition.dto.AmmunitionResponse;
+import com.shottrack.backend.application.ammunition.dto.AmmunitionUpdateRequest;
 import com.shottrack.backend.application.ammunition.gateway.AmmunitionGateway;
 import com.shottrack.backend.application.ammunition.gateway.AmmunitionManufacturerGateway;
 import com.shottrack.backend.application.ammunition.mapper.AmmunitionMapper;
@@ -54,6 +55,62 @@ public class AmmunitionService {
         return ammunitionGateway.findAllByUserId(userId).stream()
                 .map(this::toResponseWithCatalog)
                 .toList();
+    }
+
+    /**
+     * UC15: edição parcial (diferente de arma) — só os campos enviados (não nulos)
+     * são aplicados. A regra "fabricante OU apelido" do UC13 é revalidada contra o
+     * estado final (campo enviado, ou o que já existia se não foi enviado).
+     */
+    public AmmunitionResponse update(UUID userId, UUID ammunitionId, AmmunitionUpdateRequest request) {
+        Ammunition ammunition = findOwnedAmmunitionOrThrow(userId, ammunitionId);
+
+        if (request.manufacturerId() != null) {
+            findManufacturerIfInformed(request.manufacturerId());
+        }
+        if (request.caliberId() != null) {
+            findCaliberIfInformed(request.caliberId());
+        }
+
+        UUID finalManufacturerId = request.manufacturerId() != null ? request.manufacturerId() : ammunition.getManufacturerId();
+        String finalNickname = request.nickname() != null ? request.nickname() : ammunition.getNickname();
+        if (finalManufacturerId == null && (finalNickname == null || finalNickname.isBlank())) {
+            throw new BusinessException("AMMUNITION_IDENTIFICATION_REQUIRED", HttpStatus.BAD_REQUEST);
+        }
+
+        if (request.manufacturerId() != null) {
+            ammunition.setManufacturerId(request.manufacturerId());
+        }
+        if (request.caliberId() != null) {
+            ammunition.setCaliberId(request.caliberId());
+        }
+        if (request.nickname() != null) {
+            ammunition.setNickname(request.nickname());
+        }
+        if (request.projectileWeightGrains() != null) {
+            ammunition.setProjectileWeightGrains(request.projectileWeightGrains());
+        }
+        if (request.powderCharge() != null) {
+            ammunition.setPowderCharge(request.powderCharge());
+        }
+        if (request.projectileType() != null) {
+            ammunition.setProjectileType(request.projectileType());
+        }
+        if (request.lot() != null) {
+            ammunition.setLot(request.lot());
+        }
+        if (request.notes() != null) {
+            ammunition.setNotes(request.notes());
+        }
+
+        Ammunition saved = ammunitionGateway.save(ammunition);
+        return toResponseWithCatalog(saved);
+    }
+
+    private Ammunition findOwnedAmmunitionOrThrow(UUID userId, UUID ammunitionId) {
+        return ammunitionGateway.findById(ammunitionId)
+                .filter(a -> a.getUserId().equals(userId))
+                .orElseThrow(() -> new BusinessException("AMMUNITION_NOT_FOUND", HttpStatus.NOT_FOUND));
     }
 
     private AmmunitionResponse toResponseWithCatalog(Ammunition ammunition) {
