@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -45,6 +46,20 @@ public class AmmunitionService {
 
         Ammunition saved = ammunitionGateway.save(ammunition);
         return ammunitionMapper.toResponse(saved, manufacturer, caliber);
+    }
+
+    public List<AmmunitionResponse> listByUser(UUID userId) {
+        return ammunitionGateway.findAllByUserId(userId).stream()
+                .map(this::toResponseWithCatalog)
+                .toList();
+    }
+
+    private AmmunitionResponse toResponseWithCatalog(Ammunition ammunition) {
+        AmmunitionManufacturer manufacturer = ammunition.getManufacturerId() == null ? null
+                : ammunitionManufacturerGateway.findById(ammunition.getManufacturerId()).orElseThrow();
+        WeaponCaliber caliber = ammunition.getCaliberId() == null ? null
+                : weaponCaliberGateway.findById(ammunition.getCaliberId()).orElseThrow();
+        return ammunitionMapper.toResponse(ammunition, manufacturer, caliber);
     }
 
     private AmmunitionManufacturer findManufacturerIfInformed(UUID manufacturerId) {
