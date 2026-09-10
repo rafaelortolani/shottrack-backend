@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -22,5 +23,10 @@ class AmmunitionGatewayImpl implements AmmunitionGateway {
     @Override
     public List<Ammunition> findAllByUserId(UUID userId) {
         return ammunitionRepository.findAllByUserId(userId);
+    }
+
+    @Override
+    public Optional<Ammunition> findById(UUID id) {
+        return ammunitionRepository.findById(id);
     }
 }
