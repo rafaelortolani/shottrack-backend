@@ -29,4 +29,9 @@ class AmmunitionGatewayImpl implements AmmunitionGateway {
     public Optional<Ammunition> findById(UUID id) {
         return ammunitionRepository.findById(id);
     }
+
+    @Override
+    public void delete(Ammunition ammunition) {
+        ammunitionRepository.delete(ammunition);
+    }
 }
