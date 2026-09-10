@@ -39,11 +39,11 @@ public class RefreshTokenService {
         refreshTokenGateway.save(stored);
 
         String accessToken = jwtTokenProvider.generateAccessToken(stored.getUserId());
-        RefreshToken newRefreshToken = new RefreshToken(
-                jwtTokenProvider.generateRefreshTokenValue(),
-                stored.getUserId(),
-                jwtTokenProvider.refreshTokenExpiresAt()
-        );
+        RefreshToken newRefreshToken = RefreshToken.builder()
+                .token(jwtTokenProvider.generateRefreshTokenValue())
+                .userId(stored.getUserId())
+                .expiresAt(jwtTokenProvider.refreshTokenExpiresAt())
+                .build();
         refreshTokenGateway.save(newRefreshToken);
 
         return new TokenResponse(accessToken, newRefreshToken.getToken());

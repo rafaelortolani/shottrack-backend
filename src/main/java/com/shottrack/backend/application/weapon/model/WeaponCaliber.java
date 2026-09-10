@@ -3,9 +3,9 @@ package com.shottrack.backend.application.weapon.model;
 import com.shottrack.backend.common.jpa.AbstractBaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 
 import java.util.UUID;
 
@@ -14,7 +14,6 @@ import java.util.UUID;
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)
-@RequiredArgsConstructor
 @Entity
 @Table(name = "weapon_calibers")
 public class WeaponCaliber extends AbstractBaseEntity {
@@ -25,4 +24,9 @@ public class WeaponCaliber extends AbstractBaseEntity {
 
     @Column(nullable = false, unique = true)
     private final String name;
+
+    @Builder
+    private WeaponCaliber(String name) {
+        this.name = name;
+    }
 }

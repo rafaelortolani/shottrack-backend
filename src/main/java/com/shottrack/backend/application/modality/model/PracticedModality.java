@@ -3,9 +3,9 @@ package com.shottrack.backend.application.modality.model;
 import com.shottrack.backend.common.jpa.AbstractBaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 
 import java.util.UUID;
 
@@ -15,7 +15,6 @@ import java.util.UUID;
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)
-@RequiredArgsConstructor
 @Entity
 @Table(name = "practiced_modalities")
 public class PracticedModality extends AbstractBaseEntity {
@@ -29,4 +28,10 @@ public class PracticedModality extends AbstractBaseEntity {
 
     @Column(name = "modality_id", nullable = false)
     private final UUID modalityId;
+
+    @Builder
+    private PracticedModality(UUID userId, UUID modalityId) {
+        this.userId = userId;
+        this.modalityId = modalityId;
+    }
 }

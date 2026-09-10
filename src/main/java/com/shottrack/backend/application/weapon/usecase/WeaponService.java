@@ -37,9 +37,14 @@ public class WeaponService {
         CatalogSelection selection = resolveCatalogSelection(
                 request.typeId(), request.brandId(), request.modelId(), request.caliberId());
 
-        Weapon weapon = new Weapon(userId, selection.type().getId(), selection.brand().getId(),
-                selection.model().getId(), selection.caliber().getId());
-        weapon.setNickname(request.nickname());
+        Weapon weapon = Weapon.builder()
+                .userId(userId)
+                .typeId(selection.type().getId())
+                .brandId(selection.brand().getId())
+                .modelId(selection.model().getId())
+                .caliberId(selection.caliber().getId())
+                .nickname(request.nickname())
+                .build();
 
         Weapon saved = weaponGateway.save(weapon);
         return selection.toResponse(weaponMapper, saved);

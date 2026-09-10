@@ -45,7 +45,11 @@ public class UserService {
         }
 
         String passwordHash = passwordEncoder.encode(request.password());
-        User user = new User(request.name(), request.email(), passwordHash);
+        User user = User.builder()
+                .name(request.name())
+                .email(request.email())
+                .passwordHash(passwordHash)
+                .build();
         User saved = userGateway.save(user);
 
         return userMapper.toResponse(saved);
@@ -76,8 +80,12 @@ public class UserService {
         emailVerificationCodeGateway.invalidatePendingByUserId(userId);
 
         String code = generateVerificationCode();
-        EmailVerificationCode verification = new EmailVerificationCode(
-                userId, request.email(), code, Instant.now().plus(VERIFICATION_CODE_TTL));
+        EmailVerificationCode verification = EmailVerificationCode.builder()
+                .userId(userId)
+                .newEmail(request.email())
+                .code(code)
+                .expiresAt(Instant.now().plus(VERIFICATION_CODE_TTL))
+                .build();
         emailVerificationCodeGateway.save(verification);
 
         sendVerificationCodeEmail(request.email(), code);

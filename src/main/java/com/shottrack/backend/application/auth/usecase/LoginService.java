@@ -29,11 +29,11 @@ public class LoginService {
 
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
 
-        RefreshToken refreshToken = new RefreshToken(
-                jwtTokenProvider.generateRefreshTokenValue(),
-                user.getId(),
-                jwtTokenProvider.refreshTokenExpiresAt()
-        );
+        RefreshToken refreshToken = RefreshToken.builder()
+                .token(jwtTokenProvider.generateRefreshTokenValue())
+                .userId(user.getId())
+                .expiresAt(jwtTokenProvider.refreshTokenExpiresAt())
+                .build();
         refreshTokenGateway.save(refreshToken);
 
         return new TokenResponse(accessToken, refreshToken.getToken());
