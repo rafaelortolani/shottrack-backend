@@ -8,6 +8,7 @@ import com.shottrack.backend.application.accessory.model.Accessory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -26,6 +27,22 @@ public class AccessoryService {
                 .build();
 
         Accessory saved = accessoryGateway.save(accessory);
-        return accessoryMapper.toResponse(saved);
+        return toResponseWithWeapons(saved);
+    }
+
+    public List<AccessoryResponse> listByUser(UUID userId) {
+        return accessoryGateway.findAllByUserId(userId).stream()
+                .map(this::toResponseWithWeapons)
+                .toList();
+    }
+
+    /**
+     * UC19 (associação N:N com armas) ainda não existe — até lá, todo acessório
+     * é retornado sem nenhuma arma associada. Quando UC19 existir, troca-se a
+     * lista vazia pela consulta real (ex: accessoryWeaponGateway.findWeaponsByAccessoryId),
+     * sem mudar mais nada aqui.
+     */
+    private AccessoryResponse toResponseWithWeapons(Accessory accessory) {
+        return accessoryMapper.toResponse(accessory, List.of());
     }
 }
