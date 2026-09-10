@@ -107,6 +107,30 @@ public class AmmunitionService {
         return toResponseWithCatalog(saved);
     }
 
+    /**
+     * UC16/ADR-0006: bloqueia a exclusão (nunca arquiva) se a munição já foi usada
+     * em alguma série. Só permite excluir de fato quando não há nenhum uso registrado.
+     */
+    public void delete(UUID userId, UUID ammunitionId) {
+        Ammunition ammunition = findOwnedAmmunitionOrThrow(userId, ammunitionId);
+
+        if (isUsedInAnySeries(ammunition)) {
+            throw new BusinessException("AMMUNITION_IN_USE", HttpStatus.CONFLICT);
+        }
+
+        ammunitionGateway.delete(ammunition);
+    }
+
+    /**
+     * O domínio de Série ainda não existe, então nenhuma munição pode estar
+     * "em uso" — sempre retorna false até lá. Quando Série existir, troca-se
+     * este método pela consulta real (ex: seriesGateway.existsByAmmunitionId),
+     * sem precisar reescrever o restante de delete().
+     */
+    private boolean isUsedInAnySeries(Ammunition ammunition) {
+        return false;
+    }
+
     private Ammunition findOwnedAmmunitionOrThrow(UUID userId, UUID ammunitionId) {
         return ammunitionGateway.findById(ammunitionId)
                 .filter(a -> a.getUserId().equals(userId))
