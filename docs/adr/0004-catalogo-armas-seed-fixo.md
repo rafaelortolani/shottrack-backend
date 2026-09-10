@@ -47,5 +47,18 @@ endpoint pra criar novos itens do catálogo pelo app — adicionar um item novo
   deploy — aceitável no volume atual; pode precisar ser revisitado (ex:
   virar CRUD de admin) se a demanda por novos itens for frequente.
 
+## Revisão pós-QA — cadastro rápido confirmado como desnecessário
+A documentação de produto (visão/domínio do ShotTrack) sugeria um "cadastro
+rápido" de arma, com campos opcionais e complementação posterior, como
+alternativa ao catálogo fechado obrigatório desta decisão — esse conflito
+ficou registrado como pendência, sem resolver.
+
+Após testar manualmente o fluxo completo do atleta (cadastro, login, perfil,
+modalidades, armas — checklist de QA), o cadastro rígido via catálogo fechado
+se mostrou suficiente: a ausência de um cadastro rápido/parcial não fez falta
+no uso real. **Decisão confirmada**: mantém-se o catálogo fechado obrigatório
+como está; o cadastro rápido não será implementado, salvo se um caso de uso
+real e concreto justificar revisitar isso no futuro.
+
 ## Referências
 - Nenhuma
