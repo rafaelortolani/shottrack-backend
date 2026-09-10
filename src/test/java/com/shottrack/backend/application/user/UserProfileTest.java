@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.auth.dto.LoginRequest;
 import com.shottrack.backend.application.user.dto.UserRegisterRequest;
+import com.shottrack.backend.common.security.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,6 +35,9 @@ class UserProfileTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
 
     private String accessToken;
 
@@ -72,6 +78,22 @@ class UserProfileTest {
     void shouldRejectInvalidToken() throws Exception {
         mockMvc.perform(get("/api/users/me")
                         .header("Authorization", "Bearer token-invalido"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+    }
+
+    /**
+     * Token assinado corretamente (passa no JwtAuthenticationFilter), mas pra
+     * um id de usuário que nunca existiu — não tem endpoint de exclusão de
+     * usuário hoje, então isso só é alcançável forjando o token diretamente
+     * com o JwtTokenProvider, como aqui.
+     */
+    @Test
+    void shouldRejectTokenForNonExistentUser() throws Exception {
+        String tokenForUnknownUser = jwtTokenProvider.generateAccessToken(UUID.randomUUID());
+
+        mockMvc.perform(get("/api/users/me")
+                        .header("Authorization", "Bearer " + tokenForUnknownUser))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
     }
