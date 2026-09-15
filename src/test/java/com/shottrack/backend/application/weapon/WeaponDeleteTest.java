@@ -2,6 +2,8 @@ package com.shottrack.backend.application.weapon;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shottrack.backend.application.accessory.dto.AccessoryRegisterRequest;
+import com.shottrack.backend.application.accessory.dto.AssociateAccessoryWeaponRequest;
 import com.shottrack.backend.application.auth.dto.LoginRequest;
 import com.shottrack.backend.application.user.dto.UserRegisterRequest;
 import com.shottrack.backend.application.weapon.dto.WeaponRegisterRequest;
@@ -64,6 +66,40 @@ class WeaponDeleteTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("WEAPON_NOT_FOUND"));
+    }
+
+    @Test
+    void shouldDeleteWeaponWithAssociatedAccessoryAndRemoveAssociation() throws Exception {
+        String token = registerAndLogin("atleta.excluiarmacomacessorio@shottrack.com");
+        UUID weaponId = registerWeapon(token);
+
+        var accessoryResult = mockMvc.perform(post("/api/accessories")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new AccessoryRegisterRequest("Luneta 4x32", "Luneta", null))))
+                .andReturn();
+        UUID accessoryId = UUID.fromString(objectMapper.readTree(accessoryResult.getResponse().getContentAsString())
+                .get("data").get("id").asText());
+
+        mockMvc.perform(post("/api/accessories/" + accessoryId + "/weapons")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new AssociateAccessoryWeaponRequest(weaponId))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(delete("/api/weapons/" + weaponId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/weapons")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
+
+        mockMvc.perform(get("/api/accessories")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].weapons.length()").value(0));
     }
 
     @Test

@@ -9,6 +9,12 @@ exclusão (erro `WEAPON_IN_USE`) quando há histórico, e só permite excluir
 de fato quando não há nenhum uso registrado. Isso ficou registrado como
 conflito em aberto.
 
+Depois de implementado, um caso não previsto apareceu na prática: excluir
+uma arma que tem acessório associado (ADR-0008) causava erro 500 (violação
+de constraint no banco), em vez de um comportamento de negócio definido —
+o ADR-0008 só havia decidido o lado inverso (excluir acessório remove as
+associações), não o lado da arma.
+
 ## Decisão
 Confirma-se a abordagem já implementada — **bloquear, não arquivar** — como
 decisão definitiva, válida para Armas (já implementado, sem mudança de
@@ -26,6 +32,10 @@ junto suas associações com armas, sem bloqueio. O bloqueio só se aplica se
 o acessório já tiver sido usado em alguma série (domínio que ainda não
 existe).
 
+**Decisão simétrica pro lado da arma**: excluir uma arma que tem acessório(s)
+associado(s) também não é bloqueado — a exclusão remove as associações
+junto (cascata), pelo mesmo motivo: associação não é "uso".
+
 ## Alternativas consideradas
 - Arquivamento (sugestão do documento de domínio) → rejeitado: adicionaria
   um estado a mais (`arquivado`) em cada entidade do acervo, telas e filtros
@@ -37,9 +47,14 @@ existe).
   contra o princípio "o treino é a fonte da verdade".
 
 ## Consequências
-- UC08 (armas) permanece como está, sem alteração de código.
+- UC08 (armas) **precisa de correção**: hoje excluir uma arma associada a
+  acessório retorna 500 em vez de completar a exclusão em cascata. Corrigir
+  removendo as linhas de `weapon_accessory` (ou tabela equivalente) antes
+  de excluir a arma — via `ON DELETE CASCADE` na constraint, ou explicitamente
+  no usecase/gateway, antes do delete da arma.
 - UC16 (excluir munição) e UC21 (excluir acessório) seguem o mesmo padrão
-  de erro `*_IN_USE`.
+  de erro `*_IN_USE` pra uso em série; nenhum dos dois tem uma relação
+  N:N equivalente à de arma/acessório, então não têm esse caso de cascata.
 - Nenhum dos três domínios precisa de campo `arquivado`/`ativo` nas
   entidades.
 
