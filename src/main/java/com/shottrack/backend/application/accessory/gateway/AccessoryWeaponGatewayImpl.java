@@ -39,9 +39,4 @@ class AccessoryWeaponGatewayImpl implements AccessoryWeaponGateway {
     public void delete(AccessoryWeapon accessoryWeapon) {
         accessoryWeaponRepository.delete(accessoryWeapon);
     }
-
-    @Override
-    public void deleteAllByAccessoryId(UUID accessoryId) {
-        accessoryWeaponRepository.deleteAllByAccessoryId(accessoryId);
-    }
 }

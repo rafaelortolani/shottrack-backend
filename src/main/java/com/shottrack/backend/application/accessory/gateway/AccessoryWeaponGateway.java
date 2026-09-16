@@ -17,6 +17,4 @@ public interface AccessoryWeaponGateway {
     boolean existsByAccessoryIdAndWeaponId(UUID accessoryId, UUID weaponId);
 
     void delete(AccessoryWeapon accessoryWeapon);
-
-    void deleteAllByAccessoryId(UUID accessoryId);
 }

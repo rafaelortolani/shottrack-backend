@@ -47,16 +47,33 @@ junto (cascata), pelo mesmo motivo: associação não é "uso".
   contra o princípio "o treino é a fonte da verdade".
 
 ## Consequências
-- UC08 (armas) **precisa de correção**: hoje excluir uma arma associada a
-  acessório retorna 500 em vez de completar a exclusão em cascata. Corrigir
-  removendo as linhas de `weapon_accessory` (ou tabela equivalente) antes
-  de excluir a arma — via `ON DELETE CASCADE` na constraint, ou explicitamente
-  no usecase/gateway, antes do delete da arma.
-- UC16 (excluir munição) e UC21 (excluir acessório) seguem o mesmo padrão
-  de erro `*_IN_USE` pra uso em série; nenhum dos dois tem uma relação
-  N:N equivalente à de arma/acessório, então não têm esse caso de cascata.
+- UC08 (armas): corrigido — excluir uma arma associada a acessório agora
+  completa a exclusão em cascata, via `ON DELETE CASCADE` na constraint de
+  `weapon_id` em `accessory_weapons` (nenhuma alteração de código no
+  usecase/gateway foi necessária).
+- UC21 (acessórios): o mesmo tipo de bug apareceu no lado inverso — excluir
+  um acessório associado a arma(s) também retornava 500. A causa não era só
+  a ausência de `ON DELETE CASCADE` em `accessory_weapons.accessory_id`: o
+  código já tentava remover as associações explicitamente antes de excluir
+  o acessório, mas a ordem de flush do Hibernate entre as duas entidades
+  (sem relação JPA mapeada entre si) não é garantida, e às vezes emitia o
+  `DELETE` de `accessories` antes do de `accessory_weapons`. Um teste de
+  integração já cobria esse cenário e passava mesmo assim — o `@Transactional`
+  do teste mantém tudo numa única transação/flush, o que mascarou o bug que
+  só aparecia com transações separadas por requisição, como em produção.
+  Corrigido do mesmo jeito que UC08: `ON DELETE CASCADE` na constraint de
+  `accessory_id`, removendo a necessidade do código explícito (e do próprio
+  método de gateway/repositório que fazia isso).
+- UC16 (excluir munição) segue o mesmo padrão de erro `*_IN_USE` pra uso em
+  série; não tem uma relação N:N equivalente à de arma/acessório, então não
+  tem esse caso de cascata.
 - Nenhum dos três domínios precisa de campo `arquivado`/`ativo` nas
   entidades.
+- Lição gerada: teste de integração `@Transactional` que encadeia várias
+  chamadas HTTP no mesmo método pode não detectar bug de ordem de flush
+  entre entidades sem relação JPA mapeada, porque tudo fica na mesma
+  transação. Cascata via `ON DELETE CASCADE` no banco evita depender da
+  ordem em que o Hibernate decide fazer flush.
 
 ## Referências
 - ADR-0004 (revisão pós-QA — mesmo raciocínio aplicado ao cadastro rígido de arma)
