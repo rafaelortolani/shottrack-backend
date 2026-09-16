@@ -5,6 +5,7 @@ import com.shottrack.backend.application.ammunition.model.AmmunitionManufacturer
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,5 +18,10 @@ class AmmunitionManufacturerGatewayImpl implements AmmunitionManufacturerGateway
     @Override
     public Optional<AmmunitionManufacturer> findById(UUID id) {
         return ammunitionManufacturerRepository.findById(id);
+    }
+
+    @Override
+    public List<AmmunitionManufacturer> findAll() {
+        return ammunitionManufacturerRepository.findAll();
     }
 }
