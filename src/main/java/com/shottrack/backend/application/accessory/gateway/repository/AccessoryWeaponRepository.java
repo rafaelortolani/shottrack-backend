@@ -14,6 +14,4 @@ public interface AccessoryWeaponRepository extends JpaRepository<AccessoryWeapon
     Optional<AccessoryWeapon> findByAccessoryIdAndWeaponId(UUID accessoryId, UUID weaponId);
 
     boolean existsByAccessoryIdAndWeaponId(UUID accessoryId, UUID weaponId);
-
-    void deleteAllByAccessoryId(UUID accessoryId);
 }

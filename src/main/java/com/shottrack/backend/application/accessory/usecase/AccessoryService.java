@@ -73,8 +73,9 @@ public class AccessoryService {
 
     /**
      * UC21/ADR-0006: bloqueia a exclusão (nunca arquiva) se o acessório já foi
-     * usado em alguma série. Remove as associações a armas junto — associação
-     * não conta como "uso" (ver ADR-0006/ADR-0008).
+     * usado em alguma série. Associação com arma não conta como "uso" (ver
+     * ADR-0006/ADR-0008) — a remoção das linhas de accessory_weapons é feita
+     * via ON DELETE CASCADE na constraint, não explicitamente aqui.
      */
     public void delete(UUID userId, UUID accessoryId) {
         Accessory accessory = findOwnedAccessoryOrThrow(userId, accessoryId);
@@ -83,7 +84,6 @@ public class AccessoryService {
             throw new BusinessException("ACCESSORY_IN_USE", HttpStatus.CONFLICT);
         }
 
-        accessoryWeaponGateway.deleteAllByAccessoryId(accessoryId);
         accessoryGateway.delete(accessory);
     }
 
