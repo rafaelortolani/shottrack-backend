@@ -51,10 +51,11 @@ class AccessoryWeaponTest {
         accessToken = TestUsers.registerAndLogin(mockMvc, objectMapper, pendingRegistrationRepository,
                 "Atleta Associa Acessório", EMAIL, PASSWORD);
 
+        UUID lunetaTypeId = idByName("/api/accessory-catalog/types", "Luneta");
         var accessoryResult = mockMvc.perform(post("/api/accessories")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new AccessoryRegisterRequest("Luneta 4x32", "Luneta", null))))
+                        .content(objectMapper.writeValueAsString(new AccessoryRegisterRequest("Luneta 4x32", lunetaTypeId, null))))
                 .andReturn();
         accessoryId = UUID.fromString(objectMapper.readTree(accessoryResult.getResponse().getContentAsString())
                 .get("data").get("id").asText());

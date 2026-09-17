@@ -4,9 +4,11 @@ import com.shottrack.backend.application.accessory.dto.AccessoryRegisterRequest;
 import com.shottrack.backend.application.accessory.dto.AccessoryResponse;
 import com.shottrack.backend.application.accessory.dto.AccessoryUpdateRequest;
 import com.shottrack.backend.application.accessory.gateway.AccessoryGateway;
+import com.shottrack.backend.application.accessory.gateway.AccessoryTypeGateway;
 import com.shottrack.backend.application.accessory.gateway.AccessoryWeaponGateway;
 import com.shottrack.backend.application.accessory.mapper.AccessoryMapper;
 import com.shottrack.backend.application.accessory.model.Accessory;
+import com.shottrack.backend.application.accessory.model.AccessoryType;
 import com.shottrack.backend.application.accessory.model.AccessoryWeapon;
 import com.shottrack.backend.application.weapon.dto.WeaponResponse;
 import com.shottrack.backend.application.weapon.usecase.WeaponService;
@@ -24,14 +26,17 @@ public class AccessoryService {
 
     private final AccessoryGateway accessoryGateway;
     private final AccessoryWeaponGateway accessoryWeaponGateway;
+    private final AccessoryTypeGateway accessoryTypeGateway;
     private final WeaponService weaponService;
     private final AccessoryMapper accessoryMapper;
 
     public AccessoryResponse register(UUID userId, AccessoryRegisterRequest request) {
+        findTypeOrThrow(request.typeId());
+
         Accessory accessory = Accessory.builder()
                 .userId(userId)
                 .name(request.name())
-                .type(request.type())
+                .typeId(request.typeId())
                 .notes(request.notes())
                 .build();
 
@@ -49,7 +54,8 @@ public class AccessoryService {
      * UC20: edição parcial — só os campos enviados (não nulos) são atualizados.
      * "Nome vazio" só é possível de checar contra o campo enviado (diferente da
      * identificação de munição, aqui não há estado combinado a considerar): se
-     * enviado em branco, a edição é rejeitada antes de tocar a entidade.
+     * enviado em branco, a edição é rejeitada antes de tocar a entidade. TypeId,
+     * se enviado, precisa existir no catálogo (UC28).
      */
     public AccessoryResponse update(UUID userId, UUID accessoryId, AccessoryUpdateRequest request) {
         Accessory accessory = findOwnedAccessoryOrThrow(userId, accessoryId);
@@ -60,8 +66,9 @@ public class AccessoryService {
             }
             accessory.setName(request.name());
         }
-        if (request.type() != null) {
-            accessory.setType(request.type());
+        if (request.typeId() != null) {
+            findTypeOrThrow(request.typeId());
+            accessory.setTypeId(request.typeId());
         }
         if (request.notes() != null) {
             accessory.setNotes(request.notes());
@@ -111,10 +118,16 @@ public class AccessoryService {
      * com a lista de armas associadas já atualizada após associar/desassociar.
      */
     public AccessoryResponse toResponseWithWeapons(Accessory accessory) {
+        AccessoryType type = findTypeOrThrow(accessory.getTypeId());
         List<WeaponResponse> weapons = accessoryWeaponGateway.findAllByAccessoryId(accessory.getId()).stream()
                 .map(AccessoryWeapon::getWeaponId)
                 .map(weaponService::getResponseById)
                 .toList();
-        return accessoryMapper.toResponse(accessory, weapons);
+        return accessoryMapper.toResponse(accessory, type, weapons);
+    }
+
+    private AccessoryType findTypeOrThrow(UUID typeId) {
+        return accessoryTypeGateway.findById(typeId)
+                .orElseThrow(() -> new BusinessException("ACCESSORY_TYPE_NOT_FOUND", HttpStatus.NOT_FOUND));
     }
 }

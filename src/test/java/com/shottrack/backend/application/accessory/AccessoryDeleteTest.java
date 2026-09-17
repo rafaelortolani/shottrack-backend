@@ -91,7 +91,8 @@ class AccessoryDeleteTest {
     }
 
     private UUID registerAccessory(String token) throws Exception {
-        var request = new AccessoryRegisterRequest("Acessório pra excluir", null, null);
+        UUID typeId = idByName(token, "/api/accessory-catalog/types", "Luneta");
+        var request = new AccessoryRegisterRequest("Acessório pra excluir", typeId, null);
         var result = mockMvc.perform(post("/api/accessories")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.accessory;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.accessory.dto.AccessoryRegisterRequest;
 import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
@@ -11,6 +12,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -77,7 +80,8 @@ class AccessoryListTest {
     }
 
     private void registerAccessory(String token, String name) throws Exception {
-        var request = new AccessoryRegisterRequest(name, null, null);
+        UUID typeId = idByName(token, "/api/accessory-catalog/types", "Luneta");
+        var request = new AccessoryRegisterRequest(name, typeId, null);
         mockMvc.perform(post("/api/accessories")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -86,5 +90,19 @@ class AccessoryListTest {
 
     private String registerAndLogin(String email) throws Exception {
         return TestUsers.registerAndLogin(mockMvc, objectMapper, pendingRegistrationRepository, "Atleta Teste", email, PASSWORD);
+    }
+
+    private UUID idByName(String token, String path, String name) throws Exception {
+        var result = mockMvc.perform(get(path)
+                        .header("Authorization", "Bearer " + token))
+                .andReturn();
+
+        JsonNode items = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
+        for (JsonNode item : items) {
+            if (item.get("name").asText().equals(name)) {
+                return UUID.fromString(item.get("id").asText());
+            }
+        }
+        throw new AssertionError("Item não encontrado no catálogo (" + path + "): " + name);
     }
 }

@@ -12,7 +12,8 @@ import lombok.Setter;
 import java.util.UUID;
 
 /**
- * Cadastro livre (ADR-0008) — sem catálogo fechado, diferente de Arma.
+ * Cadastro livre (ADR-0008), exceto o tipo — catálogo fechado (ADR-0008,
+ * revisão), mesmo padrão de tipo/marca/modelo/calibre de Arma (ADR-0004).
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)
@@ -33,18 +34,19 @@ public class Accessory extends AbstractBaseEntity {
     private String name;
 
     @Setter
-    @Column
-    private String type;
+    @NonNull
+    @Column(name = "type_id", nullable = false)
+    private UUID typeId;
 
     @Setter
     @Column
     private String notes;
 
     @Builder
-    private Accessory(UUID userId, @NonNull String name, String type, String notes) {
+    private Accessory(UUID userId, @NonNull String name, @NonNull UUID typeId, String notes) {
         this.userId = userId;
         this.name = name;
-        this.type = type;
+        this.typeId = typeId;
         this.notes = notes;
     }
 }

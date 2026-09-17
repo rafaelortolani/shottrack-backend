@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.accessory;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.accessory.dto.AccessoryRegisterRequest;
 import com.shottrack.backend.application.accessory.dto.AccessoryUpdateRequest;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -40,13 +42,18 @@ class AccessoryUpdateTest {
 
     private String accessToken;
     private UUID accessoryId;
+    private UUID lunetaTypeId;
+    private UUID bipeTypeId;
 
     @BeforeEach
     void prepareExistingAccessory() throws Exception {
         accessToken = TestUsers.registerAndLogin(mockMvc, objectMapper, pendingRegistrationRepository,
                 "Atleta Edita Acessório", EMAIL, PASSWORD);
 
-        var registerRequest = new AccessoryRegisterRequest("Original", "Luneta", "Observação original");
+        lunetaTypeId = idByName("/api/accessory-catalog/types", "Luneta");
+        bipeTypeId = idByName("/api/accessory-catalog/types", "Apoio");
+
+        var registerRequest = new AccessoryRegisterRequest("Original", lunetaTypeId, "Observação original");
         var registerResult = mockMvc.perform(post("/api/accessories")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -66,13 +73,13 @@ class AccessoryUpdateTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("Nome novo"))
-                .andExpect(jsonPath("$.data.type").value("Luneta"))
+                .andExpect(jsonPath("$.data.type.name").value("Luneta"))
                 .andExpect(jsonPath("$.data.notes").value("Observação original"));
     }
 
     @Test
     void shouldEditMultipleFieldsAtOnce() throws Exception {
-        var request = new AccessoryUpdateRequest("Nome novo", "Bipé", "Observação nova");
+        var request = new AccessoryUpdateRequest("Nome novo", bipeTypeId, "Observação nova");
 
         mockMvc.perform(patch("/api/accessories/" + accessoryId)
                         .header("Authorization", "Bearer " + accessToken)
@@ -80,7 +87,7 @@ class AccessoryUpdateTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("Nome novo"))
-                .andExpect(jsonPath("$.data.type").value("Bipé"))
+                .andExpect(jsonPath("$.data.type.name").value("Apoio"))
                 .andExpect(jsonPath("$.data.notes").value("Observação nova"));
     }
 
@@ -117,5 +124,31 @@ class AccessoryUpdateTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("ACCESSORY_NAME_REQUIRED"));
+    }
+
+    @Test
+    void shouldRejectNonExistentTypeId() throws Exception {
+        var request = new AccessoryUpdateRequest(null, UUID.randomUUID(), null);
+
+        mockMvc.perform(patch("/api/accessories/" + accessoryId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("ACCESSORY_TYPE_NOT_FOUND"));
+    }
+
+    private UUID idByName(String path, String name) throws Exception {
+        var result = mockMvc.perform(get(path)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andReturn();
+
+        JsonNode items = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
+        for (JsonNode item : items) {
+            if (item.get("name").asText().equals(name)) {
+                return UUID.fromString(item.get("id").asText());
+            }
+        }
+        throw new AssertionError("Item não encontrado no catálogo (" + path + "): " + name);
     }
 }

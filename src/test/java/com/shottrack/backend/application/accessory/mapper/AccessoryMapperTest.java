@@ -16,6 +16,6 @@ class AccessoryMapperTest {
 
     @Test
     void shouldReturnNullWhenEverythingIsNull() {
-        assertThat(mapper.toResponse(null, null)).isNull();
+        assertThat(mapper.toResponse(null, null, null)).isNull();
     }
 }

@@ -9,7 +9,7 @@ import java.util.UUID;
 public record AccessoryResponse(
         UUID id,
         String name,
-        String type,
+        AccessoryTypeResponse type,
         String notes,
         List<WeaponResponse> weapons,
         Instant createdAt

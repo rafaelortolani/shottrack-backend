@@ -76,10 +76,11 @@ class WeaponDeleteTest {
         String token = registerAndLogin("atleta.excluiarmacomacessorio@shottrack.com");
         UUID weaponId = registerWeapon(token);
 
+        UUID lunetaTypeId = idByName(token, "/api/accessory-catalog/types", "Luneta");
         var accessoryResult = mockMvc.perform(post("/api/accessories")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new AccessoryRegisterRequest("Luneta 4x32", "Luneta", null))))
+                        .content(objectMapper.writeValueAsString(new AccessoryRegisterRequest("Luneta 4x32", lunetaTypeId, null))))
                 .andReturn();
         UUID accessoryId = UUID.fromString(objectMapper.readTree(accessoryResult.getResponse().getContentAsString())
                 .get("data").get("id").asText());
