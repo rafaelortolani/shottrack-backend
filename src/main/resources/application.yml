@@ -38,9 +38,9 @@ server:
       force: true
 
 app:
-  # sem front-end ainda — usado só pra montar o link de confirmação de cadastro
-  # (UC01/ADR-0009) enviado por email.
-  frontend-url: http://localhost:5173
+  # usado pra montar o link de confirmação de cadastro (UC01/ADR-0009)
+  # enviado por email — porta padrão do Next.js (shottrack-frontend) em dev.
+  frontend-url: http://localhost:3000
   jwt:
     # obrigatório via env (sem default) — nunca commitar chave de assinatura JWT.
     # gerar uma local com: openssl rand -base64 32
