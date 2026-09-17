@@ -197,7 +197,7 @@ public class UserService {
         message.setFrom(VERIFICATION_EMAIL_FROM);
         message.setTo(to);
         message.setSubject("Confirme seu cadastro - ShotTrack");
-        message.setText("Clique no link para completar seu cadastro: " + link + ". O link expira em 24 horas.");
+        message.setText("Clique no link para completar seu cadastro (expira em 24 horas):\n\n" + link);
         mailSender.send(message);
     }
 }
