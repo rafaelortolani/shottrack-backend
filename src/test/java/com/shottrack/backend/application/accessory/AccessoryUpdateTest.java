@@ -1,11 +1,10 @@
 package com.shottrack.backend.application.accessory;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.accessory.dto.AccessoryRegisterRequest;
 import com.shottrack.backend.application.accessory.dto.AccessoryUpdateRequest;
-import com.shottrack.backend.application.auth.dto.LoginRequest;
-import com.shottrack.backend.application.user.dto.UserRegisterRequest;
+import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
+import com.shottrack.backend.support.TestUsers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,21 +35,16 @@ class AccessoryUpdateTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private PendingRegistrationRepository pendingRegistrationRepository;
+
     private String accessToken;
     private UUID accessoryId;
 
     @BeforeEach
     void prepareExistingAccessory() throws Exception {
-        mockMvc.perform(post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new UserRegisterRequest("Atleta Edita Acessório", EMAIL, PASSWORD))));
-
-        var loginResult = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new LoginRequest(EMAIL, PASSWORD))))
-                .andReturn();
-        accessToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
-                .get("data").get("accessToken").asText();
+        accessToken = TestUsers.registerAndLogin(mockMvc, objectMapper, pendingRegistrationRepository,
+                "Atleta Edita Acessório", EMAIL, PASSWORD);
 
         var registerRequest = new AccessoryRegisterRequest("Original", "Luneta", "Observação original");
         var registerResult = mockMvc.perform(post("/api/accessories")

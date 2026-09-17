@@ -1,7 +1,10 @@
 package com.shottrack.backend.application.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.shottrack.backend.application.user.dto.UserRegisterRequest;
+import com.shottrack.backend.application.user.dto.CompleteRegistrationRequest;
+import com.shottrack.backend.application.user.dto.RegistrationRequest;
+import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
+import com.shottrack.backend.application.user.model.PendingRegistration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -10,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -25,41 +29,88 @@ class UserRegistrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Test
-    void shouldRegisterUserWithValidData() throws Exception {
-        var request = new UserRegisterRequest("Atleta Teste", "atleta@shottrack.com", "senha12345");
+    @Autowired
+    private PendingRegistrationRepository pendingRegistrationRepository;
 
-        mockMvc.perform(post("/api/users")
+    @Test
+    void shouldRequestRegistrationWithValidEmail() throws Exception {
+        String email = "atleta@shottrack.com";
+
+        mockMvc.perform(post("/api/users/registration")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.email").value("atleta@shottrack.com"))
-                .andExpect(jsonPath("$.data.name").value("Atleta Teste"));
+                        .content(objectMapper.writeValueAsString(new RegistrationRequest(email))))
+                .andExpect(status().isAccepted());
+
+        assertThat(pendingRegistrationRepository.findAllByEmailAndUsedFalse(email))
+                .as("cadastro pendente com token único precisa existir pra UC23 confirmar depois")
+                .hasSize(1);
     }
 
     @Test
-    void shouldRejectDuplicateEmail() throws Exception {
-        var request = new UserRegisterRequest("Atleta Um", "duplicado@shottrack.com", "senha12345");
-
-        mockMvc.perform(post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)));
-
-        mockMvc.perform(post("/api/users")
+    void shouldRejectInvalidEmail() throws Exception {
+        mockMvc.perform(post("/api/users/registration")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(new RegistrationRequest("email-invalido"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void shouldRejectEmailWithActiveAccount() throws Exception {
+        String email = "atleta.ativo@shottrack.com";
+        completeRegistration(email, "Atleta Ativo", "senha12345");
+
+        mockMvc.perform(post("/api/users/registration")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new RegistrationRequest(email))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("EMAIL_ALREADY_REGISTERED"));
     }
 
     @Test
-    void shouldRejectShortPassword() throws Exception {
-        var request = new UserRegisterRequest("Atleta Dois", "curta@shottrack.com", "123");
+    void shouldInvalidatePreviousTokenOnResend() throws Exception {
+        String email = "atleta.reenvio@shottrack.com";
 
-        mockMvc.perform(post("/api/users")
+        mockMvc.perform(post("/api/users/registration")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new RegistrationRequest(email))));
+
+        PendingRegistration firstPending = pendingFor(email);
+
+        mockMvc.perform(post("/api/users/registration")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new RegistrationRequest(email))));
+
+        PendingRegistration secondPending = pendingFor(email);
+
+        assertThat(pendingRegistrationRepository.findById(firstPending.getId()).orElseThrow().isUsed())
+                .as("token anterior (ainda não usado) precisa ser invalidado no reenvio")
+                .isTrue();
+        assertThat(secondPending.getToken()).isNotEqualTo(firstPending.getToken());
+
+        mockMvc.perform(post("/api/users/registration/completion")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(
+                                new CompleteRegistrationRequest(firstPending.getToken(), "Atleta Reenvio", "senha12345"))))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+                .andExpect(jsonPath("$.error.code").value("REGISTRATION_TOKEN_ALREADY_USED"));
+    }
+
+    private void completeRegistration(String email, String name, String password) throws Exception {
+        mockMvc.perform(post("/api/users/registration")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new RegistrationRequest(email))));
+
+        String token = pendingFor(email).getToken();
+
+        mockMvc.perform(post("/api/users/registration/completion")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new CompleteRegistrationRequest(token, name, password))));
+    }
+
+    private PendingRegistration pendingFor(String email) {
+        return pendingRegistrationRepository.findAllByEmailAndUsedFalse(email).stream()
+                .findFirst()
+                .orElseThrow();
     }
 }

@@ -1,9 +1,8 @@
 package com.shottrack.backend.application.modality;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.shottrack.backend.application.auth.dto.LoginRequest;
-import com.shottrack.backend.application.user.dto.UserRegisterRequest;
+import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
+import com.shottrack.backend.support.TestUsers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,21 +31,15 @@ class ModalityCatalogTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private PendingRegistrationRepository pendingRegistrationRepository;
+
     private String accessToken;
 
     @BeforeEach
     void registerAndLoginUser() throws Exception {
-        mockMvc.perform(post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new UserRegisterRequest("Atleta Modalidade", EMAIL, PASSWORD))));
-
-        var result = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new LoginRequest(EMAIL, PASSWORD))))
-                .andReturn();
-
-        JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
-        accessToken = data.get("accessToken").asText();
+        accessToken = TestUsers.registerAndLogin(mockMvc, objectMapper, pendingRegistrationRepository,
+                "Atleta Modalidade", EMAIL, PASSWORD);
     }
 
     @Test

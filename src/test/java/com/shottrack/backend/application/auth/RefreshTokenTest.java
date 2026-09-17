@@ -5,7 +5,9 @@ import com.shottrack.backend.application.auth.dto.LoginRequest;
 import com.shottrack.backend.application.auth.dto.RefreshRequest;
 import com.shottrack.backend.application.auth.gateway.repository.RefreshTokenRepository;
 import com.shottrack.backend.application.auth.model.RefreshToken;
-import com.shottrack.backend.application.user.dto.UserRegisterRequest;
+import com.shottrack.backend.application.user.dto.CompleteRegistrationRequest;
+import com.shottrack.backend.application.user.dto.RegistrationRequest;
+import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,14 +43,25 @@ class RefreshTokenTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private PendingRegistrationRepository pendingRegistrationRepository;
+
     private UUID userId;
 
     @BeforeEach
     void registerUser() throws Exception {
-        var request = new UserRegisterRequest("Atleta Refresh", EMAIL, PASSWORD);
-        MvcResult result = mockMvc.perform(post("/api/users")
+        mockMvc.perform(post("/api/users/registration")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new RegistrationRequest(EMAIL))));
+
+        String token = pendingRegistrationRepository.findAllByEmailAndUsedFalse(EMAIL).stream()
+                .findFirst()
+                .orElseThrow()
+                .getToken();
+
+        MvcResult result = mockMvc.perform(post("/api/users/registration/completion")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(new CompleteRegistrationRequest(token, "Atleta Refresh", PASSWORD))))
                 .andReturn();
         userId = UUID.fromString(objectMapper.readTree(result.getResponse().getContentAsString())
                 .get("data").get("id").asText());

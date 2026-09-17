@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.ammunition.dto.AmmunitionRegisterRequest;
 import com.shottrack.backend.application.ammunition.dto.AmmunitionUpdateRequest;
 import com.shottrack.backend.application.ammunition.gateway.repository.AmmunitionManufacturerRepository;
-import com.shottrack.backend.application.auth.dto.LoginRequest;
-import com.shottrack.backend.application.user.dto.UserRegisterRequest;
+import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
+import com.shottrack.backend.support.TestUsers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +42,9 @@ class AmmunitionUpdateTest {
     @Autowired
     private AmmunitionManufacturerRepository ammunitionManufacturerRepository;
 
+    @Autowired
+    private PendingRegistrationRepository pendingRegistrationRepository;
+
     private String accessToken;
     private UUID cbcId;
     private UUID magtechId;
@@ -51,16 +54,8 @@ class AmmunitionUpdateTest {
 
     @BeforeEach
     void prepareExistingAmmunition() throws Exception {
-        mockMvc.perform(post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new UserRegisterRequest("Atleta Edita Munição", EMAIL, PASSWORD))));
-
-        var loginResult = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new LoginRequest(EMAIL, PASSWORD))))
-                .andReturn();
-        accessToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
-                .get("data").get("accessToken").asText();
+        accessToken = TestUsers.registerAndLogin(mockMvc, objectMapper, pendingRegistrationRepository,
+                "Atleta Edita Munição", EMAIL, PASSWORD);
 
         cbcId = manufacturerIdByName("CBC");
         magtechId = manufacturerIdByName("Magtech");
@@ -136,15 +131,8 @@ class AmmunitionUpdateTest {
 
     @Test
     void shouldRejectEditingAnotherAthletesAmmunition() throws Exception {
-        mockMvc.perform(post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new UserRegisterRequest("Outro Atleta", "atleta.outromunicao@shottrack.com", PASSWORD))));
-        var otherLoginResult = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new LoginRequest("atleta.outromunicao@shottrack.com", PASSWORD))))
-                .andReturn();
-        String otherToken = objectMapper.readTree(otherLoginResult.getResponse().getContentAsString())
-                .get("data").get("accessToken").asText();
+        String otherToken = TestUsers.registerAndLogin(mockMvc, objectMapper, pendingRegistrationRepository,
+                "Outro Atleta", "atleta.outromunicao@shottrack.com", PASSWORD);
 
         var request = new AmmunitionUpdateRequest(null, null, "Apelido novo", null, null, null, null, null);
 

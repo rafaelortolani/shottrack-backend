@@ -2,18 +2,22 @@ package com.shottrack.backend.application.user.usecase;
 
 import com.shottrack.backend.application.user.dto.ChangeEmailRequest;
 import com.shottrack.backend.application.user.dto.ChangePasswordRequest;
+import com.shottrack.backend.application.user.dto.CompleteRegistrationRequest;
 import com.shottrack.backend.application.user.dto.ConfirmEmailChangeRequest;
+import com.shottrack.backend.application.user.dto.RegistrationRequest;
 import com.shottrack.backend.application.user.dto.UpdateProfileRequest;
-import com.shottrack.backend.application.user.dto.UserRegisterRequest;
 import com.shottrack.backend.application.user.dto.UserResponse;
 import com.shottrack.backend.application.user.gateway.EmailVerificationCodeGateway;
+import com.shottrack.backend.application.user.gateway.PendingRegistrationGateway;
 import com.shottrack.backend.application.user.gateway.UserGateway;
 import com.shottrack.backend.application.user.mapper.UserMapper;
 import com.shottrack.backend.application.user.model.EmailVerificationCode;
 import com.shottrack.backend.application.user.model.ExperienceLevel;
+import com.shottrack.backend.application.user.model.PendingRegistration;
 import com.shottrack.backend.application.user.model.User;
 import com.shottrack.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -31,23 +35,64 @@ public class UserService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final Duration VERIFICATION_CODE_TTL = Duration.ofMinutes(15);
+    private static final Duration REGISTRATION_TOKEN_TTL = Duration.ofHours(24);
     private static final String VERIFICATION_EMAIL_FROM = "noreply@shottrack.com";
 
     private final UserGateway userGateway;
     private final EmailVerificationCodeGateway emailVerificationCodeGateway;
+    private final PendingRegistrationGateway pendingRegistrationGateway;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender;
 
-    public UserResponse register(UserRegisterRequest request) {
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
+    /**
+     * Etapa 1 do cadastro (UC01/ADR-0009) — só o email, sem provar posse ainda.
+     * Reenvio (mesmo email antes de completar) invalida o token anterior e
+     * envia um novo, sem endpoint separado.
+     */
+    public void requestRegistration(RegistrationRequest request) {
         if (userGateway.existsByEmail(request.email())) {
             throw new BusinessException("EMAIL_ALREADY_REGISTERED", HttpStatus.CONFLICT);
         }
 
+        pendingRegistrationGateway.invalidatePendingByEmail(request.email());
+
+        String token = generateRegistrationToken();
+        PendingRegistration pendingRegistration = PendingRegistration.builder()
+                .email(request.email())
+                .token(token)
+                .expiresAt(Instant.now().plus(REGISTRATION_TOKEN_TTL))
+                .build();
+        pendingRegistrationGateway.save(pendingRegistration);
+
+        sendRegistrationConfirmationEmail(request.email(), token);
+    }
+
+    /**
+     * Etapa 2 do cadastro (UC23) — só aqui a conta de verdade é criada.
+     */
+    public UserResponse completeRegistration(CompleteRegistrationRequest request) {
+        PendingRegistration pendingRegistration = pendingRegistrationGateway.findByToken(request.token())
+                .orElseThrow(() -> new BusinessException("REGISTRATION_TOKEN_INVALID", HttpStatus.BAD_REQUEST));
+
+        if (pendingRegistration.isExpired()) {
+            throw new BusinessException("REGISTRATION_TOKEN_EXPIRED", HttpStatus.BAD_REQUEST);
+        }
+
+        if (pendingRegistration.isUsed()) {
+            throw new BusinessException("REGISTRATION_TOKEN_ALREADY_USED", HttpStatus.BAD_REQUEST);
+        }
+
+        pendingRegistration.markUsed();
+        pendingRegistrationGateway.save(pendingRegistration);
+
         String passwordHash = passwordEncoder.encode(request.password());
         User user = User.builder()
                 .name(request.name())
-                .email(request.email())
+                .email(pendingRegistration.getEmail())
                 .passwordHash(passwordHash)
                 .build();
         User saved = userGateway.save(user);
@@ -138,6 +183,21 @@ public class UserService {
         message.setTo(to);
         message.setSubject("Confirme seu novo email - ShotTrack");
         message.setText("Seu código de verificação é " + code + ". Ele expira em 15 minutos.");
+        mailSender.send(message);
+    }
+
+    private String generateRegistrationToken() {
+        return UUID.randomUUID().toString();
+    }
+
+    private void sendRegistrationConfirmationEmail(String to, String token) {
+        String link = frontendUrl + "/cadastro/completar?token=" + token;
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(VERIFICATION_EMAIL_FROM);
+        message.setTo(to);
+        message.setSubject("Confirme seu cadastro - ShotTrack");
+        message.setText("Clique no link para completar seu cadastro: " + link + ". O link expira em 24 horas.");
         mailSender.send(message);
     }
 }

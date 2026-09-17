@@ -1,14 +1,13 @@
 package com.shottrack.backend.application.user;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.shottrack.backend.application.auth.dto.LoginRequest;
 import com.shottrack.backend.application.user.dto.ChangeEmailRequest;
 import com.shottrack.backend.application.user.dto.ConfirmEmailChangeRequest;
 import com.shottrack.backend.application.user.dto.UpdateProfileRequest;
-import com.shottrack.backend.application.user.dto.UserRegisterRequest;
 import com.shottrack.backend.application.user.gateway.repository.EmailVerificationCodeRepository;
+import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
 import com.shottrack.backend.application.user.model.EmailVerificationCode;
+import com.shottrack.backend.support.TestUsers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,21 +43,14 @@ class EditProfileTest {
     @Autowired
     private EmailVerificationCodeRepository emailVerificationCodeRepository;
 
+    @Autowired
+    private PendingRegistrationRepository pendingRegistrationRepository;
+
     private String accessToken;
 
     @BeforeEach
     void registerAndLoginUser() throws Exception {
-        mockMvc.perform(post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new UserRegisterRequest(NAME, EMAIL, PASSWORD))));
-
-        var result = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new LoginRequest(EMAIL, PASSWORD))))
-                .andReturn();
-
-        JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
-        accessToken = data.get("accessToken").asText();
+        accessToken = TestUsers.registerAndLogin(mockMvc, objectMapper, pendingRegistrationRepository, NAME, EMAIL, PASSWORD);
     }
 
     @Test
@@ -124,9 +116,7 @@ class EditProfileTest {
     @Test
     void shouldRejectChangeToAlreadyRegisteredEmail() throws Exception {
         String emailExistente = "outro.atleta@shottrack.com";
-        mockMvc.perform(post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new UserRegisterRequest("Outro Atleta", emailExistente, PASSWORD))));
+        TestUsers.register(mockMvc, objectMapper, pendingRegistrationRepository, "Outro Atleta", emailExistente, PASSWORD);
 
         mockMvc.perform(post("/api/users/me/email")
                         .header("Authorization", "Bearer " + accessToken)

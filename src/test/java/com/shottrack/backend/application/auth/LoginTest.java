@@ -4,7 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.auth.gateway.repository.RefreshTokenRepository;
 import com.shottrack.backend.application.auth.dto.LoginRequest;
-import com.shottrack.backend.application.user.dto.UserRegisterRequest;
+import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
+import com.shottrack.backend.support.TestUsers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,12 +38,12 @@ class LoginTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private PendingRegistrationRepository pendingRegistrationRepository;
+
     @BeforeEach
     void registerUser() throws Exception {
-        var request = new UserRegisterRequest("Atleta Login", EMAIL, PASSWORD);
-        mockMvc.perform(post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)));
+        TestUsers.register(mockMvc, objectMapper, pendingRegistrationRepository, "Atleta Login", EMAIL, PASSWORD);
     }
 
     @Test

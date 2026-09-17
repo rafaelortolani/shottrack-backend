@@ -2,9 +2,10 @@ package com.shottrack.backend.application.user;
 
 import com.shottrack.backend.application.user.dto.ChangeEmailRequest;
 import com.shottrack.backend.application.user.dto.ChangePasswordRequest;
+import com.shottrack.backend.application.user.dto.CompleteRegistrationRequest;
 import com.shottrack.backend.application.user.dto.ConfirmEmailChangeRequest;
+import com.shottrack.backend.application.user.dto.RegistrationRequest;
 import com.shottrack.backend.application.user.dto.UpdateProfileRequest;
-import com.shottrack.backend.application.user.dto.UserRegisterRequest;
 import com.shottrack.backend.application.user.dto.UserResponse;
 import com.shottrack.backend.application.user.usecase.UserService;
 import com.shottrack.backend.common.web.ApiResponse;
@@ -24,9 +25,15 @@ public class UserController {
 
     private final UserService userService;
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<UserResponse>> register(@Valid @RequestBody UserRegisterRequest request) {
-        UserResponse response = userService.register(request);
+    @PostMapping("/registration")
+    public ResponseEntity<ApiResponse<Void>> requestRegistration(@Valid @RequestBody RegistrationRequest request) {
+        userService.requestRegistration(request);
+        return ResponseEntity.accepted().body(ApiResponse.ok(null));
+    }
+
+    @PostMapping("/registration/completion")
+    public ResponseEntity<ApiResponse<UserResponse>> completeRegistration(@Valid @RequestBody CompleteRegistrationRequest request) {
+        UserResponse response = userService.completeRegistration(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
     }
 

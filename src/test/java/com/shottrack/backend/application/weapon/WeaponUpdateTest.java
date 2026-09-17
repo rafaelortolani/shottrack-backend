@@ -2,10 +2,10 @@ package com.shottrack.backend.application.weapon;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.shottrack.backend.application.auth.dto.LoginRequest;
-import com.shottrack.backend.application.user.dto.UserRegisterRequest;
+import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
 import com.shottrack.backend.application.weapon.dto.WeaponRegisterRequest;
 import com.shottrack.backend.application.weapon.dto.WeaponUpdateRequest;
+import com.shottrack.backend.support.TestUsers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +37,9 @@ class WeaponUpdateTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private PendingRegistrationRepository pendingRegistrationRepository;
+
     private String accessToken;
     private UUID pistolaId;
     private UUID revolverId;
@@ -49,16 +52,8 @@ class WeaponUpdateTest {
 
     @BeforeEach
     void prepareExistingWeapon() throws Exception {
-        mockMvc.perform(post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new UserRegisterRequest("Atleta Edita Arma", EMAIL, PASSWORD))));
-
-        var loginResult = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new LoginRequest(EMAIL, PASSWORD))))
-                .andReturn();
-        accessToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
-                .get("data").get("accessToken").asText();
+        accessToken = TestUsers.registerAndLogin(mockMvc, objectMapper, pendingRegistrationRepository,
+                "Atleta Edita Arma", EMAIL, PASSWORD);
 
         pistolaId = idByName("/api/weapon-catalog/types", "Pistola");
         revolverId = idByName("/api/weapon-catalog/types", "Revólver");

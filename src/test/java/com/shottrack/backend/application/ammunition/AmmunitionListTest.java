@@ -1,10 +1,9 @@
 package com.shottrack.backend.application.ammunition;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.ammunition.dto.AmmunitionRegisterRequest;
-import com.shottrack.backend.application.auth.dto.LoginRequest;
-import com.shottrack.backend.application.user.dto.UserRegisterRequest;
+import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
+import com.shottrack.backend.support.TestUsers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -30,6 +29,9 @@ class AmmunitionListTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private PendingRegistrationRepository pendingRegistrationRepository;
 
     @Test
     void shouldListAthletesAmmunition() throws Exception {
@@ -81,16 +83,6 @@ class AmmunitionListTest {
     }
 
     private String registerAndLogin(String email) throws Exception {
-        mockMvc.perform(post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new UserRegisterRequest("Atleta Teste", email, PASSWORD))));
-
-        var result = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new LoginRequest(email, PASSWORD))))
-                .andReturn();
-
-        JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
-        return data.get("accessToken").asText();
+        return TestUsers.registerAndLogin(mockMvc, objectMapper, pendingRegistrationRepository, "Atleta Teste", email, PASSWORD);
     }
 }

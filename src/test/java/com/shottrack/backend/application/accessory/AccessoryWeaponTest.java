@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.accessory.dto.AccessoryRegisterRequest;
 import com.shottrack.backend.application.accessory.dto.AssociateAccessoryWeaponRequest;
-import com.shottrack.backend.application.auth.dto.LoginRequest;
-import com.shottrack.backend.application.user.dto.UserRegisterRequest;
+import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
 import com.shottrack.backend.application.weapon.dto.WeaponRegisterRequest;
+import com.shottrack.backend.support.TestUsers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +38,9 @@ class AccessoryWeaponTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private PendingRegistrationRepository pendingRegistrationRepository;
+
     private String accessToken;
     private UUID accessoryId;
     private UUID weaponId;
@@ -45,16 +48,8 @@ class AccessoryWeaponTest {
 
     @BeforeEach
     void prepareAccessoryAndWeapons() throws Exception {
-        mockMvc.perform(post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new UserRegisterRequest("Atleta Associa Acessório", EMAIL, PASSWORD))));
-
-        var loginResult = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new LoginRequest(EMAIL, PASSWORD))))
-                .andReturn();
-        accessToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
-                .get("data").get("accessToken").asText();
+        accessToken = TestUsers.registerAndLogin(mockMvc, objectMapper, pendingRegistrationRepository,
+                "Atleta Associa Acessório", EMAIL, PASSWORD);
 
         var accessoryResult = mockMvc.perform(post("/api/accessories")
                         .header("Authorization", "Bearer " + accessToken)
