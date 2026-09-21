@@ -31,11 +31,11 @@ modalidade do treino daquela série.
   numérico) → erro de validação
 
 ## Definição de pronto
-- [ ] Teste cobrindo registrar um valor numérico
-- [ ] Teste cobrindo registrar valor "0" (distinto de não preenchido)
-- [ ] Teste cobrindo marcar como não aplicável
-- [ ] Teste cobrindo substituir um valor já registrado
-- [ ] Um teste para CADA fluxo alternativo listado acima
+- [x] Teste cobrindo registrar um valor numérico
+- [x] Teste cobrindo registrar valor "0" (distinto de não preenchido)
+- [x] Teste cobrindo marcar como não aplicável
+- [x] Teste cobrindo substituir um valor já registrado
+- [x] Um teste para CADA fluxo alternativo listado acima
 
 ## Referências
 - ADR-0001 (autenticação JWT)

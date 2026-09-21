@@ -18,8 +18,7 @@ Usuário logado (UC02) com access token válido. Treino pertence ao atleta.
 - 1c. Treino sem nenhuma série registrada → retorna lista vazia (não é erro)
 
 ## Definição de pronto
-- [x] Teste cobrindo listagem com séries e resultados (sempre vazios por
-      enquanto — resultado de série ainda não existe, ver UC39/UC40)
+- [x] Teste cobrindo listagem com séries e resultados
 - [x] Teste cobrindo lista vazia
 - [x] Um teste para CADA fluxo alternativo listado acima
 

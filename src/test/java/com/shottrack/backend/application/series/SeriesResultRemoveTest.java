@@ -2,6 +2,7 @@ package com.shottrack.backend.application.series;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shottrack.backend.application.series.dto.MarkSeriesResultNotApplicableRequest;
 import com.shottrack.backend.application.series.dto.RegisterSeriesRequest;
 import com.shottrack.backend.application.series.dto.RegisterSeriesResultRequest;
 import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -25,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-class SeriesListTest {
+class SeriesResultRemoveTest {
 
     private static final String PASSWORD = "senha12345";
 
@@ -39,65 +41,95 @@ class SeriesListTest {
     private PendingRegistrationRepository pendingRegistrationRepository;
 
     @Test
-    void shouldListSeriesWithResults() throws Exception {
-        String token = registerAndLogin("atleta.listaseries@shottrack.com");
+    void shouldRemoveRegisteredValue() throws Exception {
+        String token = registerAndLogin("atleta.removevalor@shottrack.com");
         UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
-        UUID seriesComResultado = registerSeries(token, trainingId);
-        registerSeries(token, trainingId);
+        UUID seriesId = registerSeries(token, trainingId);
         UUID tempoId = resultTypeIdByName(token, "Tempo");
+        registerValue(token, seriesId, tempoId, "10");
 
-        mockMvc.perform(post("/api/series/" + seriesComResultado + "/results")
-                .header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new RegisterSeriesResultRequest(tempoId, "9.87"))));
+        mockMvc.perform(delete("/api/series/" + seriesId + "/results/" + tempoId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/trainings/" + trainingId + "/series")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(2))
-                .andExpect(jsonPath("$.data[?(@.id == '" + seriesComResultado + "')].results[0].resultTypeName").value("Tempo"))
-                .andExpect(jsonPath("$.data[?(@.id == '" + seriesComResultado + "')].results[0].value").value("9.87"))
-                .andExpect(jsonPath("$.data[?(@.id != '" + seriesComResultado + "')].results[0]").doesNotExist());
+                .andExpect(jsonPath("$.data[0].results.length()").value(0));
     }
 
     @Test
-    void shouldReturnEmptyListWhenTrainingHasNoSeries() throws Exception {
-        String token = registerAndLogin("atleta.semseries@shottrack.com");
+    void shouldRemoveNotApplicable() throws Exception {
+        String token = registerAndLogin("atleta.removenaoaplicavel@shottrack.com");
         UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
+        UUID seriesId = registerSeries(token, trainingId);
+        UUID tempoId = resultTypeIdByName(token, "Tempo");
+
+        mockMvc.perform(post("/api/series/" + seriesId + "/results/not-applicable")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new MarkSeriesResultNotApplicableRequest(tempoId))));
+
+        mockMvc.perform(delete("/api/series/" + seriesId + "/results/" + tempoId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/trainings/" + trainingId + "/series")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(0));
+                .andExpect(jsonPath("$.data[0].results.length()").value(0));
     }
 
     @Test
     void shouldRejectRequestWithoutToken() throws Exception {
-        mockMvc.perform(get("/api/trainings/" + UUID.randomUUID() + "/series"))
+        mockMvc.perform(delete("/api/series/" + UUID.randomUUID() + "/results/" + UUID.randomUUID()))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
     }
 
     @Test
-    void shouldRejectNonExistentTraining() throws Exception {
-        String token = registerAndLogin("atleta.listaseriestreinoinexistente@shottrack.com");
+    void shouldRejectNonExistentSeries() throws Exception {
+        String token = registerAndLogin("atleta.removeserieinexistente@shottrack.com");
 
-        mockMvc.perform(get("/api/trainings/" + UUID.randomUUID() + "/series")
+        mockMvc.perform(delete("/api/series/" + UUID.randomUUID() + "/results/" + UUID.randomUUID())
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("TRAINING_NOT_FOUND"));
+                .andExpect(jsonPath("$.error.code").value("SERIES_NOT_FOUND"));
     }
 
     @Test
-    void shouldRejectTrainingFromAnotherAthlete() throws Exception {
-        String tokenDono = registerAndLogin("atleta.donotreinolistaserie@shottrack.com");
-        String tokenOutro = registerAndLogin("atleta.naoedonotreinolistaserie@shottrack.com");
+    void shouldRejectRemovingFromAnotherAthletesSeries() throws Exception {
+        String tokenDono = registerAndLogin("atleta.donoserieremocao@shottrack.com");
+        String tokenOutro = registerAndLogin("atleta.naoedonoserieremocao@shottrack.com");
         UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, tokenDono, "IPSC");
+        UUID seriesId = registerSeries(tokenDono, trainingId);
+        UUID tempoId = resultTypeIdByName(tokenDono, "Tempo");
+        registerValue(tokenDono, seriesId, tempoId, "10");
 
-        mockMvc.perform(get("/api/trainings/" + trainingId + "/series")
+        mockMvc.perform(delete("/api/series/" + seriesId + "/results/" + tempoId)
                         .header("Authorization", "Bearer " + tokenOutro))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("TRAINING_NOT_FOUND"));
+                .andExpect(jsonPath("$.error.code").value("SERIES_NOT_FOUND"));
+    }
+
+    @Test
+    void shouldRejectWhenNoRecordExistsForType() throws Exception {
+        String token = registerAndLogin("atleta.semregistro@shottrack.com");
+        UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
+        UUID seriesId = registerSeries(token, trainingId);
+        UUID tempoId = resultTypeIdByName(token, "Tempo");
+
+        mockMvc.perform(delete("/api/series/" + seriesId + "/results/" + tempoId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("RESULT_NOT_CONFIGURED"));
+    }
+
+    private void registerValue(String token, UUID seriesId, UUID resultTypeId, String value) throws Exception {
+        mockMvc.perform(post("/api/series/" + seriesId + "/results")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new RegisterSeriesResultRequest(resultTypeId, value))));
     }
 
     private UUID registerSeries(String token, UUID trainingId) throws Exception {

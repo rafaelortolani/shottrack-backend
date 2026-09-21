@@ -27,6 +27,7 @@ public class SeriesService {
     private final TrainingService trainingService;
     private final WeaponService weaponService;
     private final AmmunitionService ammunitionService;
+    private final SeriesResultService seriesResultService;
     private final SeriesMapper seriesMapper;
 
     public SeriesResponse register(UUID userId, RegisterSeriesRequest request) {
@@ -97,8 +98,8 @@ public class SeriesService {
 
     /**
      * UC41/ADR-0013: sem bloqueio de exclusão — nada ainda referencia uma
-     * série como "em uso". Os resultados (quando existirem, UC39/UC40) somem
-     * junto via ON DELETE CASCADE na constraint, não explicitamente aqui.
+     * série como "em uso". Os resultados somem junto via ON DELETE CASCADE
+     * na constraint (series_results.series_id), não explicitamente aqui.
      */
     public void delete(UUID userId, UUID seriesId) {
         seriesGateway.delete(findOwnedSeriesOrThrow(userId, seriesId));
@@ -116,16 +117,7 @@ public class SeriesService {
     }
 
     private SeriesResponse toResponse(Series series) {
-        return seriesMapper.toResponse(series, resultsFor(series));
-    }
-
-    /**
-     * Resultado de série ainda não existe (UC39/UC40/ADR-0013) — toda série
-     * é retornada sem nenhum resultado por enquanto. Troca-se essa lista
-     * vazia pela consulta real assim que o sub-recurso existir, sem
-     * reescrever o restante do mapeamento.
-     */
-    private List<SeriesResultResponse> resultsFor(Series series) {
-        return List.of();
+        List<SeriesResultResponse> results = seriesResultService.listBySeriesId(series.getId());
+        return seriesMapper.toResponse(series, results);
     }
 }

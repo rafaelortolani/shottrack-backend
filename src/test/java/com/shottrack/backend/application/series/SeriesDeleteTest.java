@@ -1,7 +1,9 @@
 package com.shottrack.backend.application.series;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.series.dto.RegisterSeriesRequest;
+import com.shottrack.backend.application.series.dto.RegisterSeriesResultRequest;
 import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
 import com.shottrack.backend.support.SeriesTestSupport;
 import com.shottrack.backend.support.TestUsers;
@@ -21,14 +23,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * UC41/ADR-0013: "os resultados somem junto" não é testável de ponta a ponta
- * ainda — resultado de série (UC39/UC40) não existe, então nenhuma série
- * pode ter um resultado registrado pra confirmar que ele some (mesma
- * situação de UC08/UC27/UC34 com pendências que dependem de um domínio
- * futuro). A exclusão em si (e o efeito esperado de nada sobrar) já está
- * coberta pelo teste principal abaixo.
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -50,6 +44,28 @@ class SeriesDeleteTest {
         String token = registerAndLogin("atleta.excluiserie@shottrack.com");
         UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
         UUID seriesId = registerSeries(token, trainingId);
+
+        mockMvc.perform(delete("/api/series/" + seriesId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/trainings/" + trainingId + "/series")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
+    void shouldDeleteSeriesWithResultsInCascade() throws Exception {
+        String token = registerAndLogin("atleta.excluiseriecomresultado@shottrack.com");
+        UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
+        UUID seriesId = registerSeries(token, trainingId);
+        UUID tempoId = resultTypeIdByName(token, "Tempo");
+
+        mockMvc.perform(post("/api/series/" + seriesId + "/results")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new RegisterSeriesResultRequest(tempoId, "10"))));
 
         mockMvc.perform(delete("/api/series/" + seriesId)
                         .header("Authorization", "Bearer " + token))
@@ -100,6 +116,20 @@ class SeriesDeleteTest {
                 .andReturn();
 
         return UUID.fromString(objectMapper.readTree(result.getResponse().getContentAsString()).get("data").get("id").asText());
+    }
+
+    private UUID resultTypeIdByName(String token, String name) throws Exception {
+        var result = mockMvc.perform(get("/api/result-type-catalog")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn();
+
+        JsonNode items = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
+        for (JsonNode item : items) {
+            if (item.get("name").asText().equals(name)) {
+                return UUID.fromString(item.get("id").asText());
+            }
+        }
+        throw new AssertionError("Tipo de resultado não encontrado no catálogo: " + name);
     }
 
     private String registerAndLogin(String email) throws Exception {

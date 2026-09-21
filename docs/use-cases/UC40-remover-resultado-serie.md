@@ -20,9 +20,9 @@ nessa série.
 - 1c. Não existe registro desse tipo pra essa série → erro `RESULT_NOT_CONFIGURED`
 
 ## Definição de pronto
-- [ ] Teste cobrindo remoção de um valor registrado
-- [ ] Teste cobrindo remoção de um "não aplicável"
-- [ ] Um teste para CADA fluxo alternativo listado acima
+- [x] Teste cobrindo remoção de um valor registrado
+- [x] Teste cobrindo remoção de um "não aplicável"
+- [x] Um teste para CADA fluxo alternativo listado acima
 
 ## Referências
 - ADR-0001 (autenticação JWT)
