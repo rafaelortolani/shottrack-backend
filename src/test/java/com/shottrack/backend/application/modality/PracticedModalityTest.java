@@ -131,6 +131,19 @@ class PracticedModalityTest {
     }
 
     @Test
+    void shouldApplyDefaultResultTypeSuggestionWhenAddingModality() throws Exception {
+        addModality(ipscId);
+
+        mockMvc.perform(get("/api/practiced-modalities/" + ipscId + "/result-types")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(3))
+                .andExpect(jsonPath("$.data[?(@.name == 'Tempo')]").isNotEmpty())
+                .andExpect(jsonPath("$.data[?(@.name == 'Pontuação')]").isNotEmpty())
+                .andExpect(jsonPath("$.data[?(@.name == 'Fator de desempenho')]").isNotEmpty());
+    }
+
+    @Test
     void shouldRejectRemovingUnassociatedModality() throws Exception {
         mockMvc.perform(delete("/api/practiced-modalities/" + ipscId)
                         .header("Authorization", "Bearer " + accessToken))

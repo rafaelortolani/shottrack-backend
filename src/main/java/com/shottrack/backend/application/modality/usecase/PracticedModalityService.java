@@ -20,8 +20,15 @@ public class PracticedModalityService {
 
     private final PracticedModalityGateway practicedModalityGateway;
     private final ModalityGateway modalityGateway;
+    private final ModalityResultTypeService modalityResultTypeService;
     private final ModalityMapper modalityMapper;
 
+    /**
+     * UC12/ADR-0011: ao adicionar, aplica automaticamente a sugestão padrão
+     * de tipos de resultado da modalidade como seleção inicial do atleta —
+     * efeito colateral interno, sem mudar a interface pública deste endpoint
+     * (o atleta só vê o resultado; ajustar depois é UC30).
+     */
     public ModalityResponse add(UUID userId, UUID modalityId) {
         Modality modality = modalityGateway.findById(modalityId)
                 .orElseThrow(() -> new BusinessException("MODALITY_NOT_FOUND", HttpStatus.NOT_FOUND));
@@ -31,6 +38,7 @@ public class PracticedModalityService {
         }
 
         practicedModalityGateway.save(PracticedModality.builder().userId(userId).modalityId(modalityId).build());
+        modalityResultTypeService.applyDefaultSuggestion(userId, modalityId);
         return modalityMapper.toResponse(modality);
     }
 
