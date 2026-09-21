@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-class VisitCloseTest {
+class TrainingCloseTest {
 
     private static final String PASSWORD = "senha12345";
 
@@ -40,11 +40,11 @@ class VisitCloseTest {
     private PendingRegistrationRepository pendingRegistrationRepository;
 
     @Test
-    void shouldCloseVisitWithoutOpenTrainings() throws Exception {
-        String token = registerAndLogin("atleta.encerravisita@shottrack.com");
-        UUID visitId = startVisit(token, registerTrainingLocation(token));
+    void shouldCloseTraining() throws Exception {
+        String token = registerAndLogin("atleta.encerratreino@shottrack.com");
+        UUID trainingId = openTraining(token);
 
-        mockMvc.perform(post("/api/visits/" + visitId + "/closure")
+        mockMvc.perform(post("/api/trainings/" + trainingId + "/closure")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("CLOSED"))
@@ -53,72 +53,80 @@ class VisitCloseTest {
 
     @Test
     void shouldRejectRequestWithoutToken() throws Exception {
-        mockMvc.perform(post("/api/visits/" + UUID.randomUUID() + "/closure"))
+        mockMvc.perform(post("/api/trainings/" + UUID.randomUUID() + "/closure"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
     }
 
     @Test
-    void shouldRejectNonExistentVisit() throws Exception {
-        String token = registerAndLogin("atleta.visitainexistente@shottrack.com");
+    void shouldRejectNonExistentTraining() throws Exception {
+        String token = registerAndLogin("atleta.treinoinexistente@shottrack.com");
 
-        mockMvc.perform(post("/api/visits/" + UUID.randomUUID() + "/closure")
+        mockMvc.perform(post("/api/trainings/" + UUID.randomUUID() + "/closure")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("VISIT_NOT_FOUND"));
+                .andExpect(jsonPath("$.error.code").value("TRAINING_NOT_FOUND"));
     }
 
     @Test
-    void shouldRejectClosingAnotherAthletesVisit() throws Exception {
-        String tokenDono = registerAndLogin("atleta.donovisita@shottrack.com");
-        String tokenOutro = registerAndLogin("atleta.naoedonovisita@shottrack.com");
-        UUID visitId = startVisit(tokenDono, registerTrainingLocation(tokenDono));
+    void shouldRejectClosingAnotherAthletesTraining() throws Exception {
+        String tokenDono = registerAndLogin("atleta.donotreino@shottrack.com");
+        String tokenOutro = registerAndLogin("atleta.naoedonotreino@shottrack.com");
+        UUID trainingId = openTraining(tokenDono);
 
-        mockMvc.perform(post("/api/visits/" + visitId + "/closure")
+        mockMvc.perform(post("/api/trainings/" + trainingId + "/closure")
                         .header("Authorization", "Bearer " + tokenOutro))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("VISIT_NOT_FOUND"));
+                .andExpect(jsonPath("$.error.code").value("TRAINING_NOT_FOUND"));
     }
 
     @Test
-    void shouldRejectClosingAlreadyClosedVisit() throws Exception {
-        String token = registerAndLogin("atleta.visitajaencerrada@shottrack.com");
-        UUID visitId = startVisit(token, registerTrainingLocation(token));
+    void shouldRejectClosingAlreadyClosedTraining() throws Exception {
+        String token = registerAndLogin("atleta.treinojaencerrado@shottrack.com");
+        UUID trainingId = openTraining(token);
 
-        mockMvc.perform(post("/api/visits/" + visitId + "/closure")
+        mockMvc.perform(post("/api/trainings/" + trainingId + "/closure")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(post("/api/visits/" + visitId + "/closure")
+        mockMvc.perform(post("/api/trainings/" + trainingId + "/closure")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("VISIT_ALREADY_CLOSED"));
+                .andExpect(jsonPath("$.error.code").value("TRAINING_ALREADY_CLOSED"));
     }
 
-    @Test
-    void shouldCloseOpenTrainingsInCascadeWhenClosingVisit() throws Exception {
-        String token = registerAndLogin("atleta.cascatatreino@shottrack.com");
+    private UUID openTraining(String token) throws Exception {
         UUID modalityId = practiceModality(token, "IPSC");
         UUID visitId = startVisit(token, registerTrainingLocation(token));
-        openTraining(token, visitId, modalityId);
 
-        mockMvc.perform(post("/api/visits/" + visitId + "/closure")
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk());
+        var result = mockMvc.perform(post("/api/trainings")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new OpenTrainingRequest(visitId, modalityId))))
+                .andReturn();
 
-        mockMvc.perform(get("/api/visits")
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].trainings.length()").value(1))
-                .andExpect(jsonPath("$.data[0].trainings[0].status").value("CLOSED"))
-                .andExpect(jsonPath("$.data[0].trainings[0].endedAt").isNotEmpty());
+        return UUID.fromString(objectMapper.readTree(result.getResponse().getContentAsString()).get("data").get("id").asText());
     }
 
-    private void openTraining(String token, UUID visitId, UUID modalityId) throws Exception {
-        mockMvc.perform(post("/api/trainings")
-                .header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new OpenTrainingRequest(visitId, modalityId))));
+    private UUID startVisit(String token, UUID trainingLocationId) throws Exception {
+        var result = mockMvc.perform(post("/api/visits")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new StartVisitRequest(trainingLocationId, null))))
+                .andReturn();
+
+        return UUID.fromString(objectMapper.readTree(result.getResponse().getContentAsString()).get("data").get("id").asText());
+    }
+
+    private UUID registerTrainingLocation(String token) throws Exception {
+        var request = new TrainingLocationRegisterRequest("Clube de Tiro Central", "São Paulo", "SP");
+        var result = mockMvc.perform(post("/api/training-locations")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andReturn();
+
+        return UUID.fromString(objectMapper.readTree(result.getResponse().getContentAsString()).get("data").get("id").asText());
     }
 
     private UUID practiceModality(String token, String modalityName) throws Exception {
@@ -144,27 +152,6 @@ class VisitCloseTest {
             }
         }
         throw new AssertionError("Modalidade não encontrada no catálogo: " + name);
-    }
-
-    private UUID startVisit(String token, UUID trainingLocationId) throws Exception {
-        var result = mockMvc.perform(post("/api/visits")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new StartVisitRequest(trainingLocationId, null))))
-                .andReturn();
-
-        return UUID.fromString(objectMapper.readTree(result.getResponse().getContentAsString()).get("data").get("id").asText());
-    }
-
-    private UUID registerTrainingLocation(String token) throws Exception {
-        var request = new TrainingLocationRegisterRequest("Clube de Tiro Central", "São Paulo", "SP");
-        var result = mockMvc.perform(post("/api/training-locations")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andReturn();
-
-        return UUID.fromString(objectMapper.readTree(result.getResponse().getContentAsString()).get("data").get("id").asText());
     }
 
     private String registerAndLogin(String email) throws Exception {

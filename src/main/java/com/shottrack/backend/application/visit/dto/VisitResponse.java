@@ -13,6 +13,6 @@ public record VisitResponse(
         VisitStatus status,
         Instant startedAt,
         Instant endedAt,
-        List<TrainingSummaryResponse> trainings
+        List<TrainingResponse> trainings
 ) {
 }

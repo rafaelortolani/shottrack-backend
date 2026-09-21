@@ -2,7 +2,7 @@ package com.shottrack.backend.application.visit.usecase;
 
 import com.shottrack.backend.application.traininglocation.usecase.TrainingLocationService;
 import com.shottrack.backend.application.visit.dto.StartVisitRequest;
-import com.shottrack.backend.application.visit.dto.TrainingSummaryResponse;
+import com.shottrack.backend.application.visit.dto.TrainingResponse;
 import com.shottrack.backend.application.visit.dto.VisitResponse;
 import com.shottrack.backend.application.visit.gateway.VisitGateway;
 import com.shottrack.backend.application.visit.mapper.VisitMapper;
@@ -22,6 +22,7 @@ public class VisitService {
 
     private final VisitGateway visitGateway;
     private final TrainingLocationService trainingLocationService;
+    private final TrainingService trainingService;
     private final VisitMapper visitMapper;
 
     public VisitResponse start(UUID userId, StartVisitRequest request) {
@@ -44,10 +45,8 @@ public class VisitService {
 
     /**
      * UC34/ADR-0012: encerra a visita e, na mesma operação (mesmo timestamp),
-     * encerraria também qualquer treino dela ainda EM_ANDAMENTO. O domínio de
-     * Treino ainda não existe (UC32/UC33), então não há o que cascatear de
-     * verdade ainda — mesmo padrão já usado em UC08/UC27 pra pendências que
-     * dependem de um domínio futuro.
+     * encerra também qualquer treino dela ainda EM_ANDAMENTO — sem exigir
+     * confirmação adicional.
      */
     public VisitResponse close(UUID userId, UUID visitId) {
         Visit visit = findOwnedVisitOrThrow(userId, visitId);
@@ -56,7 +55,9 @@ public class VisitService {
             throw new BusinessException("VISIT_ALREADY_CLOSED", HttpStatus.CONFLICT);
         }
 
-        visit.close(Instant.now());
+        Instant closedAt = Instant.now();
+        visit.close(closedAt);
+        trainingService.closeAllOpenByVisitId(visitId, closedAt);
 
         return toResponse(visitGateway.save(visit));
     }
@@ -68,16 +69,7 @@ public class VisitService {
     }
 
     private VisitResponse toResponse(Visit visit) {
-        return visitMapper.toResponse(visit, trainingsFor(visit));
-    }
-
-    /**
-     * Treino ainda não existe (UC32/UC33/ADR-0012) — toda visita é retornada
-     * sem nenhum treino aninhado por enquanto. Troca-se essa lista vazia pela
-     * consulta real assim que o domínio existir, sem reescrever o restante
-     * do mapeamento.
-     */
-    private List<TrainingSummaryResponse> trainingsFor(Visit visit) {
-        return List.of();
+        List<TrainingResponse> trainings = trainingService.listByVisitId(visit.getId());
+        return visitMapper.toResponse(visit, trainings);
     }
 }

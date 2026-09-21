@@ -25,9 +25,9 @@ Não há restrição de unicidade — o atleta pode abrir mais de um treino da
 mesma modalidade na mesma visita (ADR-0012).
 
 ## Definição de pronto
-- [ ] Teste cobrindo o fluxo principal
-- [ ] Teste cobrindo abrir dois treinos da mesma modalidade na mesma visita
-- [ ] Um teste para CADA fluxo alternativo listado acima
+- [x] Teste cobrindo o fluxo principal
+- [x] Teste cobrindo abrir dois treinos da mesma modalidade na mesma visita
+- [x] Um teste para CADA fluxo alternativo listado acima
 
 ## Referências
 - ADR-0001 (autenticação JWT)

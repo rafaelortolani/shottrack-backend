@@ -1,8 +1,11 @@
 package com.shottrack.backend.application.visit;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shottrack.backend.application.modality.dto.AddPracticedModalityRequest;
 import com.shottrack.backend.application.traininglocation.dto.TrainingLocationRegisterRequest;
 import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
+import com.shottrack.backend.application.visit.dto.OpenTrainingRequest;
 import com.shottrack.backend.application.visit.dto.StartVisitRequest;
 import com.shottrack.backend.support.TestUsers;
 import org.junit.jupiter.api.Test;
@@ -20,12 +23,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * UC35/ADR-0012: cada visita é listada com seus treinos aninhados. O domínio
- * de Treino (UC32/UC33) ainda não existe, então essa lista aninhada é sempre
- * vazia por enquanto (ver VisitService.trainingsFor) — os testes aqui
- * cobrem a forma da resposta, não conteúdo real de treino.
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -45,17 +42,19 @@ class VisitListTest {
     @Test
     void shouldListVisitsWithNestedTrainings() throws Exception {
         String token = registerAndLogin("atleta.listavisitas@shottrack.com");
+        UUID modalityId = practiceModality(token, "IPSC");
         UUID trainingLocationId = registerTrainingLocation(token);
+        UUID visitComTreino = startVisit(token, trainingLocationId);
         startVisit(token, trainingLocationId);
-        startVisit(token, trainingLocationId);
+        openTraining(token, visitComTreino, modalityId);
 
         mockMvc.perform(get("/api/visits")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(2))
-                .andExpect(jsonPath("$.data[0].trainings").isArray())
-                .andExpect(jsonPath("$.data[0].trainings.length()").value(0))
-                .andExpect(jsonPath("$.data[1].trainings").isArray());
+                .andExpect(jsonPath("$.data[?(@.id == '" + visitComTreino + "')].trainings[0].modalityName").value("IPSC"))
+                .andExpect(jsonPath("$.data[?(@.id == '" + visitComTreino + "')].trainings[0].status").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$.data[?(@.id != '" + visitComTreino + "')].trainings[0]").doesNotExist());
     }
 
     @Test
@@ -87,11 +86,46 @@ class VisitListTest {
                 .andExpect(jsonPath("$.data.length()").value(0));
     }
 
-    private void startVisit(String token, UUID trainingLocationId) throws Exception {
-        mockMvc.perform(post("/api/visits")
+    private UUID startVisit(String token, UUID trainingLocationId) throws Exception {
+        var result = mockMvc.perform(post("/api/visits")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new StartVisitRequest(trainingLocationId, null))))
+                .andReturn();
+
+        return UUID.fromString(objectMapper.readTree(result.getResponse().getContentAsString()).get("data").get("id").asText());
+    }
+
+    private void openTraining(String token, UUID visitId, UUID modalityId) throws Exception {
+        mockMvc.perform(post("/api/trainings")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new StartVisitRequest(trainingLocationId, null))));
+                .content(objectMapper.writeValueAsString(new OpenTrainingRequest(visitId, modalityId))));
+    }
+
+    private UUID practiceModality(String token, String modalityName) throws Exception {
+        UUID modalityId = modalityIdByName(token, modalityName);
+
+        mockMvc.perform(post("/api/practiced-modalities")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new AddPracticedModalityRequest(modalityId))));
+
+        return modalityId;
+    }
+
+    private UUID modalityIdByName(String token, String name) throws Exception {
+        var result = mockMvc.perform(get("/api/modality-catalog")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn();
+
+        JsonNode items = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
+        for (JsonNode item : items) {
+            if (item.get("name").asText().equals(name)) {
+                return UUID.fromString(item.get("id").asText());
+            }
+        }
+        throw new AssertionError("Modalidade não encontrada no catálogo: " + name);
     }
 
     private UUID registerTrainingLocation(String token) throws Exception {

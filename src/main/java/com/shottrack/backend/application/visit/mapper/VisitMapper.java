@@ -1,6 +1,6 @@
 package com.shottrack.backend.application.visit.mapper;
 
-import com.shottrack.backend.application.visit.dto.TrainingSummaryResponse;
+import com.shottrack.backend.application.visit.dto.TrainingResponse;
 import com.shottrack.backend.application.visit.dto.VisitResponse;
 import com.shottrack.backend.application.visit.model.Visit;
 import org.mapstruct.Mapper;
@@ -12,5 +12,5 @@ import java.util.List;
 public interface VisitMapper {
 
     @Mapping(target = "startedAt", source = "visit.createdAt")
-    VisitResponse toResponse(Visit visit, List<TrainingSummaryResponse> trainings);
+    VisitResponse toResponse(Visit visit, List<TrainingResponse> trainings);
 }

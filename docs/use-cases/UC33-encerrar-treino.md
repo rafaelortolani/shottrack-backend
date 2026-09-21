@@ -18,8 +18,8 @@ Usuário logado (UC02) com access token válido. Treino pertence ao atleta
 - 2a. Treino já encerrado → erro `TRAINING_ALREADY_CLOSED`
 
 ## Definição de pronto
-- [ ] Teste cobrindo o fluxo principal
-- [ ] Um teste para CADA fluxo alternativo listado acima
+- [x] Teste cobrindo o fluxo principal
+- [x] Um teste para CADA fluxo alternativo listado acima
 
 ## Referências
 - ADR-0001 (autenticação JWT)
