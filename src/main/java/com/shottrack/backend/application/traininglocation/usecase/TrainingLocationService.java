@@ -6,6 +6,7 @@ import com.shottrack.backend.application.traininglocation.dto.TrainingLocationUp
 import com.shottrack.backend.application.traininglocation.gateway.TrainingLocationGateway;
 import com.shottrack.backend.application.traininglocation.mapper.TrainingLocationMapper;
 import com.shottrack.backend.application.traininglocation.model.TrainingLocation;
+import com.shottrack.backend.application.visit.gateway.VisitGateway;
 import com.shottrack.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,7 @@ import java.util.UUID;
 public class TrainingLocationService {
 
     private final TrainingLocationGateway trainingLocationGateway;
+    private final VisitGateway visitGateway;
     private final TrainingLocationMapper trainingLocationMapper;
 
     public TrainingLocationResponse register(UUID userId, TrainingLocationRegisterRequest request) {
@@ -85,16 +87,19 @@ public class TrainingLocationService {
     }
 
     /**
-     * O domínio de Visita ainda não existe, então nenhum local pode estar
-     * "em uso" — sempre retorna false até lá. Quando Visita existir,
-     * troca-se este método pela consulta real, sem reescrever o restante de
-     * delete().
+     * UC31/ADR-0012: agora que Visita existe, a checagem passa a valer de
+     * verdade — local usado em qualquer visita (mesmo já encerrada) não
+     * pode ser excluído.
      */
     private boolean isUsedInAnyVisit(TrainingLocation trainingLocation) {
-        return false;
+        return visitGateway.existsByTrainingLocationId(trainingLocation.getId());
     }
 
-    private TrainingLocation findOwnedTrainingLocationOrThrow(UUID userId, UUID trainingLocationId) {
+    /**
+     * Reaproveitado por VisitService (UC31) pra validar que o local
+     * informado existe e pertence ao atleta antes de iniciar uma visita.
+     */
+    public TrainingLocation findOwnedTrainingLocationOrThrow(UUID userId, UUID trainingLocationId) {
         return trainingLocationGateway.findById(trainingLocationId)
                 .filter(location -> location.getUserId().equals(userId))
                 .orElseThrow(() -> new BusinessException("TRAINING_LOCATION_NOT_FOUND", HttpStatus.NOT_FOUND));

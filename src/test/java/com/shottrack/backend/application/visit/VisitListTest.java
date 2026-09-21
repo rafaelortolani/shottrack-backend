@@ -1,4 +1,4 @@
-package com.shottrack.backend.application.traininglocation;
+package com.shottrack.backend.application.visit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.traininglocation.dto.TrainingLocationRegisterRequest;
@@ -15,20 +15,21 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * UC27/ADR-0006: exclusão bloqueada (nunca arquivamento) se o local já foi
- * usado em alguma visita.
+ * UC35/ADR-0012: cada visita é listada com seus treinos aninhados. O domínio
+ * de Treino (UC32/UC33) ainda não existe, então essa lista aninhada é sempre
+ * vazia por enquanto (ver VisitService.trainingsFor) — os testes aqui
+ * cobrem a forma da resposta, não conteúdo real de treino.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-class TrainingLocationDeleteTest {
+class VisitListTest {
 
     private static final String PASSWORD = "senha12345";
 
@@ -42,15 +43,26 @@ class TrainingLocationDeleteTest {
     private PendingRegistrationRepository pendingRegistrationRepository;
 
     @Test
-    void shouldDeleteTrainingLocationSuccessfully() throws Exception {
-        String token = registerAndLogin("atleta.excluilocal@shottrack.com");
+    void shouldListVisitsWithNestedTrainings() throws Exception {
+        String token = registerAndLogin("atleta.listavisitas@shottrack.com");
         UUID trainingLocationId = registerTrainingLocation(token);
+        startVisit(token, trainingLocationId);
+        startVisit(token, trainingLocationId);
 
-        mockMvc.perform(delete("/api/training-locations/" + trainingLocationId)
+        mockMvc.perform(get("/api/visits")
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].trainings").isArray())
+                .andExpect(jsonPath("$.data[0].trainings.length()").value(0))
+                .andExpect(jsonPath("$.data[1].trainings").isArray());
+    }
 
-        mockMvc.perform(get("/api/training-locations")
+    @Test
+    void shouldReturnEmptyListWhenNoVisits() throws Exception {
+        String token = registerAndLogin("atleta.semvisitas@shottrack.com");
+
+        mockMvc.perform(get("/api/visits")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(0));
@@ -58,51 +70,32 @@ class TrainingLocationDeleteTest {
 
     @Test
     void shouldRejectRequestWithoutToken() throws Exception {
-        mockMvc.perform(delete("/api/training-locations/" + UUID.randomUUID()))
+        mockMvc.perform(get("/api/visits"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
     }
 
     @Test
-    void shouldRejectNonExistentTrainingLocation() throws Exception {
-        String token = registerAndLogin("atleta.localinexistente@shottrack.com");
+    void shouldNeverIncludeAnotherAthletesVisit() throws Exception {
+        String tokenDono = registerAndLogin("atleta.donovisitalistagem@shottrack.com");
+        String tokenOutro = registerAndLogin("atleta.naoedonovisitalistagem@shottrack.com");
+        startVisit(tokenDono, registerTrainingLocation(tokenDono));
 
-        mockMvc.perform(delete("/api/training-locations/" + UUID.randomUUID())
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("TRAINING_LOCATION_NOT_FOUND"));
-    }
-
-    @Test
-    void shouldRejectDeletionOfAnotherAthletesTrainingLocation() throws Exception {
-        String tokenDono = registerAndLogin("atleta.donolocal@shottrack.com");
-        String tokenOutro = registerAndLogin("atleta.naoedonolocal@shottrack.com");
-        UUID trainingLocationId = registerTrainingLocation(tokenDono);
-
-        mockMvc.perform(delete("/api/training-locations/" + trainingLocationId)
+        mockMvc.perform(get("/api/visits")
                         .header("Authorization", "Bearer " + tokenOutro))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("TRAINING_LOCATION_NOT_FOUND"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
     }
 
-    @Test
-    void shouldRejectDeletionOfTrainingLocationUsedInVisit() throws Exception {
-        String token = registerAndLogin("atleta.localemuso@shottrack.com");
-        UUID trainingLocationId = registerTrainingLocation(token);
-
+    private void startVisit(String token, UUID trainingLocationId) throws Exception {
         mockMvc.perform(post("/api/visits")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new StartVisitRequest(trainingLocationId, null))));
-
-        mockMvc.perform(delete("/api/training-locations/" + trainingLocationId)
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("TRAINING_LOCATION_IN_USE"));
     }
 
     private UUID registerTrainingLocation(String token) throws Exception {
-        var request = new TrainingLocationRegisterRequest("Local pra excluir", "São Paulo", "SP");
+        var request = new TrainingLocationRegisterRequest("Clube de Tiro Central", "São Paulo", "SP");
         var result = mockMvc.perform(post("/api/training-locations")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
