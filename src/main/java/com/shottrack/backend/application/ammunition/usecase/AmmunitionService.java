@@ -131,7 +131,12 @@ public class AmmunitionService {
         return false;
     }
 
-    private Ammunition findOwnedAmmunitionOrThrow(UUID userId, UUID ammunitionId) {
+    /**
+     * Reaproveitado por SeriesService (UC36/UC38) pra validar que a munição
+     * informada existe e pertence ao atleta antes de registrar/editar uma
+     * série.
+     */
+    public Ammunition findOwnedAmmunitionOrThrow(UUID userId, UUID ammunitionId) {
         return ammunitionGateway.findById(ammunitionId)
                 .filter(a -> a.getUserId().equals(userId))
                 .orElseThrow(() -> new BusinessException("AMMUNITION_NOT_FOUND", HttpStatus.NOT_FOUND));

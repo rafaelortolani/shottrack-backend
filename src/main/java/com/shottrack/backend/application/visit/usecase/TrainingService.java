@@ -98,19 +98,31 @@ public class TrainingService {
                 .orElseThrow(() -> new BusinessException("VISIT_NOT_FOUND", HttpStatus.NOT_FOUND));
     }
 
-    private Training findOwnedTrainingOrThrow(UUID userId, UUID trainingId) {
+    /**
+     * Reaproveitado por SeriesService (UC36/UC37) pra validar posse do
+     * treino informado antes de registrar/listar séries.
+     */
+    public Training findOwnedTrainingOrThrow(UUID userId, UUID trainingId) {
         Training training = trainingGateway.findById(trainingId)
                 .orElseThrow(() -> new BusinessException("TRAINING_NOT_FOUND", HttpStatus.NOT_FOUND));
 
-        boolean ownedByUser = visitGateway.findById(training.getVisitId())
-                .map(visit -> visit.getUserId().equals(userId))
-                .orElse(false);
-
-        if (!ownedByUser) {
+        if (!isOwnedByUser(trainingId, userId)) {
             throw new BusinessException("TRAINING_NOT_FOUND", HttpStatus.NOT_FOUND);
         }
 
         return training;
+    }
+
+    /**
+     * Reaproveitado por SeriesService (UC38/UC41) pra validar posse de uma
+     * série (via treino) sem lançar TRAINING_NOT_FOUND — a série tem seu
+     * próprio código (SERIES_NOT_FOUND) quando o treino não é do atleta.
+     */
+    public boolean isOwnedByUser(UUID trainingId, UUID userId) {
+        return trainingGateway.findById(trainingId)
+                .flatMap(training -> visitGateway.findById(training.getVisitId()))
+                .map(visit -> visit.getUserId().equals(userId))
+                .orElse(false);
     }
 
     private TrainingResponse toResponse(Training training) {
