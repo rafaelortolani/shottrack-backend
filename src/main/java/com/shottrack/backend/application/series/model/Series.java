@@ -49,9 +49,11 @@ public class Series extends AbstractBaseEntity {
     @Column
     private String target;
 
-    @Setter
     @Column(name = "shot_count")
     private Integer shotCount;
+
+    @Column(name = "shot_count_set_manually", nullable = false)
+    private boolean shotCountSetManually;
 
     @Setter
     @Column
@@ -65,7 +67,27 @@ public class Series extends AbstractBaseEntity {
         this.ammunitionId = ammunitionId;
         this.distanceMeters = distanceMeters;
         this.target = target;
-        this.shotCount = shotCount;
         this.notes = notes;
+        if (shotCount != null) {
+            setShotCountManually(shotCount);
+        }
+    }
+
+    /**
+     * UC38/ADR-0014: disparos informados explicitamente pelo atleta — trava
+     * o auto-preenchimento (autoFillShotCount) definitivamente.
+     */
+    public void setShotCountManually(Integer shotCount) {
+        this.shotCount = shotCount;
+        this.shotCountSetManually = true;
+    }
+
+    /**
+     * UC39/UC40/ADR-0014: recalcula disparos a partir de acertos+erros
+     * enquanto o atleta não tiver informado disparos manualmente — nunca
+     * muda a flag de "manual".
+     */
+    public void autoFillShotCount(int shotCount) {
+        this.shotCount = shotCount;
     }
 }

@@ -1,7 +1,10 @@
 package com.shottrack.backend.application.series;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shottrack.backend.application.modality.dto.AddModalityResultTypeRequest;
 import com.shottrack.backend.application.series.dto.RegisterSeriesRequest;
+import com.shottrack.backend.application.series.dto.RegisterSeriesResultRequest;
 import com.shottrack.backend.application.series.dto.UpdateSeriesRequest;
 import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
 import com.shottrack.backend.support.SeriesTestSupport;
@@ -16,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -110,6 +114,27 @@ class SeriesUpdateTest {
     }
 
     @Test
+    void shouldRejectReducingShotCountBelowRegisteredHitsAndMisses() throws Exception {
+        String token = registerAndLogin("atleta.reduzdisparos@shottrack.com");
+        UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
+        UUID modalityId = modalityIdByName(token, "IPSC");
+        UUID seriesId = registerSeries(token, trainingId);
+        UUID acertosId = configureResultType(token, modalityId, "Acertos");
+        UUID errosId = configureResultType(token, modalityId, "Erros");
+
+        registerValue(token, seriesId, acertosId, "45");
+        registerValue(token, seriesId, errosId, "10");
+
+        mockMvc.perform(patch("/api/series/" + seriesId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new UpdateSeriesRequest(null, null, null, null, 40, null))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("SHOT_COUNT_LESS_THAN_REGISTERED_RESULTS"));
+    }
+
+    @Test
     void shouldRejectNonExistentAmmunition() throws Exception {
         String token = registerAndLogin("atleta.editaserie.municaoinexistente@shottrack.com");
         UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
@@ -133,6 +158,46 @@ class SeriesUpdateTest {
                 .andReturn();
 
         return UUID.fromString(objectMapper.readTree(result.getResponse().getContentAsString()).get("data").get("id").asText());
+    }
+
+    private void registerValue(String token, UUID seriesId, UUID resultTypeId, String value) throws Exception {
+        mockMvc.perform(post("/api/series/" + seriesId + "/results")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new RegisterSeriesResultRequest(resultTypeId, value))));
+    }
+
+    private UUID configureResultType(String token, UUID modalityId, String resultTypeName) throws Exception {
+        UUID resultTypeId = resultTypeIdByName(token, resultTypeName);
+
+        mockMvc.perform(post("/api/practiced-modalities/" + modalityId + "/result-types")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new AddModalityResultTypeRequest(resultTypeId))));
+
+        return resultTypeId;
+    }
+
+    private UUID modalityIdByName(String token, String name) throws Exception {
+        return idByName(token, "/api/modality-catalog", name);
+    }
+
+    private UUID resultTypeIdByName(String token, String name) throws Exception {
+        return idByName(token, "/api/result-type-catalog", name);
+    }
+
+    private UUID idByName(String token, String path, String name) throws Exception {
+        var result = mockMvc.perform(get(path)
+                        .header("Authorization", "Bearer " + token))
+                .andReturn();
+
+        JsonNode items = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
+        for (JsonNode item : items) {
+            if (item.get("name").asText().equals(name)) {
+                return UUID.fromString(item.get("id").asText());
+            }
+        }
+        throw new AssertionError("Item não encontrado no catálogo (" + path + "): " + name);
     }
 
     private String registerAndLogin(String email) throws Exception {

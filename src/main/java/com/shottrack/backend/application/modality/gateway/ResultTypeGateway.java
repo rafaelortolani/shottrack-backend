@@ -11,4 +11,6 @@ public interface ResultTypeGateway {
     List<ResultType> findAll();
 
     Optional<ResultType> findById(UUID id);
+
+    Optional<ResultType> findByName(String name);
 }

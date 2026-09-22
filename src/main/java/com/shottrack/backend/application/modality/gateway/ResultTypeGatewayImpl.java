@@ -24,4 +24,9 @@ class ResultTypeGatewayImpl implements ResultTypeGateway {
     public Optional<ResultType> findById(UUID id) {
         return resultTypeRepository.findById(id);
     }
+
+    @Override
+    public Optional<ResultType> findByName(String name) {
+        return resultTypeRepository.findByName(name);
+    }
 }

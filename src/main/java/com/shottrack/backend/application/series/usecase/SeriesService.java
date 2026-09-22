@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -87,7 +88,11 @@ public class SeriesService {
             series.setTarget(request.target());
         }
         if (request.shotCount() != null) {
-            series.setShotCount(request.shotCount());
+            BigDecimal registered = seriesResultService.sumShotRelatedResults(series.getId());
+            if (registered.compareTo(BigDecimal.valueOf(request.shotCount())) > 0) {
+                throw new BusinessException("SHOT_COUNT_LESS_THAN_REGISTERED_RESULTS", HttpStatus.CONFLICT);
+            }
+            series.setShotCountManually(request.shotCount());
         }
         if (request.notes() != null) {
             series.setNotes(request.notes());

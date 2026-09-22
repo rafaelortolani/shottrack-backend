@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -30,6 +31,12 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class SeriesResultService {
+
+    /**
+     * ADR-0014: únicos tipos de resultado que contam disparos da série —
+     * mantidos em consistência com Series.shotCount.
+     */
+    private static final Set<String> SHOT_RELATED_RESULT_TYPE_NAMES = Set.of("Acertos", "Erros");
 
     private final SeriesResultGateway seriesResultGateway;
     private final SeriesGateway seriesGateway;
@@ -48,6 +55,7 @@ public class SeriesResultService {
         ResultType resultType = assertConfiguredForTrainingModality(userId, series, resultTypeId);
 
         validateValueFormat(resultType, value);
+        enforceShotCountConsistency(series, resultType, contributionFromValue(resultType, value));
 
         SeriesResult result = findOrCreateResult(series.getId(), resultTypeId);
         result.registerValue(value);
@@ -62,6 +70,8 @@ public class SeriesResultService {
     public SeriesResultResponse markNotApplicable(UUID userId, UUID seriesId, UUID resultTypeId) {
         Series series = findOwnedSeriesOrThrow(userId, seriesId);
         ResultType resultType = assertConfiguredForTrainingModality(userId, series, resultTypeId);
+
+        enforceShotCountConsistency(series, resultType, BigDecimal.ZERO);
 
         SeriesResult result = findOrCreateResult(series.getId(), resultTypeId);
         result.markNotApplicable();
@@ -78,8 +88,63 @@ public class SeriesResultService {
 
         SeriesResult result = seriesResultGateway.findBySeriesIdAndResultTypeId(series.getId(), resultTypeId)
                 .orElseThrow(() -> new BusinessException("RESULT_NOT_CONFIGURED", HttpStatus.NOT_FOUND));
+        ResultType resultType = resultTypeGateway.findById(resultTypeId).orElseThrow();
 
         seriesResultGateway.delete(result);
+        enforceShotCountConsistency(series, resultType, BigDecimal.ZERO);
+    }
+
+    /**
+     * UC38/ADR-0014: soma de acertos+erros já registrados pra série — usada
+     * pra bloquear redução de quantidadeDisparos abaixo do que já existe.
+     */
+    public BigDecimal sumShotRelatedResults(UUID seriesId) {
+        return SHOT_RELATED_RESULT_TYPE_NAMES.stream()
+                .map(name -> shotRelatedContribution(seriesId, name))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /**
+     * ADR-0014: acertos/erros mantidos em consistência com
+     * Series.shotCount a cada mudança nesses dois tipos — enquanto o
+     * atleta não tiver informado disparos manualmente (UC36/UC38), o valor
+     * é recalculado a partir da soma; depois de informado manualmente, a
+     * soma não pode ultrapassá-lo.
+     */
+    private void enforceShotCountConsistency(Series series, ResultType resultType, BigDecimal newContribution) {
+        if (!SHOT_RELATED_RESULT_TYPE_NAMES.contains(resultType.getName())) {
+            return;
+        }
+
+        BigDecimal total = newContribution.add(shotRelatedContributionExcluding(series.getId(), resultType.getName()));
+
+        if (series.isShotCountSetManually()) {
+            if (series.getShotCount() != null && total.compareTo(BigDecimal.valueOf(series.getShotCount())) > 0) {
+                throw new BusinessException("RESULT_EXCEEDS_SHOT_COUNT", HttpStatus.BAD_REQUEST);
+            }
+        } else {
+            series.autoFillShotCount(total.intValueExact());
+            seriesGateway.save(series);
+        }
+    }
+
+    private BigDecimal contributionFromValue(ResultType resultType, String value) {
+        return SHOT_RELATED_RESULT_TYPE_NAMES.contains(resultType.getName()) ? new BigDecimal(value) : BigDecimal.ZERO;
+    }
+
+    private BigDecimal shotRelatedContributionExcluding(UUID seriesId, String excludingTypeName) {
+        return SHOT_RELATED_RESULT_TYPE_NAMES.stream()
+                .filter(name -> !name.equals(excludingTypeName))
+                .map(name -> shotRelatedContribution(seriesId, name))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal shotRelatedContribution(UUID seriesId, String typeName) {
+        return resultTypeGateway.findByName(typeName)
+                .flatMap(type -> seriesResultGateway.findBySeriesIdAndResultTypeId(seriesId, type.getId()))
+                .filter(result -> !result.isNotApplicable())
+                .map(result -> new BigDecimal(result.getValue()))
+                .orElse(BigDecimal.ZERO);
     }
 
     /**
@@ -128,6 +193,17 @@ public class SeriesResultService {
             }
             case "Anotação livre" -> {
                 // texto livre — qualquer valor não vazio é aceito
+            }
+            case "Acertos", "Erros" -> {
+                // ADR-0014: contam disparos da série — precisam ser inteiro não-negativo
+                try {
+                    BigDecimal parsed = new BigDecimal(value);
+                    if (parsed.signum() < 0 || parsed.remainder(BigDecimal.ONE).signum() != 0) {
+                        throw new BusinessException("RESULT_VALUE_FORMAT_INVALID", HttpStatus.BAD_REQUEST);
+                    }
+                } catch (NumberFormatException e) {
+                    throw new BusinessException("RESULT_VALUE_FORMAT_INVALID", HttpStatus.BAD_REQUEST);
+                }
             }
             default -> {
                 try {

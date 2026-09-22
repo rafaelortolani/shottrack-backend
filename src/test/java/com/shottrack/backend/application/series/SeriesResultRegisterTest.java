@@ -186,6 +186,97 @@ class SeriesResultRegisterTest {
     }
 
     @Test
+    void shouldAutoFillShotCountFromHitsAndMisses() throws Exception {
+        String token = registerAndLogin("atleta.autopreenchedisparos@shottrack.com");
+        UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
+        UUID modalityId = modalityIdByName(token, "IPSC");
+        UUID seriesId = registerSeries(token, trainingId);
+        UUID acertosId = configureResultType(token, modalityId, "Acertos");
+        UUID errosId = configureResultType(token, modalityId, "Erros");
+
+        registerValue(token, seriesId, acertosId, "45");
+        registerValue(token, seriesId, errosId, "10");
+
+        mockMvc.perform(get("/api/trainings/" + trainingId + "/series")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].shotCount").value(55));
+    }
+
+    @Test
+    void shouldRecalculateAutoFilledShotCountWhenHitOrMissMarkedNotApplicable() throws Exception {
+        String token = registerAndLogin("atleta.recalcnaoaplicavel@shottrack.com");
+        UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
+        UUID modalityId = modalityIdByName(token, "IPSC");
+        UUID seriesId = registerSeries(token, trainingId);
+        UUID acertosId = configureResultType(token, modalityId, "Acertos");
+        UUID errosId = configureResultType(token, modalityId, "Erros");
+
+        registerValue(token, seriesId, acertosId, "45");
+        registerValue(token, seriesId, errosId, "10");
+
+        mockMvc.perform(post("/api/series/" + seriesId + "/results/not-applicable")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new MarkSeriesResultNotApplicableRequest(errosId))));
+
+        mockMvc.perform(get("/api/trainings/" + trainingId + "/series")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data[0].shotCount").value(45));
+    }
+
+    @Test
+    void shouldRejectHitsAndMissesSumExceedingManuallySetShotCount() throws Exception {
+        String token = registerAndLogin("atleta.excededisparosinformados@shottrack.com");
+        UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
+        UUID modalityId = modalityIdByName(token, "IPSC");
+        UUID seriesId = registerSeriesWithShotCount(token, trainingId, 50);
+        UUID acertosId = configureResultType(token, modalityId, "Acertos");
+        UUID errosId = configureResultType(token, modalityId, "Erros");
+
+        registerValue(token, seriesId, acertosId, "45");
+
+        mockMvc.perform(post("/api/series/" + seriesId + "/results")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new RegisterSeriesResultRequest(errosId, "10"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("RESULT_EXCEEDS_SHOT_COUNT"));
+    }
+
+    @Test
+    void shouldRejectNonIntegerHitsValue() throws Exception {
+        String token = registerAndLogin("atleta.acertosdecimal@shottrack.com");
+        UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
+        UUID modalityId = modalityIdByName(token, "IPSC");
+        UUID seriesId = registerSeries(token, trainingId);
+        UUID acertosId = configureResultType(token, modalityId, "Acertos");
+
+        mockMvc.perform(post("/api/series/" + seriesId + "/results")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new RegisterSeriesResultRequest(acertosId, "45.5"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("RESULT_VALUE_FORMAT_INVALID"));
+    }
+
+    @Test
+    void shouldRejectNegativeMissesValue() throws Exception {
+        String token = registerAndLogin("atleta.errosnegativo@shottrack.com");
+        UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
+        UUID modalityId = modalityIdByName(token, "IPSC");
+        UUID seriesId = registerSeries(token, trainingId);
+        UUID errosId = configureResultType(token, modalityId, "Erros");
+
+        mockMvc.perform(post("/api/series/" + seriesId + "/results")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new RegisterSeriesResultRequest(errosId, "-1"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("RESULT_VALUE_FORMAT_INVALID"));
+    }
+
+    @Test
     void shouldRejectRequestWithoutToken() throws Exception {
         mockMvc.perform(post("/api/series/" + UUID.randomUUID() + "/results")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -276,6 +367,17 @@ class SeriesResultRegisterTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
                                 new RegisterSeriesRequest(trainingId, null, null, null, null, null, null))))
+                .andReturn();
+
+        return UUID.fromString(objectMapper.readTree(result.getResponse().getContentAsString()).get("data").get("id").asText());
+    }
+
+    private UUID registerSeriesWithShotCount(String token, UUID trainingId, int shotCount) throws Exception {
+        var result = mockMvc.perform(post("/api/series")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new RegisterSeriesRequest(trainingId, null, null, null, null, shotCount, null))))
                 .andReturn();
 
         return UUID.fromString(objectMapper.readTree(result.getResponse().getContentAsString()).get("data").get("id").asText());

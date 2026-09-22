@@ -13,6 +13,9 @@ nessa série.
    série
 2. Sistema remove o registro — o tipo volta ao estado "não preenchido"
    (não vira "zero", não vira "não aplicável": deixa de existir)
+3. Se o tipo removido for "Acertos" ou "Erros" e quantidadeDisparos ainda
+   não foi informada manualmente: sistema recalcula quantidadeDisparos pra
+   soma dos dois, agora contando 0 pro tipo removido (ADR-0014)
 
 ## Fluxos alternativos
 - 1a. Token ausente ou inválido → erro `UNAUTHORIZED`
@@ -27,4 +30,5 @@ nessa série.
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0013 (Série — resultados com 3 estados)
+- ADR-0014 (consistência entre disparos e acertos/erros)
 - UC39 (registrar resultado)

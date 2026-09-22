@@ -2,6 +2,7 @@ package com.shottrack.backend.application.series;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shottrack.backend.application.modality.dto.AddModalityResultTypeRequest;
 import com.shottrack.backend.application.series.dto.MarkSeriesResultNotApplicableRequest;
 import com.shottrack.backend.application.series.dto.RegisterSeriesRequest;
 import com.shottrack.backend.application.series.dto.RegisterSeriesResultRequest;
@@ -81,6 +82,27 @@ class SeriesResultRemoveTest {
     }
 
     @Test
+    void shouldRecalculateAutoFilledShotCountWhenRemovingHitOrMiss() throws Exception {
+        String token = registerAndLogin("atleta.recalcremocao@shottrack.com");
+        UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
+        UUID modalityId = modalityIdByName(token, "IPSC");
+        UUID seriesId = registerSeries(token, trainingId);
+        UUID acertosId = configureResultType(token, modalityId, "Acertos");
+        UUID errosId = configureResultType(token, modalityId, "Erros");
+
+        registerValue(token, seriesId, acertosId, "45");
+        registerValue(token, seriesId, errosId, "10");
+
+        mockMvc.perform(delete("/api/series/" + seriesId + "/results/" + errosId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/trainings/" + trainingId + "/series")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data[0].shotCount").value(45));
+    }
+
+    @Test
     void shouldRejectRequestWithoutToken() throws Exception {
         mockMvc.perform(delete("/api/series/" + UUID.randomUUID() + "/results/" + UUID.randomUUID()))
                 .andExpect(status().isUnauthorized())
@@ -155,6 +177,31 @@ class SeriesResultRemoveTest {
             }
         }
         throw new AssertionError("Tipo de resultado não encontrado no catálogo: " + name);
+    }
+
+    private UUID modalityIdByName(String token, String name) throws Exception {
+        var result = mockMvc.perform(get("/api/modality-catalog")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn();
+
+        JsonNode items = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
+        for (JsonNode item : items) {
+            if (item.get("name").asText().equals(name)) {
+                return UUID.fromString(item.get("id").asText());
+            }
+        }
+        throw new AssertionError("Modalidade não encontrada no catálogo: " + name);
+    }
+
+    private UUID configureResultType(String token, UUID modalityId, String resultTypeName) throws Exception {
+        UUID resultTypeId = resultTypeIdByName(token, resultTypeName);
+
+        mockMvc.perform(post("/api/practiced-modalities/" + modalityId + "/result-types")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new AddModalityResultTypeRequest(resultTypeId))));
+
+        return resultTypeId;
     }
 
     private String registerAndLogin(String email) throws Exception {
