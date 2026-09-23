@@ -34,4 +34,9 @@ class VisitGatewayImpl implements VisitGateway {
     public boolean existsByTrainingLocationId(UUID trainingLocationId) {
         return visitRepository.existsByTrainingLocationId(trainingLocationId);
     }
+
+    @Override
+    public void delete(Visit visit) {
+        visitRepository.delete(visit);
+    }
 }

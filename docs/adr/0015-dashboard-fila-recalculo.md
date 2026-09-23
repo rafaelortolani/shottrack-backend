@@ -10,8 +10,8 @@ encerrar visita).
 ## Decisão
 - **RabbitMQ** como fila, com retry e dead-letter queue (DLQ) — falha no
   processamento não é silenciosa, fica visível e tenta de novo.
-- Os 5 pontos de escrita relevantes (UC33, UC34, UC36, UC38, UC39, UC40 —
-  seis, na verdade) publicam um evento leve `DashboardRecalculationRequested`
+- Os 9 pontos de escrita relevantes (UC33, UC34, UC36, UC38, UC39, UC40,
+  UC41, UC43, UC44) publicam um evento leve `DashboardRecalculationRequested`
   contendo só `atletaId`, depois que a transação principal já commitou —
   nunca antes, pra não publicar evento de uma escrita que pode dar rollback.
 - Um consumidor escuta esse evento e **recalcula do zero** todas as

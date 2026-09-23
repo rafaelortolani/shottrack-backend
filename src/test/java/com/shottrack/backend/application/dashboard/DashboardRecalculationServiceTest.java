@@ -96,7 +96,10 @@ class DashboardRecalculationServiceTest {
         registerSeriesWithShotCount(token, trainingId, 15);
         dashboardRecalculationService.recalculate(userId);
 
-        assertThat(dashboardSummaryRepository.count()).isEqualTo(1);
+        // filtra pelo atleta: o banco de desenvolvimento pode ter resumos de outros atletas
+        assertThat(dashboardSummaryRepository.findAll())
+                .filteredOn(summary -> summary.getUserId().equals(userId))
+                .hasSize(1);
         assertThat(dashboardSummaryRepository.findByUserId(userId).orElseThrow().getShotsThisMonth()).isEqualTo(25);
     }
 
