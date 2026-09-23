@@ -25,8 +25,13 @@ public class ResultType extends AbstractBaseEntity {
     @Column(nullable = false, unique = true)
     private final String name;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private final ResultOrientation orientation;
+
     @Builder
-    private ResultType(String name) {
+    private ResultType(String name, ResultOrientation orientation) {
         this.name = name;
+        this.orientation = orientation;
     }
 }

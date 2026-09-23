@@ -26,6 +26,12 @@ spring:
     # Mailpit (docker-compose.yml) em desenvolvimento — SMTP fake, sem auth/TLS.
     host: localhost
     port: 1025
+  rabbitmq:
+    # RabbitMQ (docker-compose.yml, ADR-0015) — fila de recálculo do dashboard.
+    host: localhost
+    port: 5672
+    username: shottrack
+    password: shottrack
 
 server:
   port: 8080

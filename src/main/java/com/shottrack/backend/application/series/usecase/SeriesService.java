@@ -1,6 +1,7 @@
 package com.shottrack.backend.application.series.usecase;
 
 import com.shottrack.backend.application.ammunition.usecase.AmmunitionService;
+import com.shottrack.backend.application.dashboard.event.DashboardRecalculationRequestedEvent;
 import com.shottrack.backend.application.series.dto.RegisterSeriesRequest;
 import com.shottrack.backend.application.series.dto.SeriesResponse;
 import com.shottrack.backend.application.series.dto.SeriesResultResponse;
@@ -13,8 +14,10 @@ import com.shottrack.backend.application.visit.usecase.TrainingService;
 import com.shottrack.backend.application.weapon.usecase.WeaponService;
 import com.shottrack.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -30,7 +33,17 @@ public class SeriesService {
     private final AmmunitionService ammunitionService;
     private final SeriesResultService seriesResultService;
     private final SeriesMapper seriesMapper;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
+    /**
+     * ADR-0015: precisa de transação própria (nunca existia antes) pra que
+     * o evento publicado no fim do método só seja entregue na fila depois
+     * que ESTE método inteiro commitar — sem isso,
+     * ApplicationEventPublisher.publishEvent roda fora de qualquer
+     * transação ativa (cada save() individual já commitou sozinho) e o
+     * @TransactionalEventListener(AFTER_COMMIT) do publisher nunca dispara.
+     */
+    @Transactional
     public SeriesResponse register(UUID userId, RegisterSeriesRequest request) {
         Training training = trainingService.findOwnedTrainingOrThrow(userId, request.trainingId());
 
@@ -54,7 +67,9 @@ public class SeriesService {
                 .notes(request.notes())
                 .build();
 
-        return toResponse(seriesGateway.save(series));
+        Series saved = seriesGateway.save(series);
+        applicationEventPublisher.publishEvent(new DashboardRecalculationRequestedEvent(userId));
+        return toResponse(saved);
     }
 
     public List<SeriesResponse> listByTraining(UUID userId, UUID trainingId) {
@@ -69,7 +84,10 @@ public class SeriesService {
      * UC38/ADR-0013: edição parcial — só os campos enviados (não nulos) são
      * atualizados, mesmo padrão de Munição (UC15). É assim que "completar
      * depois" funciona: cada campo pode chegar em edições separadas.
+     * ADR-0015: também precisa de transação própria — mesmo motivo do
+     * register acima.
      */
+    @Transactional
     public SeriesResponse update(UUID userId, UUID seriesId, UpdateSeriesRequest request) {
         Series series = findOwnedSeriesOrThrow(userId, seriesId);
 
@@ -98,7 +116,9 @@ public class SeriesService {
             series.setNotes(request.notes());
         }
 
-        return toResponse(seriesGateway.save(series));
+        Series saved = seriesGateway.save(series);
+        applicationEventPublisher.publishEvent(new DashboardRecalculationRequestedEvent(userId));
+        return toResponse(saved);
     }
 
     /**

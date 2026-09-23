@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.visit.usecase;
 
+import com.shottrack.backend.application.dashboard.event.DashboardRecalculationRequestedEvent;
 import com.shottrack.backend.application.modality.gateway.ModalityGateway;
 import com.shottrack.backend.application.modality.gateway.PracticedModalityGateway;
 import com.shottrack.backend.application.modality.model.Modality;
@@ -13,8 +14,10 @@ import com.shottrack.backend.application.visit.model.TrainingStatus;
 import com.shottrack.backend.application.visit.model.Visit;
 import com.shottrack.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -34,6 +37,7 @@ public class TrainingService {
     private final PracticedModalityGateway practicedModalityGateway;
     private final ModalityGateway modalityGateway;
     private final TrainingMapper trainingMapper;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public TrainingResponse open(UUID userId, OpenTrainingRequest request) {
         Visit visit = findOwnedVisitOrThrow(userId, request.visitId());
@@ -57,7 +61,11 @@ public class TrainingService {
      * UC33/ADR-0012: encerrar um treino não exige que a visita ainda esteja
      * EM_ANDAMENTO — continua possível a qualquer momento, é uma ação
      * separada do encerramento da visita.
+     * ADR-0015: precisa de transação própria pra que o evento publicado no
+     * fim só seja entregue na fila depois que este método inteiro commitar
+     * (ver SeriesService.register).
      */
+    @Transactional
     public TrainingResponse close(UUID userId, UUID trainingId) {
         Training training = findOwnedTrainingOrThrow(userId, trainingId);
 
@@ -67,7 +75,9 @@ public class TrainingService {
 
         training.close(Instant.now());
 
-        return toResponse(trainingGateway.save(training));
+        Training saved = trainingGateway.save(training);
+        applicationEventPublisher.publishEvent(new DashboardRecalculationRequestedEvent(userId));
+        return toResponse(saved);
     }
 
     /**
