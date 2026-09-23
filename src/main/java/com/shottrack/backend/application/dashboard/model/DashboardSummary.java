@@ -1,0 +1,85 @@
+package com.shottrack.backend.application.dashboard.model;
+
+import com.shottrack.backend.common.jpa.AbstractBaseEntity;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * ADR-0015: um registro por atleta, recalculado do zero a cada evento
+ * DashboardRecalculationRequested — nunca atualizado incrementalmente.
+ * "3 visitas mais recentes" não entra aqui (fica de fora do resumo,
+ * calculada direto no UC42 — já é barata o bastante sem pré-cálculo).
+ */
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)
+@Entity
+@Table(name = "dashboard_summary")
+public class DashboardSummary extends AbstractBaseEntity {
+
+    @Id
+    @GeneratedValue
+    private UUID id;
+
+    @Column(name = "user_id", nullable = false, unique = true)
+    private final UUID userId;
+
+    @Column(name = "trainings_this_month", nullable = false)
+    private int trainingsThisMonth;
+
+    @Column(name = "shots_this_month", nullable = false)
+    private int shotsThisMonth;
+
+    /**
+     * EAGER: quem carrega um DashboardSummary sempre precisa das
+     * modalidades junto (é um "read model" completo, não uma entidade de
+     * navegação parcial) — sem isso, acessar a lista fora da sessão que
+     * carregou o resumo (UC42 não abre transação só pra ler) lançaria
+     * LazyInitializationException.
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "dashboard_summary_modalities", joinColumns = @JoinColumn(name = "dashboard_summary_id"))
+    @Column(name = "modality_name")
+    private List<String> practicedModalities = new ArrayList<>();
+
+    @Column(name = "highlight_result_type_name")
+    private String highlightResultTypeName;
+
+    @Column(name = "highlight_value")
+    private BigDecimal highlightValue;
+
+    @Builder
+    private DashboardSummary(UUID userId) {
+        this.userId = userId;
+    }
+
+    /**
+     * ADR-0015: único jeito de mudar o resumo — sempre a substituição
+     * completa de um recálculo do zero, nunca ajuste incremental de um
+     * campo isolado.
+     */
+    public void replaceWith(int trainingsThisMonth, int shotsThisMonth, List<String> practicedModalities,
+                             String highlightResultTypeName, BigDecimal highlightValue) {
+        this.trainingsThisMonth = trainingsThisMonth;
+        this.shotsThisMonth = shotsThisMonth;
+        this.practicedModalities.clear();
+        this.practicedModalities.addAll(practicedModalities);
+        this.highlightResultTypeName = highlightResultTypeName;
+        this.highlightValue = highlightValue;
+    }
+}

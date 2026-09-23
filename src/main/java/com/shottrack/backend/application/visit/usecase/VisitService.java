@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.visit.usecase;
 
+import com.shottrack.backend.application.dashboard.event.DashboardRecalculationRequestedEvent;
 import com.shottrack.backend.application.traininglocation.usecase.TrainingLocationService;
 import com.shottrack.backend.application.visit.dto.StartVisitRequest;
 import com.shottrack.backend.application.visit.dto.TrainingResponse;
@@ -9,8 +10,10 @@ import com.shottrack.backend.application.visit.mapper.VisitMapper;
 import com.shottrack.backend.application.visit.model.Visit;
 import com.shottrack.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -24,6 +27,7 @@ public class VisitService {
     private final TrainingLocationService trainingLocationService;
     private final TrainingService trainingService;
     private final VisitMapper visitMapper;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public VisitResponse start(UUID userId, StartVisitRequest request) {
         trainingLocationService.findOwnedTrainingLocationOrThrow(userId, request.trainingLocationId());
@@ -47,7 +51,11 @@ public class VisitService {
      * UC34/ADR-0012: encerra a visita e, na mesma operação (mesmo timestamp),
      * encerra também qualquer treino dela ainda EM_ANDAMENTO — sem exigir
      * confirmação adicional.
+     * ADR-0015: também precisa de transação própria — mesmo motivo do
+     * TrainingService.close (o evento publicado no fim só é entregue na
+     * fila depois que este método inteiro commitar).
      */
+    @Transactional
     public VisitResponse close(UUID userId, UUID visitId) {
         Visit visit = findOwnedVisitOrThrow(userId, visitId);
 
@@ -59,7 +67,9 @@ public class VisitService {
         visit.close(closedAt);
         trainingService.closeAllOpenByVisitId(visitId, closedAt);
 
-        return toResponse(visitGateway.save(visit));
+        Visit saved = visitGateway.save(visit);
+        applicationEventPublisher.publishEvent(new DashboardRecalculationRequestedEvent(userId));
+        return toResponse(saved);
     }
 
     private Visit findOwnedVisitOrThrow(UUID userId, UUID visitId) {

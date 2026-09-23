@@ -1,0 +1,57 @@
+# ADR-0015: Dashboard pré-calculado via fila, recálculo completo por evento
+
+## Contexto
+O UC42 (consultar dashboard) calcula as estatísticas na hora da consulta.
+Decisão: mover esse cálculo pra background, disparado por eventos, pra
+não impactar o tempo de resposta das ações que geram os dados (registrar
+série, editar série, registrar/remover resultado, encerrar treino,
+encerrar visita).
+
+## Decisão
+- **RabbitMQ** como fila, com retry e dead-letter queue (DLQ) — falha no
+  processamento não é silenciosa, fica visível e tenta de novo.
+- Os 5 pontos de escrita relevantes (UC33, UC34, UC36, UC38, UC39, UC40 —
+  seis, na verdade) publicam um evento leve `DashboardRecalculationRequested`
+  contendo só `atletaId`, depois que a transação principal já commitou —
+  nunca antes, pra não publicar evento de uma escrita que pode dar rollback.
+- Um consumidor escuta esse evento e **recalcula do zero** todas as
+  estatísticas daquele atleta (mesma lógica já desenhada no UC42 — nenhuma
+  lógica nova, só muda o destino: grava numa tabela `dashboard_summary`
+  em vez de responder direto numa requisição HTTP).
+- Recalcular do zero é naturalmente idempotente: processar o mesmo evento
+  duas vezes (reentrega da fila, por exemplo) produz o mesmo resultado,
+  sem necessidade de deduplicação.
+- `GET /api/dashboard` (UC42, revisado) passa a **ler** de
+  `dashboard_summary`. Se não existir linha ainda pra aquele atleta
+  (primeiro acesso, antes de qualquer evento ter sido processado), calcula
+  na hora como fallback (mesma lógica), sem esperar o evento.
+
+## Alternativas consideradas
+- Atualização incremental do resumo a cada escrita (somar/comparar em vez
+  de recalcular tudo) → rejeitado: mais rápido de processar, mas cada
+  ponto de escrita precisaria de lógica própria e correta pra manter o
+  resumo consistente — superfície de bug maior. Recalcular tudo é mais
+  simples de manter correto, e o volume de dado por atleta é pequeno o
+  bastante pra isso não pesar.
+- `@Async` do Spring sem fila de verdade → rejeitado: sem retry nem DLQ,
+  falha vira inconsistência silenciosa e permanente.
+- Publicar o evento antes do commit da transação principal → rejeitado:
+  arriscaria disparar recálculo de uma escrita que não vingou (rollback).
+
+## Consequências
+- Precisa de RabbitMQ no `docker-compose.yml` (dev e teste) e da
+  dependência `spring-boot-starter-amqp`.
+- Nova tabela `dashboard_summary` (um registro por atleta).
+- UC42 passa a ter dois caminhos de leitura: tabela de resumo (caminho
+  normal) e cálculo direto como fallback (primeiro acesso).
+- Os 6 use cases de escrita ganham um efeito colateral (publicar evento)
+  — precisa de teste garantindo que o evento é publicado, além dos testes
+  que já existiam.
+- Testes do consumidor podem rodar a lógica de recálculo diretamente
+  (sem precisar de fila de verdade rodando), já que ela é a mesma do
+  fallback do UC42 — só o teste de publicação/consumo de evento em si
+  precisa da fila.
+
+## Referências
+- UC42 (consultar dashboard — revisado)
+- ADR-0013 (Série — mesma lógica de cálculo reaproveitada)

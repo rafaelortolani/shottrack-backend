@@ -28,6 +28,17 @@ automaticamente essa sugestão como ponto de partida — gravada como
 seleção **do atleta** (não uma referência à sugestão), editável livremente
 depois (UC30), sem nenhuma obrigatoriedade de manter os tipos sugeridos.
 
+## Revisão — orientação de "melhor valor" por tipo
+Pra dar suporte a comparações (ex: dashboard mostrando "melhor resultado"
+do atleta), cada tipo de resultado do catálogo ganha um atributo fixo de
+**orientação**:
+- `MENOR_MELHOR`: tempo, agrupamento, erros, penalidades
+- `MAIOR_MELHOR`: pontuação, acertos, fator de desempenho
+- `NAO_APLICAVEL`: exercício concluído (booleano), anotação livre (texto)
+  — não fazem sentido como "melhor valor" numérico
+
+Isso é atributo do catálogo (seed), não algo que o atleta configura.
+
 ## Alternativas consideradas
 - Começar vazio, sem sugestão nenhuma → rejeitado: o próprio documento
   pede configuração inicial pra facilitar o primeiro uso; começar vazio
@@ -36,10 +47,13 @@ depois (UC30), sem nenhuma obrigatoriedade de manter os tipos sugeridos.
 - Sugestão calculada dinamicamente (ex: por popularidade entre outros
   atletas) → rejeitado: não há dado nenhum ainda pra calcular isso;
   tabela fixa de seed é suficiente e muito mais simples.
+- Orientação decidida em tempo de execução (comparando valores sem regra
+  fixa) → rejeitado: não dá pra saber se "menor" ou "maior" é melhor só
+  olhando os números; precisa ser metadado do tipo.
 
 ## Consequências
-- Precisa de duas tabelas de seed: tipos de resultado, e o mapeamento
-  modalidade → tipos sugeridos.
+- Precisa de duas tabelas de seed: tipos de resultado (agora incluindo a
+  coluna de orientação), e o mapeamento modalidade → tipos sugeridos.
 - UC12 (adicionar modalidade praticada) passa a, internamente, também
   criar as seleções de tipo de resultado a partir da sugestão — sem mudar
   a interface pública do UC12 (o atleta só vê o resultado, não pede a
@@ -52,3 +66,4 @@ depois (UC30), sem nenhuma obrigatoriedade de manter os tipos sugeridos.
 - ADR-0004, ADR-0005 (mesmo padrão de catálogo fechado)
 - UC12 (adicionar modalidade praticada — gatilho da sugestão padrão)
 - UC29 (catálogo de tipos de resultado), UC30 (ajustar perfil de modalidade)
+- UC42 (dashboard — destaque dinâmico usa a orientação)

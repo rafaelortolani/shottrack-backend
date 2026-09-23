@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.series.usecase;
 
+import com.shottrack.backend.application.dashboard.event.DashboardRecalculationRequestedEvent;
 import com.shottrack.backend.application.modality.gateway.ModalityResultTypeSelectionGateway;
 import com.shottrack.backend.application.modality.gateway.ResultTypeGateway;
 import com.shottrack.backend.application.modality.model.ResultType;
@@ -14,8 +15,10 @@ import com.shottrack.backend.application.visit.model.Training;
 import com.shottrack.backend.application.visit.usecase.TrainingService;
 import com.shottrack.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -45,11 +48,16 @@ public class SeriesResultService {
     private final ModalityResultTypeSelectionGateway modalityResultTypeSelectionGateway;
     private final ResultTypeGateway resultTypeGateway;
     private final SeriesResultMapper seriesResultMapper;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     /**
      * UC39 — fluxo "registrar valor": substitui um registro anterior pra
      * esse tipo, inclusive se estava marcado "não aplicável".
+     * ADR-0015: precisa de transação própria pra que o evento publicado no
+     * fim só seja entregue na fila depois que este método inteiro commitar
+     * (ver SeriesService.register).
      */
+    @Transactional
     public SeriesResultResponse registerValue(UUID userId, UUID seriesId, UUID resultTypeId, String value) {
         Series series = findOwnedSeriesOrThrow(userId, seriesId);
         ResultType resultType = assertConfiguredForTrainingModality(userId, series, resultTypeId);
@@ -60,13 +68,18 @@ public class SeriesResultService {
         SeriesResult result = findOrCreateResult(series.getId(), resultTypeId);
         result.registerValue(value);
 
-        return toResponse(seriesResultGateway.save(result), resultType);
+        SeriesResult saved = seriesResultGateway.save(result);
+        applicationEventPublisher.publishEvent(new DashboardRecalculationRequestedEvent(userId));
+        return toResponse(saved, resultType);
     }
 
     /**
      * UC39 — fluxo "marcar como não aplicável": substitui um valor anterior,
      * se havia.
+     * ADR-0015: também precisa de transação própria — mesmo motivo do
+     * registerValue acima.
      */
+    @Transactional
     public SeriesResultResponse markNotApplicable(UUID userId, UUID seriesId, UUID resultTypeId) {
         Series series = findOwnedSeriesOrThrow(userId, seriesId);
         ResultType resultType = assertConfiguredForTrainingModality(userId, series, resultTypeId);
@@ -76,13 +89,18 @@ public class SeriesResultService {
         SeriesResult result = findOrCreateResult(series.getId(), resultTypeId);
         result.markNotApplicable();
 
-        return toResponse(seriesResultGateway.save(result), resultType);
+        SeriesResult saved = seriesResultGateway.save(result);
+        applicationEventPublisher.publishEvent(new DashboardRecalculationRequestedEvent(userId));
+        return toResponse(saved, resultType);
     }
 
     /**
      * UC40: remove o registro — o tipo volta ao estado "não preenchido"
      * (deixa de existir, não vira "0" nem "não aplicável").
+     * ADR-0015: também precisa de transação própria — mesmo motivo do
+     * registerValue acima.
      */
+    @Transactional
     public void remove(UUID userId, UUID seriesId, UUID resultTypeId) {
         Series series = findOwnedSeriesOrThrow(userId, seriesId);
 
@@ -92,6 +110,7 @@ public class SeriesResultService {
 
         seriesResultGateway.delete(result);
         enforceShotCountConsistency(series, resultType, BigDecimal.ZERO);
+        applicationEventPublisher.publishEvent(new DashboardRecalculationRequestedEvent(userId));
     }
 
     /**

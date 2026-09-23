@@ -16,5 +16,14 @@ services:
     volumes:
       - shottrack_pgdata:/var/lib/postgresql/data
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"    # protocolo AMQP, usado pela aplicação
+      - "15672:15672"  # painel de administração web
+    environment:
+      RABBITMQ_DEFAULT_USER: shottrack
+      RABBITMQ_DEFAULT_PASS: shottrack
+
 volumes:
   shottrack_pgdata:
