@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.dashboard.gateway.repository.DashboardSummaryRepository;
 import com.shottrack.backend.application.dashboard.model.DashboardSummary;
+import com.shottrack.backend.application.dashboard.model.ModalityStats;
 import com.shottrack.backend.application.dashboard.usecase.DashboardRecalculationService;
 import com.shottrack.backend.application.modality.dto.AddModalityResultTypeRequest;
 import com.shottrack.backend.application.series.dto.RegisterSeriesRequest;
@@ -13,6 +14,7 @@ import com.shottrack.backend.application.series.model.SeriesResult;
 import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
 import com.shottrack.backend.support.SeriesTestSupport;
 import com.shottrack.backend.support.TestUsers;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -59,6 +61,9 @@ class DashboardRecalculationServiceTest {
     @Autowired
     private DashboardRecalculationService dashboardRecalculationService;
 
+    @Autowired
+    private EntityManager entityManager;
+
     @Test
     void shouldRecalculateAndPersistSummaryWithRealData() throws Exception {
         String token = registerAndLogin("atleta.recalculodadosreais@shottrack.com");
@@ -74,6 +79,10 @@ class DashboardRecalculationServiceTest {
         SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "Trap");
 
         dashboardRecalculationService.recalculate(userId);
+        // relê do banco (não do cache do Hibernate) — garante que as
+        // coleções do resumo foram de fato persistidas
+        entityManager.flush();
+        entityManager.clear();
 
         DashboardSummary summary = dashboardSummaryRepository.findByUserId(userId).orElseThrow();
         assertThat(summary.getTrainingsThisMonth()).isEqualTo(2);
@@ -81,6 +90,16 @@ class DashboardRecalculationServiceTest {
         assertThat(summary.getPracticedModalities()).containsExactlyInAnyOrder("IPSC", "Trap");
         assertThat(summary.getHighlightResultTypeName()).isEqualTo("Tempo");
         assertThat(summary.getHighlightValue()).isEqualByComparingTo(new BigDecimal("10.0"));
+
+        assertThat(summary.getModalityStats()).extracting(ModalityStats::getModalityName).containsExactly("IPSC", "Trap");
+        ModalityStats ipsc = summary.getModalityStats().get(0);
+        assertThat(ipsc.getTrainingCount()).isEqualTo(1);
+        assertThat(ipsc.getBestResultTypeName()).isEqualTo("Tempo");
+        assertThat(ipsc.getBestValue()).isEqualByComparingTo(new BigDecimal("10.0"));
+        ModalityStats trap = summary.getModalityStats().get(1);
+        assertThat(trap.getTrainingCount()).isEqualTo(1);
+        assertThat(trap.getBestResultTypeName()).isNull();
+        assertThat(trap.getBestValue()).isNull();
     }
 
     @Test
