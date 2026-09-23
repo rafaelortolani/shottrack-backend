@@ -4,10 +4,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-public record RecentVisitResponse(
+public record ActiveVisitResponse(
         UUID visitId,
         String trainingLocationName,
         Instant startedAt,
-        List<String> modalityNames
+        List<String> activeTrainingModalityNames
 ) {
 }

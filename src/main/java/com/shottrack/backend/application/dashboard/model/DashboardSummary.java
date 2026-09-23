@@ -14,6 +14,8 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -23,8 +25,9 @@ import java.util.UUID;
 /**
  * ADR-0015: um registro por atleta, recalculado do zero a cada evento
  * DashboardRecalculationRequested — nunca atualizado incrementalmente.
- * "3 visitas mais recentes" não entra aqui (fica de fora do resumo,
- * calculada direto no UC42 — já é barata o bastante sem pré-cálculo).
+ * Só guarda o que depende de histórico inteiro de séries/resultados; as
+ * seções do UC42 que dependem de dados sem evento (onboarding, ação
+ * principal, últimos treinos, acervo) ficam fora (ADR-0015).
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)
@@ -57,6 +60,16 @@ public class DashboardSummary extends AbstractBaseEntity {
     @Column(name = "modality_name")
     private List<String> practicedModalities = new ArrayList<>();
 
+    /**
+     * EAGER pelo mesmo motivo de practicedModalities. FetchMode.SELECT
+     * carrega numa query separada: duas listas EAGER no mesmo JOIN fazem o
+     * Hibernate lançar MultipleBagFetchException.
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @Fetch(FetchMode.SELECT)
+    @CollectionTable(name = "dashboard_summary_modality_stats", joinColumns = @JoinColumn(name = "dashboard_summary_id"))
+    private List<ModalityStats> modalityStats = new ArrayList<>();
+
     @Column(name = "highlight_result_type_name")
     private String highlightResultTypeName;
 
@@ -74,11 +87,13 @@ public class DashboardSummary extends AbstractBaseEntity {
      * campo isolado.
      */
     public void replaceWith(int trainingsThisMonth, int shotsThisMonth, List<String> practicedModalities,
-                             String highlightResultTypeName, BigDecimal highlightValue) {
+                             List<ModalityStats> modalityStats, String highlightResultTypeName, BigDecimal highlightValue) {
         this.trainingsThisMonth = trainingsThisMonth;
         this.shotsThisMonth = shotsThisMonth;
         this.practicedModalities.clear();
         this.practicedModalities.addAll(practicedModalities);
+        this.modalityStats.clear();
+        this.modalityStats.addAll(modalityStats);
         this.highlightResultTypeName = highlightResultTypeName;
         this.highlightValue = highlightValue;
     }

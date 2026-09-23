@@ -11,7 +11,9 @@ Usuário logado (UC02) com access token válido.
    `INTERMEDIATE`/intermediário ou `ADVANCED`/avançado) — os dois campos são
    sempre enviados juntos nesse endpoint, mesmo que só um deles tenha mudado
 2. Sistema valida que o nome não está vazio e que o nível de experiência é um
-   dos três valores permitidos, e atualiza os dois
+   dos três valores permitidos, e atualiza os dois. Na primeira edição,
+   marca o perfil como concluído (pendência "Criar perfil" do onboarding,
+   UC42)
 
 ## Fluxo principal — trocar email
 1. Atleta envia o novo email desejado

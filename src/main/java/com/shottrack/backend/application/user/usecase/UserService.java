@@ -108,6 +108,7 @@ public class UserService {
         User user = findUserOrThrow(userId);
         user.setName(request.name());
         user.setExperienceLevel(ExperienceLevel.valueOf(request.experienceLevel()));
+        user.markProfileCompleted(Instant.now());
         return userMapper.toResponse(userGateway.save(user));
     }
 

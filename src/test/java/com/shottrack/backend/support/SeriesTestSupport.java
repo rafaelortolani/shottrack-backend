@@ -66,12 +66,16 @@ public final class SeriesTestSupport {
     }
 
     public static UUID registerWeapon(MockMvc mockMvc, ObjectMapper objectMapper, String token) throws Exception {
+        return registerWeapon(mockMvc, objectMapper, token, null);
+    }
+
+    public static UUID registerWeapon(MockMvc mockMvc, ObjectMapper objectMapper, String token, String nickname) throws Exception {
         UUID typeId = idByName(mockMvc, objectMapper, token, "/api/weapon-catalog/types", "Pistola");
         UUID brandId = idByName(mockMvc, objectMapper, token, "/api/weapon-catalog/brands", "Glock");
         UUID modelId = idByName(mockMvc, objectMapper, token, "/api/weapon-catalog/brands/" + brandId + "/models", "G17");
         UUID caliberId = idByName(mockMvc, objectMapper, token, "/api/weapon-catalog/calibers", "9mm");
 
-        var request = new WeaponRegisterRequest(typeId, brandId, modelId, caliberId, null);
+        var request = new WeaponRegisterRequest(typeId, brandId, modelId, caliberId, nickname);
         var result = mockMvc.perform(post("/api/weapons")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

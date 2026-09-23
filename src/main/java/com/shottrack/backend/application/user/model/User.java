@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -41,6 +42,9 @@ public class User extends AbstractBaseEntity {
     @Column(name = "experience_level", nullable = false)
     private ExperienceLevel experienceLevel = ExperienceLevel.BEGINNER;
 
+    @Column(name = "profile_completed_at")
+    private Instant profileCompletedAt;
+
     @Builder
     private User(@NonNull String name, @NonNull String email, @NonNull String passwordHash, ExperienceLevel experienceLevel) {
         this.name = name;
@@ -49,5 +53,19 @@ public class User extends AbstractBaseEntity {
         if (experienceLevel != null) {
             this.experienceLevel = experienceLevel;
         }
+    }
+
+    /**
+     * UC42 (onboarding): fora do builder — só muda por aqui, na primeira
+     * edição de perfil (UC04). Edições seguintes mantêm a data original.
+     */
+    public void markProfileCompleted(Instant completedAt) {
+        if (profileCompletedAt == null) {
+            this.profileCompletedAt = completedAt;
+        }
+    }
+
+    public boolean isProfileCompleted() {
+        return profileCompletedAt != null;
     }
 }

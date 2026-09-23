@@ -26,6 +26,22 @@ encerrar visita).
   (primeiro acesso, antes de qualquer evento ter sido processado), calcula
   na hora como fallback (mesma lógica), sem esperar o evento.
 
+## Revisão — Onda 1 do dashboard (UC42)
+Nem tudo do UC42 entra no resumo pré-calculado. O critério é se as
+escritas que alimentam a seção publicam o evento de recálculo:
+- **No resumo** (`dashboard_summary`): indicadores do mês, modalidades
+  praticadas, resumo de modalidades (`dashboard_summary_modality_stats`)
+  e destaque geral. Dependem do histórico inteiro de séries/resultados,
+  que só muda pelos pontos de escrita acima.
+- **Calculado na hora, nos dois caminhos de leitura**: onboarding, ação
+  principal, últimos treinos e acervo. Dependem de escritas que não
+  publicam evento (perfil, modalidades praticadas, armas, iniciar
+  visita/abrir treino, editar local), e são baratos: no máximo 5 treinos,
+  nunca o histórico inteiro.
+
+A regra do destaque (ADR-0011) é uma só, parametrizada pelo conjunto de
+resultados: atleta inteiro, uma modalidade ou um treino.
+
 ## Alternativas consideradas
 - Atualização incremental do resumo a cada escrita (somar/comparar em vez
   de recalcular tudo) → rejeitado: mais rápido de processar, mas cada
