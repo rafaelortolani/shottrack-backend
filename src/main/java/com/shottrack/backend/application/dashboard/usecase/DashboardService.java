@@ -7,6 +7,7 @@ import com.shottrack.backend.application.dashboard.dto.MainActionResponse;
 import com.shottrack.backend.application.dashboard.dto.ModalitySummaryResponse;
 import com.shottrack.backend.application.dashboard.dto.OnboardingResponse;
 import com.shottrack.backend.application.dashboard.dto.RecentTrainingResponse;
+import com.shottrack.backend.application.dashboard.dto.ResultRecordResponse;
 import com.shottrack.backend.application.dashboard.dto.WeaponCollectionResponse;
 import com.shottrack.backend.application.dashboard.gateway.DashboardSummaryGateway;
 import com.shottrack.backend.application.dashboard.model.DashboardSummary;
@@ -98,13 +99,14 @@ public class DashboardService {
                 recentTrainings(visits),
                 stats.modalityStats().stream().map(this::toModalitySummaryResponse).toList(),
                 weaponCollection(weapons),
-                toHighlightResponse(stats.highlightResultTypeName(), stats.highlightValue()));
+                stats.records().stream()
+                        .map(record -> new ResultRecordResponse(record.getResultTypeName(), record.getBestValue()))
+                        .toList());
     }
 
     private DashboardStats toStats(DashboardSummary summary) {
         return new DashboardStats(summary.getTrainingsThisMonth(), summary.getShotsThisMonth(),
-                summary.getPracticedModalities(), summary.getModalityStats(),
-                summary.getHighlightResultTypeName(), summary.getHighlightValue());
+                summary.getPracticedModalities(), summary.getModalityStats(), summary.getRecords());
     }
 
     /**

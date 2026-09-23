@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.dashboard.gateway.repository.DashboardSummaryRepository;
 import com.shottrack.backend.application.dashboard.model.DashboardSummary;
 import com.shottrack.backend.application.dashboard.model.ModalityStats;
+import com.shottrack.backend.application.dashboard.model.ResultRecord;
 import com.shottrack.backend.application.dashboard.usecase.DashboardRecalculationService;
 import com.shottrack.backend.application.modality.dto.AddModalityResultTypeRequest;
 import com.shottrack.backend.application.series.dto.RegisterSeriesRequest;
@@ -88,8 +89,10 @@ class DashboardRecalculationServiceTest {
         assertThat(summary.getTrainingsThisMonth()).isEqualTo(2);
         assertThat(summary.getShotsThisMonth()).isEqualTo(50);
         assertThat(summary.getPracticedModalities()).containsExactlyInAnyOrder("IPSC", "Trap");
-        assertThat(summary.getHighlightResultTypeName()).isEqualTo("Tempo");
-        assertThat(summary.getHighlightValue()).isEqualByComparingTo(new BigDecimal("10.0"));
+        assertThat(summary.getRecords()).singleElement().satisfies(record -> {
+            assertThat(record.getResultTypeName()).isEqualTo("Tempo");
+            assertThat(record.getBestValue()).isEqualByComparingTo(new BigDecimal("10.0"));
+        });
 
         assertThat(summary.getModalityStats()).extracting(ModalityStats::getModalityName).containsExactly("IPSC", "Trap");
         ModalityStats ipsc = summary.getModalityStats().get(0);
@@ -123,7 +126,7 @@ class DashboardRecalculationServiceTest {
     }
 
     @Test
-    void shouldPickHighlightTypeWithMostFilledRecordsRespectingOrientation() throws Exception {
+    void shouldPickModalityHighlightTypeWithMostFilledRecordsRespectingOrientation() throws Exception {
         String token = registerAndLogin("atleta.destaquemaisregistrado@shottrack.com");
         UUID userId = currentUserId(token);
 
@@ -142,13 +145,47 @@ class DashboardRecalculationServiceTest {
 
         dashboardRecalculationService.recalculate(userId);
 
-        DashboardSummary summary = dashboardSummaryRepository.findByUserId(userId).orElseThrow();
-        assertThat(summary.getHighlightResultTypeName()).isEqualTo("Tempo");
-        assertThat(summary.getHighlightValue()).isEqualByComparingTo(new BigDecimal("10.5"));
+        ModalityStats ipsc = dashboardSummaryRepository.findByUserId(userId).orElseThrow().getModalityStats().get(0);
+        assertThat(ipsc.getBestResultTypeName()).isEqualTo("Tempo");
+        assertThat(ipsc.getBestValue()).isEqualByComparingTo(new BigDecimal("10.5"));
     }
 
     @Test
-    void shouldTieBreakHighlightByMostRecentlyUsedType() throws Exception {
+    void shouldListRecordForEveryEligibleTypeWithItsBestValue() throws Exception {
+        String token = registerAndLogin("atleta.recordesplurais@shottrack.com");
+        UUID userId = currentUserId(token);
+
+        UUID ipscTraining = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
+        UUID ipscId = modalityIdByName(token, "IPSC");
+        UUID tempoId = configureResultType(token, ipscId, "Tempo");
+        UUID pontuacaoId = configureResultType(token, ipscId, "Pontuação");
+        UUID precisaoTraining = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "Precisão");
+        UUID agrupamentoId = configureResultType(token, modalityIdByName(token, "Precisão"), "Agrupamento");
+
+        // Tempo (MENOR_MELHOR): melhor é 10.5
+        registerSeriesWithResult(token, ipscTraining, tempoId, "12.0");
+        registerSeriesWithResult(token, ipscTraining, tempoId, "10.5");
+        // Pontuação (MAIOR_MELHOR): melhor é 95, mesmo em modalidades diferentes
+        registerSeriesWithResult(token, ipscTraining, pontuacaoId, "80");
+        registerSeriesWithResult(token, precisaoTraining, pontuacaoId, "95");
+        // Agrupamento (MENOR_MELHOR): melhor é 2.9
+        registerSeriesWithResult(token, precisaoTraining, agrupamentoId, "3.3");
+        registerSeriesWithResult(token, precisaoTraining, agrupamentoId, "2.9");
+
+        dashboardRecalculationService.recalculate(userId);
+        entityManager.flush();
+        entityManager.clear();
+
+        DashboardSummary summary = dashboardSummaryRepository.findByUserId(userId).orElseThrow();
+        assertThat(summary.getRecords()).extracting(ResultRecord::getResultTypeName)
+                .containsExactly("Agrupamento", "Pontuação", "Tempo");
+        assertThat(summary.getRecords()).extracting(ResultRecord::getBestValue)
+                .usingElementComparator(BigDecimal::compareTo)
+                .containsExactly(new BigDecimal("2.9"), new BigDecimal("95"), new BigDecimal("10.5"));
+    }
+
+    @Test
+    void shouldTieBreakModalityHighlightByMostRecentlyUsedType() throws Exception {
         String token = registerAndLogin("atleta.destaquedesempate@shottrack.com");
         UUID userId = currentUserId(token);
 
@@ -165,13 +202,13 @@ class DashboardRecalculationServiceTest {
 
         dashboardRecalculationService.recalculate(userId);
 
-        DashboardSummary summary = dashboardSummaryRepository.findByUserId(userId).orElseThrow();
-        assertThat(summary.getHighlightResultTypeName()).isEqualTo("Pontuação");
-        assertThat(summary.getHighlightValue()).isEqualByComparingTo(new BigDecimal("95"));
+        ModalityStats ipsc = dashboardSummaryRepository.findByUserId(userId).orElseThrow().getModalityStats().get(0);
+        assertThat(ipsc.getBestResultTypeName()).isEqualTo("Pontuação");
+        assertThat(ipsc.getBestValue()).isEqualByComparingTo(new BigDecimal("95"));
     }
 
     @Test
-    void shouldHaveNoHighlightWhenNoEligibleTypeHasData() throws Exception {
+    void shouldHaveNoRecordsNorHighlightWhenNoEligibleTypeHasData() throws Exception {
         String token = registerAndLogin("atleta.destaqueausente@shottrack.com");
         UUID userId = currentUserId(token);
 
@@ -180,12 +217,13 @@ class DashboardRecalculationServiceTest {
         dashboardRecalculationService.recalculate(userId);
 
         DashboardSummary summary = dashboardSummaryRepository.findByUserId(userId).orElseThrow();
-        assertThat(summary.getHighlightResultTypeName()).isNull();
-        assertThat(summary.getHighlightValue()).isNull();
+        assertThat(summary.getRecords()).isEmpty();
+        assertThat(summary.getModalityStats().get(0).getBestResultTypeName()).isNull();
+        assertThat(summary.getModalityStats().get(0).getBestValue()).isNull();
     }
 
     @Test
-    void shouldIgnoreNonNumericValueWhenCalculatingHighlight() throws Exception {
+    void shouldIgnoreNonNumericValueWhenCalculatingRecords() throws Exception {
         String token = registerAndLogin("atleta.destaquevalornaonumerico@shottrack.com");
         UUID userId = currentUserId(token);
 
@@ -202,7 +240,7 @@ class DashboardRecalculationServiceTest {
 
         DashboardSummary summary = dashboardSummaryRepository.findByUserId(userId).orElseThrow();
         // valor inválido é ignorado — nenhum tipo elegível sobra com registro válido
-        assertThat(summary.getHighlightResultTypeName()).isNull();
+        assertThat(summary.getRecords()).isEmpty();
 
         UUID seriesIdValido = registerSeries(token, trainingId);
         registerValue(token, seriesIdValido, tempoId, "8.0");
@@ -210,8 +248,10 @@ class DashboardRecalculationServiceTest {
         dashboardRecalculationService.recalculate(userId);
 
         DashboardSummary updated = dashboardSummaryRepository.findByUserId(userId).orElseThrow();
-        assertThat(updated.getHighlightResultTypeName()).isEqualTo("Tempo");
-        assertThat(updated.getHighlightValue()).isEqualByComparingTo(new BigDecimal("8.0"));
+        assertThat(updated.getRecords()).singleElement().satisfies(record -> {
+            assertThat(record.getResultTypeName()).isEqualTo("Tempo");
+            assertThat(record.getBestValue()).isEqualByComparingTo(new BigDecimal("8.0"));
+        });
     }
 
     private void registerValue(String token, UUID seriesId, UUID resultTypeId, String value) throws Exception {

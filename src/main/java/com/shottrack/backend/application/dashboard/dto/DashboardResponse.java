@@ -15,6 +15,6 @@ public record DashboardResponse(
         List<RecentTrainingResponse> recentTrainings,
         List<ModalitySummaryResponse> modalitySummaries,
         WeaponCollectionResponse weaponCollection,
-        DashboardHighlightResponse highlight
+        List<ResultRecordResponse> records
 ) {
 }

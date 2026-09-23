@@ -3,6 +3,7 @@ package com.shottrack.backend.application.dashboard.usecase;
 import com.shottrack.backend.application.dashboard.gateway.DashboardSummaryGateway;
 import com.shottrack.backend.application.dashboard.model.DashboardSummary;
 import com.shottrack.backend.application.dashboard.model.ModalityStats;
+import com.shottrack.backend.application.dashboard.model.ResultRecord;
 import com.shottrack.backend.application.modality.gateway.ModalityGateway;
 import com.shottrack.backend.application.modality.model.Modality;
 import com.shottrack.backend.application.series.gateway.SeriesGateway;
@@ -57,7 +58,7 @@ public class DashboardRecalculationService {
         DashboardSummary summary = dashboardSummaryGateway.findByUserId(userId)
                 .orElseGet(() -> DashboardSummary.builder().userId(userId).build());
         summary.replaceWith(stats.trainingsThisMonth(), stats.shotsThisMonth(), stats.practicedModalities(),
-                stats.modalityStats(), stats.highlightResultTypeName(), stats.highlightValue());
+                stats.modalityStats(), stats.records());
 
         dashboardSummaryGateway.save(summary);
     }
@@ -92,12 +93,12 @@ public class DashboardRecalculationService {
                 .map(ModalityStats::getModalityName)
                 .toList();
 
-        Optional<ResultHighlight> highlight = highlightCalculator.calculate(
-                resultsByTrainingId.values().stream().flatMap(List::stream).toList());
+        List<ResultRecord> records = highlightCalculator.records(
+                        resultsByTrainingId.values().stream().flatMap(List::stream).toList()).stream()
+                .map(best -> ResultRecord.builder().resultTypeName(best.resultTypeName()).bestValue(best.value()).build())
+                .toList();
 
-        return new DashboardStats(trainingsThisMonth, shotsThisMonth, practicedModalities, modalityStats,
-                highlight.map(ResultHighlight::resultTypeName).orElse(null),
-                highlight.map(ResultHighlight::value).orElse(null));
+        return new DashboardStats(trainingsThisMonth, shotsThisMonth, practicedModalities, modalityStats, records);
     }
 
     /**

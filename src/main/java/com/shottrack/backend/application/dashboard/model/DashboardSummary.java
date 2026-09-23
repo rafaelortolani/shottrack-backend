@@ -17,7 +17,6 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -70,11 +69,13 @@ public class DashboardSummary extends AbstractBaseEntity {
     @CollectionTable(name = "dashboard_summary_modality_stats", joinColumns = @JoinColumn(name = "dashboard_summary_id"))
     private List<ModalityStats> modalityStats = new ArrayList<>();
 
-    @Column(name = "highlight_result_type_name")
-    private String highlightResultTypeName;
-
-    @Column(name = "highlight_value")
-    private BigDecimal highlightValue;
+    /**
+     * ADR-0016: EAGER + FetchMode.SELECT pelo mesmo motivo de modalityStats.
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @Fetch(FetchMode.SELECT)
+    @CollectionTable(name = "dashboard_summary_records", joinColumns = @JoinColumn(name = "dashboard_summary_id"))
+    private List<ResultRecord> records = new ArrayList<>();
 
     @Builder
     private DashboardSummary(UUID userId) {
@@ -87,14 +88,14 @@ public class DashboardSummary extends AbstractBaseEntity {
      * campo isolado.
      */
     public void replaceWith(int trainingsThisMonth, int shotsThisMonth, List<String> practicedModalities,
-                             List<ModalityStats> modalityStats, String highlightResultTypeName, BigDecimal highlightValue) {
+                             List<ModalityStats> modalityStats, List<ResultRecord> records) {
         this.trainingsThisMonth = trainingsThisMonth;
         this.shotsThisMonth = shotsThisMonth;
         this.practicedModalities.clear();
         this.practicedModalities.addAll(practicedModalities);
         this.modalityStats.clear();
         this.modalityStats.addAll(modalityStats);
-        this.highlightResultTypeName = highlightResultTypeName;
-        this.highlightValue = highlightValue;
+        this.records.clear();
+        this.records.addAll(records);
     }
 }

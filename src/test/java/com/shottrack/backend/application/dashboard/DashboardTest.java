@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.dashboard.gateway.repository.DashboardSummaryRepository;
 import com.shottrack.backend.application.dashboard.model.DashboardSummary;
 import com.shottrack.backend.application.dashboard.model.ModalityStats;
+import com.shottrack.backend.application.dashboard.model.ResultRecord;
 import com.shottrack.backend.application.modality.dto.AddModalityResultTypeRequest;
 import com.shottrack.backend.application.modality.dto.AddPracticedModalityRequest;
 import com.shottrack.backend.application.series.dto.RegisterSeriesRequest;
@@ -74,7 +75,9 @@ class DashboardTest {
                         ModalityStats.builder().modalityName("Skeet").trainingCount(4).build(),
                         ModalityStats.builder().modalityName("Trap").trainingCount(3)
                                 .bestResultTypeName("Acertos").bestValue(new BigDecimal("24")).build()),
-                "Agrupamento", new BigDecimal("3.30"));
+                List.of(
+                        ResultRecord.builder().resultTypeName("Acertos").bestValue(new BigDecimal("24")).build(),
+                        ResultRecord.builder().resultTypeName("Agrupamento").bestValue(new BigDecimal("3.30")).build()));
         dashboardSummaryRepository.save(summary);
 
         mockMvc.perform(get("/api/dashboard")
@@ -87,8 +90,11 @@ class DashboardTest {
                 .andExpect(jsonPath("$.data.modalitySummaries[?(@.modalityName == 'Skeet')].trainingCount").value(4))
                 .andExpect(jsonPath("$.data.modalitySummaries[?(@.modalityName == 'Trap')].best.resultTypeName").value("Acertos"))
                 .andExpect(jsonPath("$.data.modalitySummaries[?(@.modalityName == 'Trap')].best.value").value(24))
-                .andExpect(jsonPath("$.data.highlight.resultTypeName").value("Agrupamento"))
-                .andExpect(jsonPath("$.data.highlight.value").value(3.30))
+                .andExpect(jsonPath("$.data.records.length()").value(2))
+                .andExpect(jsonPath("$.data.records[0].resultTypeName").value("Acertos"))
+                .andExpect(jsonPath("$.data.records[0].value").value(24))
+                .andExpect(jsonPath("$.data.records[1].resultTypeName").value("Agrupamento"))
+                .andExpect(jsonPath("$.data.records[1].value").value(3.30))
                 .andExpect(jsonPath("$.data.recentTrainings.length()").value(0));
     }
 
@@ -119,8 +125,9 @@ class DashboardTest {
                 .andExpect(jsonPath("$.data.trainingsThisMonth").value(1))
                 .andExpect(jsonPath("$.data.shotsThisMonth").value(25))
                 .andExpect(jsonPath("$.data.practicedModalities", contains("IPSC")))
-                .andExpect(jsonPath("$.data.highlight.resultTypeName").value("Tempo"))
-                .andExpect(jsonPath("$.data.highlight.value").value(9.8));
+                .andExpect(jsonPath("$.data.records.length()").value(1))
+                .andExpect(jsonPath("$.data.records[0].resultTypeName").value("Tempo"))
+                .andExpect(jsonPath("$.data.records[0].value").value(9.8));
 
         // fallback só calcula, nunca grava
         assertThat(dashboardSummaryRepository.findByUserId(userId)).isEmpty();
@@ -143,7 +150,7 @@ class DashboardTest {
                 .andExpect(jsonPath("$.data.modalitySummaries.length()").value(0))
                 .andExpect(jsonPath("$.data.weaponCollection.weaponCount").value(0))
                 .andExpect(jsonPath("$.data.weaponCollection.weaponNames.length()").value(0))
-                .andExpect(jsonPath("$.data.highlight").isEmpty());
+                .andExpect(jsonPath("$.data.records.length()").value(0));
     }
 
     @Test
@@ -233,8 +240,9 @@ class DashboardTest {
                 .andExpect(jsonPath("$.data.recentTrainings[2].trainingId").value(withTwoResults.toString()))
                 .andExpect(jsonPath("$.data.recentTrainings[2].highlight.value").value(10.0))
                 .andExpect(jsonPath("$.data.recentTrainings[?(@.trainingId == '" + oldest + "')]").isEmpty())
-                // destaque geral continua olhando o histórico inteiro
-                .andExpect(jsonPath("$.data.highlight.value").value(5.0));
+                // recordes continuam olhando o histórico inteiro
+                .andExpect(jsonPath("$.data.records[0].resultTypeName").value("Tempo"))
+                .andExpect(jsonPath("$.data.records[0].value").value(5.0));
     }
 
     @Test
