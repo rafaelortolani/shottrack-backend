@@ -1,8 +1,8 @@
 package com.shottrack.backend.application.dashboard.usecase;
 
 import com.shottrack.backend.application.dashboard.model.ModalityStats;
+import com.shottrack.backend.application.dashboard.model.ResultRecord;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -15,7 +15,6 @@ public record DashboardStats(
         int shotsThisMonth,
         List<String> practicedModalities,
         List<ModalityStats> modalityStats,
-        String highlightResultTypeName,
-        BigDecimal highlightValue
+        List<ResultRecord> records
 ) {
 }

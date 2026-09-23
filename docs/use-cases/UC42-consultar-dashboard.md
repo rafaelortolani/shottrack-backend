@@ -28,8 +28,11 @@ Usuário logado (UC02) com access token válido.
       modalidade em vez do atleta inteiro)
     - **Resumo de acervo**: contagem de armas cadastradas + até 3 nomes
       (as mais recentes; nome é o apelido, ou marca + modelo sem apelido)
-    - **Destaque dinâmico geral** (já existente — melhor valor do tipo
-      mais registrado em toda a história do atleta)
+    - **Recordes** (lista) — pra CADA tipo de resultado com orientação
+      MENOR_MELHOR/MAIOR_MELHOR que tenha pelo menos um registro do
+      atleta, o melhor valor já alcançado (substitui o antigo "destaque
+      dinâmico único" — agora é uma lista, não um só), ordenada pelo nome
+      do tipo. Lista vazia se não houver nenhum registro elegível ainda.
 
 ## Onboarding — pendências de configuração inicial
 Calculado a partir do estado real do atleta, sem tabela de progresso
@@ -45,18 +48,17 @@ A seção de onboarding só aparece na resposta se **pelo menos uma**
 pendência existir. Assim que as três estiverem completas, some da
 resposta (não é um campo com "false" pra sempre, é ausência).
 
-## Destaque dinâmico
+## Destaque (por modalidade e por treino)
 Entre os tipos de resultado com orientação `MENOR_MELHOR` ou
 `MAIOR_MELHOR` (ADR-0011), o que tem mais registros preenchidos; valor é
 o melhor já registrado nesse tipo, respeitando a orientação; desempate
 pelo mais usado recentemente; ausente se nenhum tipo elegível tiver
-registro ainda. A mesma regra vale nos três escopos: o atleta inteiro
-(destaque geral), uma modalidade e um treino.
+registro ainda. Usado no resumo de modalidades e nos últimos treinos —
+no nível do atleta inteiro, foi substituído pela lista de recordes.
 
 ## Últimos treinos — métrica de destaque por treino
-Mesma lógica do destaque geral (tipo mais registrado, respeitando
-orientação MENOR_MELHOR/MAIOR_MELHOR do ADR-0011), mas escopada só às
-séries daquele treino específico. Se o treino não tem nenhum resultado
+Mesma regra de destaque acima, escopada só às séries daquele treino
+específico. Se o treino não tem nenhum resultado
 registrado, o campo de métrica vem ausente (a tela mostra só data/local/
 modalidade, sem inventar métrica).
 
@@ -85,7 +87,8 @@ ignorado silenciosamente.
 - [x] Teste cobrindo resumo de modalidades com o melhor valor certo por
   modalidade
 - [x] Teste cobrindo resumo de acervo
-- [x] Testes já existentes de destaque dinâmico geral e fallback (mantidos)
+- [x] Teste cobrindo a lista de recordes (vários tipos, cada um com o valor certo)
+- [x] Teste cobrindo fallback (resumo ainda não existe)
 
 ## Referências
 - ADR-0001 (autenticação JWT)
