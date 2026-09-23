@@ -72,6 +72,19 @@ public class VisitService {
         return toResponse(saved);
     }
 
+    /**
+     * UC44: sem bloqueio por status — excluir uma visita EM_ANDAMENTO é
+     * permitido (corrigir engano, ex: local errado). Treinos e as séries
+     * deles somem junto via ON DELETE CASCADE nas constraints (V38), não
+     * explicitamente aqui.
+     * ADR-0015: transação própria pelo mesmo motivo do close acima.
+     */
+    @Transactional
+    public void delete(UUID userId, UUID visitId) {
+        visitGateway.delete(findOwnedVisitOrThrow(userId, visitId));
+        applicationEventPublisher.publishEvent(new DashboardRecalculationRequestedEvent(userId));
+    }
+
     private Visit findOwnedVisitOrThrow(UUID userId, UUID visitId) {
         return visitGateway.findById(visitId)
                 .filter(visit -> visit.getUserId().equals(userId))

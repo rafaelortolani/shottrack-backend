@@ -30,8 +30,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 /**
- * ADR-0015: garante que os 6 pontos de escrita relevantes (UC33, UC34,
- * UC36, UC38, UC39, UC40) publicam DashboardRecalculationRequestedEvent
+ * ADR-0015: garante que os 9 pontos de escrita relevantes (UC33, UC34,
+ * UC36, UC38, UC39, UC40, UC41, UC43, UC44) publicam DashboardRecalculationRequestedEvent
  * com o atleta certo. A entrega efetiva na fila (AMQP) só acontece depois
  * do commit da transação principal (DashboardRecalculationEventPublisher,
  * @TransactionalEventListener AFTER_COMMIT) — que nunca ocorre de verdade
@@ -141,6 +141,44 @@ class DashboardRecalculationEventPublishingTest {
         UUID visitId = openVisit(token, "IPSC");
 
         mockMvc.perform(post("/api/visits/" + visitId + "/closure")
+                .header("Authorization", "Bearer " + token));
+
+        assertEventPublishedFor(events, userId);
+    }
+
+    @Test
+    void shouldPublishEventWhenDeletingSeries(ApplicationEvents events) throws Exception {
+        String token = registerAndLogin("atleta.eventoexcluirserie@shottrack.com");
+        UUID userId = currentUserId(token);
+        UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
+        UUID seriesId = registerSeries(token, trainingId);
+        events.clear();
+
+        mockMvc.perform(delete("/api/series/" + seriesId)
+                .header("Authorization", "Bearer " + token));
+
+        assertEventPublishedFor(events, userId);
+    }
+
+    @Test
+    void shouldPublishEventWhenDeletingTraining(ApplicationEvents events) throws Exception {
+        String token = registerAndLogin("atleta.eventoexcluirtreino@shottrack.com");
+        UUID userId = currentUserId(token);
+        UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
+
+        mockMvc.perform(delete("/api/trainings/" + trainingId)
+                .header("Authorization", "Bearer " + token));
+
+        assertEventPublishedFor(events, userId);
+    }
+
+    @Test
+    void shouldPublishEventWhenDeletingVisit(ApplicationEvents events) throws Exception {
+        String token = registerAndLogin("atleta.eventoexcluirvisita@shottrack.com");
+        UUID userId = currentUserId(token);
+        UUID visitId = openVisit(token, "IPSC");
+
+        mockMvc.perform(delete("/api/visits/" + visitId)
                 .header("Authorization", "Bearer " + token));
 
         assertEventPublishedFor(events, userId);

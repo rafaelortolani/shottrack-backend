@@ -34,4 +34,11 @@ public class TrainingController {
         TrainingResponse response = trainingService.close(userId, trainingId);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
+
+    @DeleteMapping("/{trainingId}")
+    public ResponseEntity<ApiResponse<Void>> delete(Authentication authentication, @PathVariable UUID trainingId) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        trainingService.delete(userId, trainingId);
+        return ResponseEntity.ok(ApiResponse.ok(null));
+    }
 }

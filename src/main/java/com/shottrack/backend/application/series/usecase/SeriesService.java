@@ -125,9 +125,13 @@ public class SeriesService {
      * UC41/ADR-0013: sem bloqueio de exclusão — nada ainda referencia uma
      * série como "em uso". Os resultados somem junto via ON DELETE CASCADE
      * na constraint (series_results.series_id), não explicitamente aqui.
+     * ADR-0015: também precisa de transação própria — mesmo motivo do
+     * register acima.
      */
+    @Transactional
     public void delete(UUID userId, UUID seriesId) {
         seriesGateway.delete(findOwnedSeriesOrThrow(userId, seriesId));
+        applicationEventPublisher.publishEvent(new DashboardRecalculationRequestedEvent(userId));
     }
 
     private Series findOwnedSeriesOrThrow(UUID userId, UUID seriesId) {

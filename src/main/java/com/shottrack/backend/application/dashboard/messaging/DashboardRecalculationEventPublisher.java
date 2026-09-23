@@ -12,7 +12,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * ADR-0015: só publica na fila DEPOIS que a transação principal já
  * commitou (TransactionPhase.AFTER_COMMIT) — nunca antes, pra não disparar
  * recálculo de uma escrita que pode dar rollback. O evento interno
- * (ApplicationEventPublisher, publicado pelos 6 pontos de escrita) é
+ * (ApplicationEventPublisher, publicado pelos 9 pontos de escrita) é
  * síncrono e sempre disparado; é só a entrega efetiva na fila que espera
  * o commit.
  */

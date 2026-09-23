@@ -81,6 +81,19 @@ public class TrainingService {
     }
 
     /**
+     * UC43: sem bloqueio por status — excluir um treino EM_ANDAMENTO é
+     * permitido (corrigir engano, ex: modalidade errada). As séries (e os
+     * resultados delas) somem junto via ON DELETE CASCADE na constraint
+     * (V38), não explicitamente aqui.
+     * ADR-0015: transação própria pelo mesmo motivo do close acima.
+     */
+    @Transactional
+    public void delete(UUID userId, UUID trainingId) {
+        trainingGateway.delete(findOwnedTrainingOrThrow(userId, trainingId));
+        applicationEventPublisher.publishEvent(new DashboardRecalculationRequestedEvent(userId));
+    }
+
+    /**
      * UC34/ADR-0012: chamado por VisitService.close() pra encerrar (mesmo
      * timestamp da visita) qualquer treino dela ainda EM_ANDAMENTO.
      */

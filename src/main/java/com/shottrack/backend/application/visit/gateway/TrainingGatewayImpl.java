@@ -35,4 +35,9 @@ class TrainingGatewayImpl implements TrainingGateway {
     public List<Training> findAllByVisitIdAndStatus(UUID visitId, TrainingStatus status) {
         return trainingRepository.findAllByVisitIdAndStatus(visitId, status);
     }
+
+    @Override
+    public void delete(Training training) {
+        trainingRepository.delete(training);
+    }
 }

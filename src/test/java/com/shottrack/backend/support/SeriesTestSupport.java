@@ -27,13 +27,11 @@ public final class SeriesTestSupport {
     }
 
     public static UUID openTraining(MockMvc mockMvc, ObjectMapper objectMapper, String token, String modalityName) throws Exception {
-        UUID modalityId = modalityIdByName(mockMvc, objectMapper, token, modalityName);
+        UUID visitId = openVisit(mockMvc, objectMapper, token);
+        return openTrainingInVisit(mockMvc, objectMapper, token, visitId, modalityName);
+    }
 
-        mockMvc.perform(post("/api/practiced-modalities")
-                .header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new AddPracticedModalityRequest(modalityId))));
-
+    public static UUID openVisit(MockMvc mockMvc, ObjectMapper objectMapper, String token) throws Exception {
         var locationResult = mockMvc.perform(post("/api/training-locations")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -47,7 +45,17 @@ public final class SeriesTestSupport {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new StartVisitRequest(trainingLocationId, null))))
                 .andReturn();
-        UUID visitId = idFromResponse(objectMapper, visitResult);
+        return idFromResponse(objectMapper, visitResult);
+    }
+
+    public static UUID openTrainingInVisit(MockMvc mockMvc, ObjectMapper objectMapper, String token, UUID visitId,
+                                           String modalityName) throws Exception {
+        UUID modalityId = modalityIdByName(mockMvc, objectMapper, token, modalityName);
+
+        mockMvc.perform(post("/api/practiced-modalities")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new AddPracticedModalityRequest(modalityId))));
 
         var trainingResult = mockMvc.perform(post("/api/trainings")
                         .header("Authorization", "Bearer " + token)

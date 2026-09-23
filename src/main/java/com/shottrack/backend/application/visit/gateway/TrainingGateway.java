@@ -16,4 +16,6 @@ public interface TrainingGateway {
     List<Training> findAllByVisitId(UUID visitId);
 
     List<Training> findAllByVisitIdAndStatus(UUID visitId, TrainingStatus status);
+
+    void delete(Training training);
 }

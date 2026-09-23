@@ -41,4 +41,11 @@ public class VisitController {
         VisitResponse response = visitService.close(userId, visitId);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
+
+    @DeleteMapping("/{visitId}")
+    public ResponseEntity<ApiResponse<Void>> delete(Authentication authentication, @PathVariable UUID visitId) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        visitService.delete(userId, visitId);
+        return ResponseEntity.ok(ApiResponse.ok(null));
+    }
 }

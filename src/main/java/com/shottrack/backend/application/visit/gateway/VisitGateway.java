@@ -15,4 +15,6 @@ public interface VisitGateway {
     Optional<Visit> findById(UUID id);
 
     boolean existsByTrainingLocationId(UUID trainingLocationId);
+
+    void delete(Visit visit);
 }
