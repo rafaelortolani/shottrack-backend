@@ -84,6 +84,30 @@ class WeaponCatalogTest {
     }
 
     @Test
+    void shouldListImbelLineWithOneModelPerVersion() throws Exception {
+        UUID imbelId = brandId("Imbel");
+
+        mockMvc.perform(get("/api/weapon-catalog/brands/" + imbelId + "/models")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(13))
+                .andExpect(jsonPath("$.data[?(@.name == '.380 GC MD2')].type.name").value("Pistola"))
+                .andExpect(jsonPath("$.data[?(@.name == '5,56 IA2 Carabina')].type.name").value("Carabina"))
+                .andExpect(jsonPath("$.data[?(@.name == '5,56 IA2 Fuzil')].type.name").value("Fuzil"))
+                .andExpect(jsonPath("$.data[?(@.name == '5,56 IA2 Treinamento')].type.name").value("Fuzil de treinamento"))
+                .andExpect(jsonPath("$.data[?(@.name == '308 ISR-100/18')].type.name").value("Fuzil de precisão"))
+                // IA2/MD2 genéricos da V43 foram substituídos pelas versões reais
+                .andExpect(jsonPath("$.data[?(@.name == 'IA2' || @.name == 'MD2')]").isEmpty());
+
+        mockMvc.perform(get("/api/weapon-catalog/models/" + modelId("Imbel", "9 GC MD1") + "/calibers")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(jsonPath("$.data[*].name", org.hamcrest.Matchers.contains("9mm")));
+        mockMvc.perform(get("/api/weapon-catalog/models/" + modelId("Imbel", "M964A1 MD1 – PARAFAL") + "/calibers")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(jsonPath("$.data[*].name", org.hamcrest.Matchers.contains("7.62mm NATO")));
+    }
+
+    @Test
     void shouldRejectNonExistentModel() throws Exception {
         mockMvc.perform(get("/api/weapon-catalog/models/" + UUID.randomUUID() + "/calibers")
                         .header("Authorization", "Bearer " + accessToken))
