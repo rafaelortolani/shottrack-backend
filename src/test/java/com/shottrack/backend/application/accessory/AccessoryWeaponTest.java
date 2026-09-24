@@ -60,14 +60,13 @@ class AccessoryWeaponTest {
         accessoryId = UUID.fromString(objectMapper.readTree(accessoryResult.getResponse().getContentAsString())
                 .get("data").get("id").asText());
 
-        UUID pistolaId = idByName("/api/weapon-catalog/types", "Pistola");
         UUID glockId = idByName("/api/weapon-catalog/brands", "Glock");
         UUID g17Id = idByName("/api/weapon-catalog/brands/" + glockId + "/models", "G17");
         UUID g19Id = idByName("/api/weapon-catalog/brands/" + glockId + "/models", "G19");
-        UUID caliber9mmId = idByName("/api/weapon-catalog/calibers", "9mm");
+        UUID caliber9mmId = idByName("/api/weapon-catalog/models/" + g17Id + "/calibers", "9mm");
 
-        weaponId = registerWeapon(pistolaId, glockId, g17Id, caliber9mmId);
-        secondWeaponId = registerWeapon(pistolaId, glockId, g19Id, caliber9mmId);
+        weaponId = registerWeapon(g17Id, caliber9mmId);
+        secondWeaponId = registerWeapon(g19Id, caliber9mmId);
     }
 
     @Test
@@ -161,8 +160,8 @@ class AccessoryWeaponTest {
                 .content(objectMapper.writeValueAsString(new AssociateAccessoryWeaponRequest(weaponIdToAssociate))));
     }
 
-    private UUID registerWeapon(UUID typeId, UUID brandId, UUID modelId, UUID caliberId) throws Exception {
-        var request = new WeaponRegisterRequest(typeId, brandId, modelId, caliberId, null);
+    private UUID registerWeapon(UUID modelId, UUID caliberId) throws Exception {
+        var request = new WeaponRegisterRequest(modelId, caliberId);
         var result = mockMvc.perform(post("/api/weapons")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)

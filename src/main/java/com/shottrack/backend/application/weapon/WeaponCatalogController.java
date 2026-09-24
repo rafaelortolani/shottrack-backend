@@ -2,7 +2,7 @@ package com.shottrack.backend.application.weapon;
 
 import com.shottrack.backend.application.weapon.dto.WeaponBrandResponse;
 import com.shottrack.backend.application.weapon.dto.WeaponCaliberResponse;
-import com.shottrack.backend.application.weapon.dto.WeaponModelResponse;
+import com.shottrack.backend.application.weapon.dto.WeaponCatalogModelResponse;
 import com.shottrack.backend.application.weapon.dto.WeaponTypeResponse;
 import com.shottrack.backend.application.weapon.usecase.WeaponCatalogService;
 import com.shottrack.backend.common.web.ApiResponse;
@@ -34,8 +34,13 @@ public class WeaponCatalogController {
     }
 
     @GetMapping("/brands/{brandId}/models")
-    public ResponseEntity<ApiResponse<List<WeaponModelResponse>>> listModels(@PathVariable UUID brandId) {
+    public ResponseEntity<ApiResponse<List<WeaponCatalogModelResponse>>> listModels(@PathVariable UUID brandId) {
         return ResponseEntity.ok(ApiResponse.ok(weaponCatalogService.listModelsByBrand(brandId)));
+    }
+
+    @GetMapping("/models/{modelId}/calibers")
+    public ResponseEntity<ApiResponse<List<WeaponCaliberResponse>>> listModelCalibers(@PathVariable UUID modelId) {
+        return ResponseEntity.ok(ApiResponse.ok(weaponCatalogService.listCalibersByModel(modelId)));
     }
 
     @GetMapping("/calibers")

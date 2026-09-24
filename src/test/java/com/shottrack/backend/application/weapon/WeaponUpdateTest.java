@@ -13,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
@@ -41,13 +42,8 @@ class WeaponUpdateTest {
     private PendingRegistrationRepository pendingRegistrationRepository;
 
     private String accessToken;
-    private UUID pistolaId;
-    private UUID revolverId;
-    private UUID glockId;
     private UUID g17Id;
-    private UUID g19Id;
     private UUID caliber9mmId;
-    private UUID caliber40Id;
     private UUID weaponId;
 
     @BeforeEach
@@ -55,148 +51,119 @@ class WeaponUpdateTest {
         accessToken = TestUsers.registerAndLogin(mockMvc, objectMapper, pendingRegistrationRepository,
                 "Atleta Edita Arma", EMAIL, PASSWORD);
 
-        pistolaId = idByName("/api/weapon-catalog/types", "Pistola");
-        revolverId = idByName("/api/weapon-catalog/types", "Revólver");
-        glockId = idByName("/api/weapon-catalog/brands", "Glock");
+        UUID glockId = idByName("/api/weapon-catalog/brands", "Glock");
         g17Id = idByName("/api/weapon-catalog/brands/" + glockId + "/models", "G17");
-        g19Id = idByName("/api/weapon-catalog/brands/" + glockId + "/models", "G19");
-        caliber9mmId = idByName("/api/weapon-catalog/calibers", "9mm");
-        caliber40Id = idByName("/api/weapon-catalog/calibers", ".40 S&W");
+        caliber9mmId = idByName("/api/weapon-catalog/models/" + g17Id + "/calibers", "9mm");
 
-        var registerRequest = new WeaponRegisterRequest(pistolaId, glockId, g17Id, caliber9mmId, "Original");
-        var registerResult = mockMvc.perform(post("/api/weapons")
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(registerRequest)))
-                .andReturn();
-        weaponId = UUID.fromString(objectMapper.readTree(registerResult.getResponse().getContentAsString())
-                .get("data").get("id").asText());
+        weaponId = registerWeapon(accessToken);
+        update(weaponId, new WeaponUpdateRequest(g17Id, caliber9mmId, "Original"))
+                .andExpect(status().isOk());
     }
 
     @Test
     void shouldEditOnlyNicknameKeepingTheRest() throws Exception {
-        var request = new WeaponUpdateRequest(pistolaId, glockId, g17Id, caliber9mmId, "Minha 9mm de competição");
-
-        mockMvc.perform(patch("/api/weapons/" + weaponId)
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        update(weaponId, new WeaponUpdateRequest(g17Id, caliber9mmId, "Minha 9mm de competição"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.nickname").value("Minha 9mm de competição"))
                 .andExpect(jsonPath("$.data.type.name").value("Pistola"))
-                .andExpect(jsonPath("$.data.model.name").value("G17"));
+                .andExpect(jsonPath("$.data.brand.name").value("Glock"))
+                .andExpect(jsonPath("$.data.model.name").value("G17"))
+                .andExpect(jsonPath("$.data.caliber.name").value("9mm"));
     }
 
     @Test
-    void shouldCorrectTypeModelAndCaliber() throws Exception {
-        var request = new WeaponUpdateRequest(revolverId, glockId, g19Id, caliber40Id, "Original");
+    void shouldReflectTypeAndBrandOfNewModelWithDifferentCaliber() throws Exception {
+        UUID taurusId = idByName("/api/weapon-catalog/brands", "Taurus");
+        UUID model605Id = idByName("/api/weapon-catalog/brands/" + taurusId + "/models", "605");
+        UUID caliber357Id = idByName("/api/weapon-catalog/models/" + model605Id + "/calibers", ".357 Magnum");
 
-        mockMvc.perform(patch("/api/weapons/" + weaponId)
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        update(weaponId, new WeaponUpdateRequest(model605Id, caliber357Id, "Original"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.type.name").value("Revólver"))
-                .andExpect(jsonPath("$.data.model.name").value("G19"))
-                .andExpect(jsonPath("$.data.caliber.name").value(".40 S&W"));
+                .andExpect(jsonPath("$.data.brand.name").value("Taurus"))
+                .andExpect(jsonPath("$.data.model.name").value("605"))
+                .andExpect(jsonPath("$.data.caliber.name").value(".357 Magnum"));
+
+        // e é isso que ficou salvo, não só o que a resposta mostrou
+        mockMvc.perform(get("/api/weapons")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(jsonPath("$.data[0].type.name").value("Revólver"))
+                .andExpect(jsonPath("$.data[0].brand.name").value("Taurus"));
     }
 
     @Test
-    void shouldRejectMissingRequiredField() throws Exception {
-        var request = new WeaponUpdateRequest(null, glockId, g17Id, caliber9mmId, "Original");
+    void shouldRejectMissingModel() throws Exception {
+        update(weaponId, new WeaponUpdateRequest(null, caliber9mmId, "Original"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+    }
 
-        mockMvc.perform(patch("/api/weapons/" + weaponId)
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+    @Test
+    void shouldRejectMissingCaliber() throws Exception {
+        update(weaponId, new WeaponUpdateRequest(g17Id, null, "Original"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
     }
 
     @Test
     void shouldRejectRequestWithoutToken() throws Exception {
-        var request = new WeaponUpdateRequest(pistolaId, glockId, g17Id, caliber9mmId, "Original");
-
         mockMvc.perform(patch("/api/weapons/" + weaponId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(new WeaponUpdateRequest(g17Id, caliber9mmId, "Original"))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
     }
 
     @Test
-    void shouldRejectNonExistentOrAnotherAthletesWeapon() throws Exception {
-        var request = new WeaponUpdateRequest(pistolaId, glockId, g17Id, caliber9mmId, "Original");
-
-        mockMvc.perform(patch("/api/weapons/" + UUID.randomUUID())
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+    void shouldRejectNonExistentWeapon() throws Exception {
+        update(UUID.randomUUID(), new WeaponUpdateRequest(g17Id, caliber9mmId, "Original"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("WEAPON_NOT_FOUND"));
     }
 
     @Test
-    void shouldRejectNonExistentType() throws Exception {
-        var request = new WeaponUpdateRequest(UUID.randomUUID(), glockId, g17Id, caliber9mmId, "Original");
+    void shouldRejectAnotherAthletesWeapon() throws Exception {
+        String otherToken = TestUsers.registerAndLogin(mockMvc, objectMapper, pendingRegistrationRepository,
+                "Outro Atleta", "atleta.outroeditaarma@shottrack.com", PASSWORD);
+        UUID otherWeaponId = registerWeapon(otherToken);
 
-        mockMvc.perform(patch("/api/weapons/" + weaponId)
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        update(otherWeaponId, new WeaponUpdateRequest(g17Id, caliber9mmId, "Não é minha"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("WEAPON_TYPE_NOT_FOUND"));
-    }
-
-    @Test
-    void shouldRejectNonExistentBrand() throws Exception {
-        var request = new WeaponUpdateRequest(pistolaId, UUID.randomUUID(), g17Id, caliber9mmId, "Original");
-
-        mockMvc.perform(patch("/api/weapons/" + weaponId)
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("WEAPON_BRAND_NOT_FOUND"));
+                .andExpect(jsonPath("$.error.code").value("WEAPON_NOT_FOUND"));
     }
 
     @Test
     void shouldRejectNonExistentModel() throws Exception {
-        var request = new WeaponUpdateRequest(pistolaId, glockId, UUID.randomUUID(), caliber9mmId, "Original");
-
-        mockMvc.perform(patch("/api/weapons/" + weaponId)
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        update(weaponId, new WeaponUpdateRequest(UUID.randomUUID(), caliber9mmId, "Original"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("WEAPON_MODEL_NOT_FOUND"));
     }
 
     @Test
-    void shouldRejectNonExistentCaliber() throws Exception {
-        var request = new WeaponUpdateRequest(pistolaId, glockId, g17Id, UUID.randomUUID(), "Original");
+    void shouldRejectCaliberNotAllowedForModel() throws Exception {
+        UUID caliber38Id = idByName("/api/weapon-catalog/calibers", ".38 Special");
 
-        mockMvc.perform(patch("/api/weapons/" + weaponId)
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("WEAPON_CALIBER_NOT_FOUND"));
+        update(weaponId, new WeaponUpdateRequest(g17Id, caliber38Id, "Original"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("WEAPON_CALIBER_NOT_ALLOWED_FOR_MODEL"));
     }
 
-    @Test
-    void shouldRejectModelThatDoesNotBelongToGivenBrand() throws Exception {
-        UUID taurusId = idByName("/api/weapon-catalog/brands", "Taurus");
-        UUID modelo856Id = idByName("/api/weapon-catalog/brands/" + taurusId + "/models", "856");
-
-        var request = new WeaponUpdateRequest(pistolaId, glockId, modelo856Id, caliber9mmId, "Original");
-
-        mockMvc.perform(patch("/api/weapons/" + weaponId)
-                        .header("Authorization", "Bearer " + accessToken)
+    private UUID registerWeapon(String token) throws Exception {
+        var result = mockMvc.perform(post("/api/weapons")
+                        .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("WEAPON_MODEL_BRAND_MISMATCH"));
+                        .content(objectMapper.writeValueAsString(new WeaponRegisterRequest(g17Id, caliber9mmId))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return UUID.fromString(objectMapper.readTree(result.getResponse().getContentAsString())
+                .get("data").get("id").asText());
+    }
+
+    private ResultActions update(UUID id, WeaponUpdateRequest request) throws Exception {
+        return mockMvc.perform(patch("/api/weapons/" + id)
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)));
     }
 
     private UUID idByName(String path, String name) throws Exception {

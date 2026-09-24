@@ -5,6 +5,7 @@ import com.shottrack.backend.application.weapon.model.WeaponCaliber;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,5 +24,10 @@ class WeaponCaliberGatewayImpl implements WeaponCaliberGateway {
     @Override
     public Optional<WeaponCaliber> findById(UUID id) {
         return weaponCaliberRepository.findById(id);
+    }
+
+    @Override
+    public List<WeaponCaliber> findAllById(Collection<UUID> ids) {
+        return weaponCaliberRepository.findAllById(ids);
     }
 }

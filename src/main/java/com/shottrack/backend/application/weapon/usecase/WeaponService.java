@@ -34,8 +34,7 @@ public class WeaponService {
     private final WeaponMapper weaponMapper;
 
     public WeaponResponse register(UUID userId, WeaponRegisterRequest request) {
-        CatalogSelection selection = resolveCatalogSelection(
-                request.typeId(), request.brandId(), request.modelId(), request.caliberId());
+        CatalogSelection selection = resolveCatalogSelection(request.modelId(), request.caliberId());
 
         Weapon weapon = Weapon.builder()
                 .userId(userId)
@@ -43,7 +42,6 @@ public class WeaponService {
                 .brandId(selection.brand().getId())
                 .modelId(selection.model().getId())
                 .caliberId(selection.caliber().getId())
-                .nickname(request.nickname())
                 .build();
 
         Weapon saved = weaponGateway.save(weapon);
@@ -65,8 +63,7 @@ public class WeaponService {
     public WeaponResponse update(UUID userId, UUID weaponId, WeaponUpdateRequest request) {
         Weapon weapon = findOwnedWeaponOrThrow(userId, weaponId);
 
-        CatalogSelection selection = resolveCatalogSelection(
-                request.typeId(), request.brandId(), request.modelId(), request.caliberId());
+        CatalogSelection selection = resolveCatalogSelection(request.modelId(), request.caliberId());
 
         weapon.setTypeId(selection.type().getId());
         weapon.setBrandId(selection.brand().getId());
@@ -109,19 +106,22 @@ public class WeaponService {
                 .orElseThrow();
     }
 
-    private CatalogSelection resolveCatalogSelection(UUID typeId, UUID brandId, UUID modelId, UUID caliberId) {
-        WeaponType type = weaponTypeGateway.findById(typeId)
-                .orElseThrow(() -> new BusinessException("WEAPON_TYPE_NOT_FOUND", HttpStatus.NOT_FOUND));
-        WeaponBrand brand = weaponBrandGateway.findById(brandId)
-                .orElseThrow(() -> new BusinessException("WEAPON_BRAND_NOT_FOUND", HttpStatus.NOT_FOUND));
+    /**
+     * UC06/UC10/ADR-0004 (Revisão 2): o cliente só escolhe modelo e calibre —
+     * tipo e marca vêm do modelo. O calibre precisa estar entre os válidos
+     * desse modelo; calibre inexistente cai no mesmo erro, já que também não
+     * é válido pra ele.
+     */
+    private CatalogSelection resolveCatalogSelection(UUID modelId, UUID caliberId) {
         WeaponModel model = weaponModelGateway.findById(modelId)
                 .orElseThrow(() -> new BusinessException("WEAPON_MODEL_NOT_FOUND", HttpStatus.NOT_FOUND));
-        WeaponCaliber caliber = weaponCaliberGateway.findById(caliberId)
-                .orElseThrow(() -> new BusinessException("WEAPON_CALIBER_NOT_FOUND", HttpStatus.NOT_FOUND));
-
-        if (!model.getBrandId().equals(brand.getId())) {
-            throw new BusinessException("WEAPON_MODEL_BRAND_MISMATCH", HttpStatus.BAD_REQUEST);
+        if (!model.allowsCaliber(caliberId)) {
+            throw new BusinessException("WEAPON_CALIBER_NOT_ALLOWED_FOR_MODEL", HttpStatus.BAD_REQUEST);
         }
+
+        WeaponType type = weaponTypeGateway.findById(model.getWeaponTypeId()).orElseThrow();
+        WeaponBrand brand = weaponBrandGateway.findById(model.getBrandId()).orElseThrow();
+        WeaponCaliber caliber = weaponCaliberGateway.findById(caliberId).orElseThrow();
 
         return new CatalogSelection(type, brand, model, caliber);
     }

@@ -37,7 +37,6 @@ class WeaponListTest {
     @Autowired
     private PendingRegistrationRepository pendingRegistrationRepository;
 
-    private UUID pistolaId;
     private UUID glockId;
     private UUID g17Id;
     private UUID caliber9mmId;
@@ -46,10 +45,9 @@ class WeaponListTest {
     void loadCatalog() throws Exception {
         String tempToken = registerAndLogin("atleta.catalogo.list@shottrack.com");
 
-        pistolaId = idByName(tempToken, "/api/weapon-catalog/types", "Pistola");
         glockId = idByName(tempToken, "/api/weapon-catalog/brands", "Glock");
         g17Id = idByName(tempToken, "/api/weapon-catalog/brands/" + glockId + "/models", "G17");
-        caliber9mmId = idByName(tempToken, "/api/weapon-catalog/calibers", "9mm");
+        caliber9mmId = idByName(tempToken, "/api/weapon-catalog/models/" + g17Id + "/calibers", "9mm");
     }
 
     @Test
@@ -94,7 +92,7 @@ class WeaponListTest {
     }
 
     private void registerWeapon(String token) throws Exception {
-        var request = new WeaponRegisterRequest(pistolaId, glockId, g17Id, caliber9mmId, null);
+        var request = new WeaponRegisterRequest(g17Id, caliber9mmId);
         mockMvc.perform(post("/api/weapons")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)

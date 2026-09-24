@@ -2,6 +2,7 @@ package com.shottrack.backend.application.weapon.mapper;
 
 import com.shottrack.backend.application.weapon.dto.WeaponBrandResponse;
 import com.shottrack.backend.application.weapon.dto.WeaponCaliberResponse;
+import com.shottrack.backend.application.weapon.dto.WeaponCatalogModelResponse;
 import com.shottrack.backend.application.weapon.dto.WeaponModelResponse;
 import com.shottrack.backend.application.weapon.dto.WeaponResponse;
 import com.shottrack.backend.application.weapon.dto.WeaponTypeResponse;
@@ -30,6 +31,11 @@ public interface WeaponMapper {
     WeaponBrandResponse toResponse(WeaponBrand brand);
 
     WeaponModelResponse toResponse(WeaponModel model);
+
+    @Mapping(target = "id", source = "model.id")
+    @Mapping(target = "name", source = "model.name")
+    @Mapping(target = "type", source = "type")
+    WeaponCatalogModelResponse toCatalogResponse(WeaponModel model, WeaponType type);
 
     WeaponCaliberResponse toResponse(WeaponCaliber caliber);
 }

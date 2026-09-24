@@ -8,12 +8,14 @@ import com.shottrack.backend.application.traininglocation.dto.TrainingLocationRe
 import com.shottrack.backend.application.visit.dto.OpenTrainingRequest;
 import com.shottrack.backend.application.visit.dto.StartVisitRequest;
 import com.shottrack.backend.application.weapon.dto.WeaponRegisterRequest;
+import com.shottrack.backend.application.weapon.dto.WeaponUpdateRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -69,20 +71,29 @@ public final class SeriesTestSupport {
         return registerWeapon(mockMvc, objectMapper, token, null);
     }
 
+    /**
+     * Glock G17 9mm. Apelido não existe no cadastro (UC06) — quando
+     * informado, é aplicado numa edição logo em seguida (UC10).
+     */
     public static UUID registerWeapon(MockMvc mockMvc, ObjectMapper objectMapper, String token, String nickname) throws Exception {
-        UUID typeId = idByName(mockMvc, objectMapper, token, "/api/weapon-catalog/types", "Pistola");
         UUID brandId = idByName(mockMvc, objectMapper, token, "/api/weapon-catalog/brands", "Glock");
         UUID modelId = idByName(mockMvc, objectMapper, token, "/api/weapon-catalog/brands/" + brandId + "/models", "G17");
-        UUID caliberId = idByName(mockMvc, objectMapper, token, "/api/weapon-catalog/calibers", "9mm");
+        UUID caliberId = idByName(mockMvc, objectMapper, token, "/api/weapon-catalog/models/" + modelId + "/calibers", "9mm");
 
-        var request = new WeaponRegisterRequest(typeId, brandId, modelId, caliberId, nickname);
         var result = mockMvc.perform(post("/api/weapons")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(new WeaponRegisterRequest(modelId, caliberId))))
                 .andReturn();
+        UUID weaponId = idFromResponse(objectMapper, result);
 
-        return idFromResponse(objectMapper, result);
+        if (nickname != null) {
+            mockMvc.perform(patch("/api/weapons/" + weaponId)
+                    .header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(new WeaponUpdateRequest(modelId, caliberId, nickname))));
+        }
+        return weaponId;
     }
 
     public static UUID registerAmmunition(MockMvc mockMvc, ObjectMapper objectMapper, String token) throws Exception {
