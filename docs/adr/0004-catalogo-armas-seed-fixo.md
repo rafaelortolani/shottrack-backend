@@ -60,5 +60,99 @@ no uso real. **Decisão confirmada**: mantém-se o catálogo fechado obrigatóri
 como está; o cadastro rápido não será implementado, salvo se um caso de uso
 real e concreto justificar revisitar isso no futuro.
 
+## Revisão 2 — tipo e calibre amarrados ao modelo (bug de integridade)
+Gap encontrado em uso real: `tipo`, `marca`, `modelo` e `calibre` eram
+escolhas **independentes** (só validava modelo pertencer à marca) — nada
+impedia cadastrar um modelo real de pistola marcado como "Revólver", ou um
+calibre que aquele modelo nunca usaria de verdade.
+
+**Decisão**: o catálogo é reestruturado pra amarrar tipo e calibres
+válidos ao modelo, não mais como campos soltos:
+
+```sql
+CREATE TABLE weapon_types (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(50) NOT NULL UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP NOT NULL DEFAULT now(),
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE TABLE weapon_brands (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP NOT NULL DEFAULT now(),
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE TABLE weapon_calibers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(50) NOT NULL UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP NOT NULL DEFAULT now(),
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE TABLE weapon_models (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    brand_id UUID NOT NULL REFERENCES weapon_brands(id),
+    weapon_type_id UUID NOT NULL REFERENCES weapon_types(id),
+    name VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP NOT NULL DEFAULT now(),
+    created_by UUID,
+    updated_by UUID,
+    UNIQUE (brand_id, name)
+);
+
+CREATE TABLE weapon_model_calibers (
+    weapon_model_id UUID NOT NULL REFERENCES weapon_models(id),
+    weapon_caliber_id UUID NOT NULL REFERENCES weapon_calibers(id),
+    PRIMARY KEY (weapon_model_id, weapon_caliber_id)
+);
+```
+
+- `weapon_models` ganha `weapon_type_id` — o tipo passa a ser **inerente
+  ao modelo**, não mais escolha livre do atleta no cadastro.
+- `weapon_model_calibers` é a relação N:N entre modelo e calibres
+  válidos — o atleta só pode escolher um calibre que essa tabela permite
+  pra aquele modelo.
+
+**Novo fluxo de cadastro (UC06/UC10)**: Marca → Modelo (filtrado pela
+marca; tipo já vem junto, exibido mas não editável) → Calibre (filtrado
+pelos permitidos daquele modelo). `WeaponRegisterRequest`/
+`WeaponUpdateRequest` passam a exigir só `modelId` + `caliberId` (+
+apelido opcional na edição) — `typeId` e `brandId` deixam de ser enviados
+pelo cliente, são derivados do modelo no servidor.
+
+## Alternativas consideradas (Revisão 2)
+- Validar a combinação em código (regra de negócio "se modelo X, calibre
+  precisa ser Y ou Z") em vez de tabela → rejeitado: hardcoded no código
+  é mais frágil e mais difícil de manter que dado estruturado; qualquer
+  novo modelo exigiria alterar código, não só popular uma tabela.
+- Manter tipo como campo solto, só adicionar validação cruzada (tipo
+  precisa bater com o tipo real do modelo, comparando os dois) →
+  rejeitado: mais complexo que simplesmente eliminar a redundância —
+  se o tipo já vem do modelo, não faz sentido pedir de novo ao atleta.
+
+## Consequências
+- Migration reestruturando `weapon_models` (nova coluna
+  `weapon_type_id`) e criando `weapon_model_calibers`.
+- Dados legados: para armas já cadastradas, a migration precisa (a)
+  corrigir o `type_id` salvo em cada arma pra bater com o do modelo dela,
+  e (b) inserir em `weapon_model_calibers` qualquer combinação
+  modelo+calibre já usada por arma existente, pra não invalidar cadastro
+  já feito.
+- `WeaponRegisterRequest`/`WeaponUpdateRequest` mudam de shape (remove
+  `typeId`), e o erro `WEAPON_MODEL_BRAND_MISMATCH` deixa de existir
+  (não é mais possível enviar marca e modelo divergentes, já que só se
+  envia `modelId`) — substituído por `WEAPON_CALIBER_NOT_ALLOWED_FOR_MODEL`.
+- Catálogo (UC09) ganha um novo endpoint de consulta: calibres válidos
+  por modelo.
+
 ## Referências
 - Nenhuma

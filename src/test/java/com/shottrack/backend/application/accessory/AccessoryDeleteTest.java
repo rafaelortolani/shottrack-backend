@@ -103,12 +103,11 @@ class AccessoryDeleteTest {
     }
 
     private UUID registerWeapon(String token) throws Exception {
-        UUID pistolaId = idByName(token, "/api/weapon-catalog/types", "Pistola");
         UUID glockId = idByName(token, "/api/weapon-catalog/brands", "Glock");
         UUID g17Id = idByName(token, "/api/weapon-catalog/brands/" + glockId + "/models", "G17");
-        UUID caliber9mmId = idByName(token, "/api/weapon-catalog/calibers", "9mm");
+        UUID caliber9mmId = idByName(token, "/api/weapon-catalog/models/" + g17Id + "/calibers", "9mm");
 
-        var request = new WeaponRegisterRequest(pistolaId, glockId, g17Id, caliber9mmId, null);
+        var request = new WeaponRegisterRequest(g17Id, caliber9mmId);
         var result = mockMvc.perform(post("/api/weapons")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
