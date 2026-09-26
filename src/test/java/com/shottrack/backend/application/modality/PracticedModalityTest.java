@@ -3,7 +3,10 @@ package com.shottrack.backend.application.modality;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.modality.dto.AddPracticedModalityRequest;
+import com.shottrack.backend.application.traininglocation.dto.TrainingLocationRegisterRequest;
 import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
+import com.shottrack.backend.application.visit.dto.OpenTrainingRequest;
+import com.shottrack.backend.application.visit.dto.StartVisitRequest;
 import com.shottrack.backend.support.TestUsers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -149,6 +152,62 @@ class PracticedModalityTest {
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("MODALITY_NOT_ASSOCIATED"));
+    }
+
+    @Test
+    void shouldRejectRemovingModalityUsedInTraining() throws Exception {
+        addModality(ipscId);
+        UUID visitId = startVisit();
+
+        mockMvc.perform(post("/api/trainings")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new OpenTrainingRequest(visitId, ipscId))));
+
+        mockMvc.perform(delete("/api/practiced-modalities/" + ipscId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("MODALITY_IN_USE"));
+
+        mockMvc.perform(get("/api/practiced-modalities")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].name").value("IPSC"));
+    }
+
+    @Test
+    void shouldRemoveModalityWhenOnlyOtherModalitiesWereUsedInTraining() throws Exception {
+        addModality(ipscId);
+        addModality(trapId);
+        UUID visitId = startVisit();
+
+        mockMvc.perform(post("/api/trainings")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new OpenTrainingRequest(visitId, trapId))));
+
+        mockMvc.perform(delete("/api/practiced-modalities/" + ipscId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+    }
+
+    private UUID startVisit() throws Exception {
+        var locationResult = mockMvc.perform(post("/api/training-locations")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new TrainingLocationRegisterRequest("Clube de Tiro", "São Paulo", "SP"))))
+                .andReturn();
+        UUID trainingLocationId = UUID.fromString(objectMapper.readTree(
+                locationResult.getResponse().getContentAsString()).get("data").get("id").asText());
+
+        var visitResult = mockMvc.perform(post("/api/visits")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new StartVisitRequest(trainingLocationId, null))))
+                .andReturn();
+        return UUID.fromString(objectMapper.readTree(
+                visitResult.getResponse().getContentAsString()).get("data").get("id").asText());
     }
 
     private void addModality(UUID modalityId) throws Exception {

@@ -6,6 +6,7 @@ import com.shottrack.backend.application.visit.model.TrainingStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,6 +35,11 @@ class TrainingGatewayImpl implements TrainingGateway {
     @Override
     public List<Training> findAllByVisitIdAndStatus(UUID visitId, TrainingStatus status) {
         return trainingRepository.findAllByVisitIdAndStatus(visitId, status);
+    }
+
+    @Override
+    public boolean existsByVisitIdInAndModalityId(Collection<UUID> visitIds, UUID modalityId) {
+        return trainingRepository.existsByVisitIdInAndModalityId(visitIds, modalityId);
     }
 
     @Override
