@@ -3,6 +3,7 @@ package com.shottrack.backend.application.visit.gateway;
 import com.shottrack.backend.application.visit.model.Training;
 import com.shottrack.backend.application.visit.model.TrainingStatus;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,6 +17,8 @@ public interface TrainingGateway {
     List<Training> findAllByVisitId(UUID visitId);
 
     List<Training> findAllByVisitIdAndStatus(UUID visitId, TrainingStatus status);
+
+    boolean existsByVisitIdInAndModalityId(Collection<UUID> visitIds, UUID modalityId);
 
     void delete(Training training);
 }

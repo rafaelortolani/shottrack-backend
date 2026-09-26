@@ -6,6 +6,9 @@ import com.shottrack.backend.application.modality.gateway.PracticedModalityGatew
 import com.shottrack.backend.application.modality.mapper.ModalityMapper;
 import com.shottrack.backend.application.modality.model.Modality;
 import com.shottrack.backend.application.modality.model.PracticedModality;
+import com.shottrack.backend.application.visit.gateway.TrainingGateway;
+import com.shottrack.backend.application.visit.gateway.VisitGateway;
+import com.shottrack.backend.application.visit.model.Visit;
 import com.shottrack.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,6 +25,8 @@ public class PracticedModalityService {
     private final ModalityGateway modalityGateway;
     private final ModalityResultTypeService modalityResultTypeService;
     private final ModalityMapper modalityMapper;
+    private final VisitGateway visitGateway;
+    private final TrainingGateway trainingGateway;
 
     /**
      * UC12/ADR-0011: ao adicionar, aplica automaticamente a sugestão padrão
@@ -42,11 +47,32 @@ public class PracticedModalityService {
         return modalityMapper.toResponse(modality);
     }
 
+    /**
+     * UC12/ADR-0006: bloqueia a remoção (nunca arquiva) se a modalidade já foi
+     * usada em algum treino do atleta — mesmo padrão de Arma/Munição/
+     * Acessório/Local.
+     */
     public void remove(UUID userId, UUID modalityId) {
         PracticedModality practicedModality = practicedModalityGateway.findByUserIdAndModalityId(userId, modalityId)
                 .orElseThrow(() -> new BusinessException("MODALITY_NOT_ASSOCIATED", HttpStatus.NOT_FOUND));
 
+        if (isUsedInAnyTraining(userId, modalityId)) {
+            throw new BusinessException("MODALITY_IN_USE", HttpStatus.CONFLICT);
+        }
+
         practicedModalityGateway.delete(practicedModality);
+    }
+
+    /**
+     * Treino não guarda o atleta diretamente (pertence à Visita, ADR-0012),
+     * então o "uso" é buscado entre os treinos das visitas do próprio atleta.
+     */
+    private boolean isUsedInAnyTraining(UUID userId, UUID modalityId) {
+        List<UUID> visitIds = visitGateway.findAllByUserId(userId).stream()
+                .map(Visit::getId)
+                .toList();
+
+        return !visitIds.isEmpty() && trainingGateway.existsByVisitIdInAndModalityId(visitIds, modalityId);
     }
 
     public List<ModalityResponse> listByUser(UUID userId) {
