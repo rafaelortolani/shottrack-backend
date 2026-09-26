@@ -17,4 +17,6 @@ public interface ModalityResultTypeSelectionGateway {
     boolean existsByUserIdAndModalityIdAndResultTypeId(UUID userId, UUID modalityId, UUID resultTypeId);
 
     void delete(ModalityResultTypeSelection selection);
+
+    void deleteAllByUserIdAndModalityId(UUID userId, UUID modalityId);
 }

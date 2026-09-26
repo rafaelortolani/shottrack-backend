@@ -16,7 +16,10 @@ catálogo (UC11/ADR-0005).
 ## Fluxo principal — remover
 1. Atleta informa o id de uma modalidade já associada
 2. Sistema verifica que a modalidade nunca foi usada em nenhum treino do atleta
-3. Sistema remove a associação, sem afetar as demais modalidades praticadas
+3. Sistema remove a associação e, junto, todas as seleções de tipo de
+   resultado configuradas pro atleta nessa modalidade (ADR-0011/UC30), sem
+   afetar as demais modalidades praticadas. Readicionar a modalidade depois
+   reaplica a sugestão padrão do zero
 
 ## Fluxo principal — listar
 1. Atleta solicita suas modalidades praticadas
@@ -38,10 +41,13 @@ catálogo (UC11/ADR-0005).
 - [x] Um teste para CADA fluxo alternativo listado acima
 - [x] Teste cobrindo 2d (`MODALITY_IN_USE`) e remoção permitida quando só
   outras modalidades foram usadas em treino
+- [x] Teste cobrindo remover e readicionar a mesma modalidade, com a
+  sugestão padrão reaplicada do zero
 
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0005 (modalidade como catálogo fixo)
 - ADR-0006 (exclusão bloqueada, sem arquivamento)
+- ADR-0011 (sugestão padrão de tipos de resultado por modalidade)
 - ADR-0012 (Treino — domínio que passou a dar uso real à modalidade praticada)
 - UC11 (consultar catálogo de modalidades)
