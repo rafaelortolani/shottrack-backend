@@ -2,6 +2,7 @@ package com.shottrack.backend.application.modality.usecase;
 
 import com.shottrack.backend.application.modality.dto.ModalityResponse;
 import com.shottrack.backend.application.modality.gateway.ModalityGateway;
+import com.shottrack.backend.application.modality.gateway.ModalityResultTypeSelectionGateway;
 import com.shottrack.backend.application.modality.gateway.PracticedModalityGateway;
 import com.shottrack.backend.application.modality.mapper.ModalityMapper;
 import com.shottrack.backend.application.modality.model.Modality;
@@ -13,6 +14,7 @@ import com.shottrack.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -24,6 +26,7 @@ public class PracticedModalityService {
     private final PracticedModalityGateway practicedModalityGateway;
     private final ModalityGateway modalityGateway;
     private final ModalityResultTypeService modalityResultTypeService;
+    private final ModalityResultTypeSelectionGateway modalityResultTypeSelectionGateway;
     private final ModalityMapper modalityMapper;
     private final VisitGateway visitGateway;
     private final TrainingGateway trainingGateway;
@@ -51,7 +54,12 @@ public class PracticedModalityService {
      * UC12/ADR-0006: bloqueia a remoção (nunca arquiva) se a modalidade já foi
      * usada em algum treino do atleta — mesmo padrão de Arma/Munição/
      * Acessório/Local.
+     *
+     * UC12/ADR-0011: as seleções de tipo de resultado (UC30) da modalidade
+     * são apagadas junto, na mesma transação — senão ficam órfãs e
+     * readicionar a modalidade quebra ao reaplicar a sugestão padrão.
      */
+    @Transactional
     public void remove(UUID userId, UUID modalityId) {
         PracticedModality practicedModality = practicedModalityGateway.findByUserIdAndModalityId(userId, modalityId)
                 .orElseThrow(() -> new BusinessException("MODALITY_NOT_ASSOCIATED", HttpStatus.NOT_FOUND));
@@ -60,6 +68,7 @@ public class PracticedModalityService {
             throw new BusinessException("MODALITY_IN_USE", HttpStatus.CONFLICT);
         }
 
+        modalityResultTypeSelectionGateway.deleteAllByUserIdAndModalityId(userId, modalityId);
         practicedModalityGateway.delete(practicedModality);
     }
 

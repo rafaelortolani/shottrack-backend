@@ -146,6 +146,35 @@ class PracticedModalityTest {
                 .andExpect(jsonPath("$.data[?(@.name == 'Fator de desempenho')]").isNotEmpty());
     }
 
+    /**
+     * Bug de produção: remover a modalidade deixava as seleções de tipo de
+     * resultado (ADR-0011/UC30) órfãs, e readicionar violava a constraint
+     * única ao reaplicar a sugestão padrão (500).
+     */
+    @Test
+    void shouldReAddRemovedModalityReapplyingDefaultSuggestionFromScratch() throws Exception {
+        addModality(ipscId);
+        expectDefaultIpscSuggestion();
+
+        UUID pontuacaoId = resultTypeIdByName("Pontuação");
+        mockMvc.perform(delete("/api/practiced-modalities/" + ipscId + "/result-types/" + pontuacaoId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/practiced-modalities/" + ipscId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/practiced-modalities")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new AddPracticedModalityRequest(ipscId))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.name").value("IPSC"));
+
+        expectDefaultIpscSuggestion();
+    }
+
     @Test
     void shouldRejectRemovingUnassociatedModality() throws Exception {
         mockMvc.perform(delete("/api/practiced-modalities/" + ipscId)
@@ -189,6 +218,30 @@ class PracticedModalityTest {
         mockMvc.perform(delete("/api/practiced-modalities/" + ipscId)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk());
+    }
+
+    private void expectDefaultIpscSuggestion() throws Exception {
+        mockMvc.perform(get("/api/practiced-modalities/" + ipscId + "/result-types")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(3))
+                .andExpect(jsonPath("$.data[?(@.name == 'Tempo')]").isNotEmpty())
+                .andExpect(jsonPath("$.data[?(@.name == 'Pontuação')]").isNotEmpty())
+                .andExpect(jsonPath("$.data[?(@.name == 'Fator de desempenho')]").isNotEmpty());
+    }
+
+    private UUID resultTypeIdByName(String name) throws Exception {
+        var result = mockMvc.perform(get("/api/result-type-catalog")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andReturn();
+
+        JsonNode items = objectMapper.readTree(result.getResponse().getContentAsString()).get("data");
+        for (JsonNode item : items) {
+            if (item.get("name").asText().equals(name)) {
+                return UUID.fromString(item.get("id").asText());
+            }
+        }
+        throw new AssertionError("Tipo de resultado não encontrado no catálogo: " + name);
     }
 
     private UUID startVisit() throws Exception {
