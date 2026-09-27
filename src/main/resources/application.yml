@@ -33,6 +33,22 @@ spring:
     username: shottrack
     password: shottrack
 
+# ADR-0017 (Onda 1): só /actuator/health exposto (padrão do Actuator), liberado
+# sem autenticação no SecurityConfig pro monitor externo de disponibilidade.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+sentry:
+  # vazio (dev/testes) = Sentry desligado, sem erro na subida.
+  dsn: ${SENTRY_DSN:}
+  logging:
+    # logs ERROR viram evento no Sentry (inclui os 500 do ApiExceptionHandler);
+    # WARN e INFO só entram como breadcrumb.
+    minimum-event-level: error
+
 server:
   port: 8080
   servlet:

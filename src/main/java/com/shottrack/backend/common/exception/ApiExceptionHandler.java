@@ -2,6 +2,7 @@ package com.shottrack.backend.common.exception;
 
 import com.shottrack.backend.common.web.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+@Slf4j
 @RestControllerAdvice
 @RequiredArgsConstructor
 public class ApiExceptionHandler {
@@ -33,8 +35,14 @@ public class ApiExceptionHandler {
                 .body(ApiResponse.error("VALIDATION_ERROR", message));
     }
 
+    /**
+     * ADR-0017: o log ERROR é o que leva o erro pro arquivo de log e pro
+     * Sentry (via sentry-logback) — como toda Exception é tratada aqui, a
+     * captura automática de exception não tratada do starter nunca dispara.
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleUnexpected(Exception ex) {
+        log.error("Erro inesperado", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("INTERNAL_ERROR", "Erro interno inesperado"));
     }
