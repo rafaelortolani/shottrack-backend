@@ -16,7 +16,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * Stateless: CSRF desligado e sem sessão — a única forma de autenticar um endpoint
  * protegido é via Authorization: Bearer <token>, validado pelo JwtAuthenticationFilter
- * (ADR-0001). Rotas de cadastro/login/refresh continuam públicas.
+ * (ADR-0001). Rotas de cadastro/login/refresh continuam públicas, assim como
+ * /actuator/health (ADR-0017, monitor externo de disponibilidade).
  */
 @Configuration
 @RequiredArgsConstructor
@@ -38,6 +39,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/users/registration", "/api/users/registration/completion", "/api/auth/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))

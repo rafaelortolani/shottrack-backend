@@ -24,6 +24,8 @@
         <jacoco.version>0.8.15</jacoco.version>
         <jjwt.version>0.12.6</jjwt.version>
         <springdoc.version>2.6.0</springdoc.version>
+        <sentry.version>8.16.0</sentry.version>
+        <logstash-logback-encoder.version>8.1</logstash-logback-encoder.version>
     </properties>
 
     <dependencies>
@@ -100,6 +102,30 @@
             <!-- ADR-0015: RetryInterceptorBuilder (retry com backoff no consumidor da fila) -->
             <groupId>org.springframework.retry</groupId>
             <artifactId>spring-retry</artifactId>
+        </dependency>
+        <dependency>
+            <!-- ADR-0017 (Onda 1): /actuator/health, monitorado externamente -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <!-- ADR-0017 (Onda 1): rastreamento de erro -->
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-spring-boot-starter-jakarta</artifactId>
+            <version>${sentry.version}</version>
+        </dependency>
+        <dependency>
+            <!-- ADR-0017: envia logs ERROR pro Sentry — ApiExceptionHandler trata toda
+                 Exception, então a captura automática do starter nunca veria os 500 -->
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-logback</artifactId>
+            <version>${sentry.version}</version>
+        </dependency>
+        <dependency>
+            <!-- ADR-0017 (Onda 1): logs estruturados em JSON (logback-spring.xml) -->
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logstash-logback-encoder.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
