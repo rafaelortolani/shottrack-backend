@@ -9,8 +9,8 @@ import java.util.Optional;
 
 /**
  * Regras de valor de resultado compartilhadas por destaque, recordes
- * (UC42) e evolução (UC46), pra não haver duas interpretações diferentes
- * de "valor numérico" ou de "melhor valor".
+ * (UC42), evolução (UC46) e comparação de armas (UC48), pra não haver
+ * duas interpretações diferentes de "valor numérico" ou de "melhor valor".
  */
 final class ResultValues {
 
@@ -19,7 +19,7 @@ final class ResultValues {
 
     /**
      * ADR-0013: valor de resultado é texto — não numérico é ignorado
-     * silenciosamente nos cálculos (UC42/UC46, observação).
+     * silenciosamente nos cálculos (UC42/UC46/UC48, observação).
      */
     static Optional<BigDecimal> parseNumeric(String value) {
         if (value == null) {
