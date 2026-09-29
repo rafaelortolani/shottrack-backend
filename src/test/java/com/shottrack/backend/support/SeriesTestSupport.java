@@ -9,9 +9,13 @@ import com.shottrack.backend.application.visit.dto.OpenTrainingRequest;
 import com.shottrack.backend.application.visit.dto.StartVisitRequest;
 import com.shottrack.backend.application.weapon.dto.WeaponRegisterRequest;
 import com.shottrack.backend.application.weapon.dto.WeaponUpdateRequest;
+import jakarta.persistence.EntityManager;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -105,6 +109,22 @@ public final class SeriesTestSupport {
                 .andReturn();
 
         return idFromResponse(objectMapper, result);
+    }
+
+    /**
+     * O dia de uma série é o dia do treino (UC46/UC47/UC48) — como a
+     * auditoria sempre grava "agora", move o início do treino pro meio-dia
+     * (UTC) do dia informado direto no banco. Flush antes (o treino pode
+     * ainda não ter sido enviado ao banco) e clear depois (senão o
+     * Hibernate devolve a entidade em cache, com a data antiga).
+     */
+    public static void backdateTraining(EntityManager entityManager, UUID trainingId, LocalDate day) {
+        entityManager.flush();
+        entityManager.createNativeQuery("UPDATE trainings SET created_at = :createdAt WHERE id = :id")
+                .setParameter("createdAt", day.atTime(LocalTime.NOON).toInstant(ZoneOffset.UTC))
+                .setParameter("id", trainingId)
+                .executeUpdate();
+        entityManager.clear();
     }
 
     private static UUID modalityIdByName(MockMvc mockMvc, ObjectMapper objectMapper, String token, String name) throws Exception {

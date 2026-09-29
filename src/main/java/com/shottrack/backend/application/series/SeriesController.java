@@ -1,8 +1,11 @@
 package com.shottrack.backend.application.series;
 
 import com.shottrack.backend.application.series.dto.RegisterSeriesRequest;
+import com.shottrack.backend.application.series.dto.SeriesHistoryRequest;
+import com.shottrack.backend.application.series.dto.SeriesHistoryResponse;
 import com.shottrack.backend.application.series.dto.SeriesResponse;
 import com.shottrack.backend.application.series.dto.UpdateSeriesRequest;
+import com.shottrack.backend.application.series.usecase.SeriesHistoryService;
 import com.shottrack.backend.application.series.usecase.SeriesService;
 import com.shottrack.backend.common.web.ApiResponse;
 import jakarta.validation.Valid;
@@ -12,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -20,6 +24,14 @@ import java.util.UUID;
 public class SeriesController {
 
     private final SeriesService seriesService;
+    private final SeriesHistoryService seriesHistoryService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<SeriesHistoryResponse>>> history(Authentication authentication,
+                                                                            @Valid @ModelAttribute SeriesHistoryRequest request) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(ApiResponse.ok(seriesHistoryService.getHistory(userId, request)));
+    }
 
     @PostMapping
     public ResponseEntity<ApiResponse<SeriesResponse>> register(Authentication authentication,
