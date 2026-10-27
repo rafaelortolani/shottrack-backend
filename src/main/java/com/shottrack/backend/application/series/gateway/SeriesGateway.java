@@ -14,5 +14,9 @@ public interface SeriesGateway {
 
     List<Series> findAllByTrainingId(UUID trainingId);
 
+    boolean existsByWeaponId(UUID weaponId);
+
+    boolean existsByAmmunitionId(UUID ammunitionId);
+
     void delete(Series series);
 }

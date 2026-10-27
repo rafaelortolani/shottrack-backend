@@ -31,6 +31,16 @@ class SeriesGatewayImpl implements SeriesGateway {
     }
 
     @Override
+    public boolean existsByWeaponId(UUID weaponId) {
+        return seriesRepository.existsByWeaponId(weaponId);
+    }
+
+    @Override
+    public boolean existsByAmmunitionId(UUID ammunitionId) {
+        return seriesRepository.existsByAmmunitionId(ammunitionId);
+    }
+
+    @Override
     public void delete(Series series) {
         seriesRepository.delete(series);
     }

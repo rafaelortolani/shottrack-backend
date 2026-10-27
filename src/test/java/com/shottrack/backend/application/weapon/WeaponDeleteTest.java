@@ -7,6 +7,8 @@ import com.shottrack.backend.application.accessory.dto.AssociateAccessoryWeaponR
 import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
 import com.shottrack.backend.application.weapon.dto.WeaponRegisterRequest;
 import com.shottrack.backend.support.TestUsers;
+import com.shottrack.backend.application.series.dto.RegisterSeriesRequest;
+import com.shottrack.backend.support.SeriesTestSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -116,6 +118,29 @@ class WeaponDeleteTest {
                         .header("Authorization", "Bearer " + tokenOutro))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("WEAPON_NOT_FOUND"));
+    }
+
+    @Test
+    void shouldRejectDeletionOfWeaponUsedInSeries() throws Exception {
+        String token = registerAndLogin("atleta.armaemuso@shottrack.com");
+        UUID weaponId = registerWeapon(token);
+        UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
+        mockMvc.perform(post("/api/series")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new RegisterSeriesRequest(trainingId, weaponId, null, null, null, null, null))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(delete("/api/weapons/" + weaponId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("WEAPON_IN_USE"));
+
+        mockMvc.perform(get("/api/weapons")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1));
     }
 
     private UUID registerWeapon(String token) throws Exception {

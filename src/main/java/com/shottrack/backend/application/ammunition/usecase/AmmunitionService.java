@@ -1,6 +1,7 @@
 package com.shottrack.backend.application.ammunition.usecase;
 
 import com.shottrack.backend.application.ammunition.dto.AmmunitionRegisterRequest;
+import com.shottrack.backend.application.series.gateway.SeriesGateway;
 import com.shottrack.backend.application.ammunition.dto.AmmunitionResponse;
 import com.shottrack.backend.application.ammunition.dto.AmmunitionUpdateRequest;
 import com.shottrack.backend.application.ammunition.gateway.AmmunitionGateway;
@@ -25,6 +26,7 @@ public class AmmunitionService {
     private final AmmunitionGateway ammunitionGateway;
     private final AmmunitionManufacturerGateway ammunitionManufacturerGateway;
     private final WeaponCaliberGateway weaponCaliberGateway;
+    private final SeriesGateway seriesGateway;
     private final AmmunitionMapper ammunitionMapper;
 
     public AmmunitionResponse register(UUID userId, AmmunitionRegisterRequest request) {
@@ -114,21 +116,11 @@ public class AmmunitionService {
     public void delete(UUID userId, UUID ammunitionId) {
         Ammunition ammunition = findOwnedAmmunitionOrThrow(userId, ammunitionId);
 
-        if (isUsedInAnySeries(ammunition)) {
+        if (seriesGateway.existsByAmmunitionId(ammunition.getId())) {
             throw new BusinessException("AMMUNITION_IN_USE", HttpStatus.CONFLICT);
         }
 
         ammunitionGateway.delete(ammunition);
-    }
-
-    /**
-     * O domínio de Série ainda não existe, então nenhuma munição pode estar
-     * "em uso" — sempre retorna false até lá. Quando Série existir, troca-se
-     * este método pela consulta real (ex: seriesGateway.existsByAmmunitionId),
-     * sem precisar reescrever o restante de delete().
-     */
-    private boolean isUsedInAnySeries(Ammunition ammunition) {
-        return false;
     }
 
     /**
