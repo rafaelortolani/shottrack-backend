@@ -15,4 +15,6 @@ public interface AmmunitionGateway {
     Optional<Ammunition> findById(UUID id);
 
     void delete(Ammunition ammunition);
+
+    void deleteAllByUserId(UUID userId);
 }

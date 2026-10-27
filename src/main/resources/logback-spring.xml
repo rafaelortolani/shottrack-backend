@@ -18,7 +18,20 @@
             <maxHistory>7</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
-        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <!-- ADR-0019: e-mail e tokens nunca vão pro arquivo de log, nem dentro de
+                 mensagens de exceção de terceiros (ex: violação de unique do Postgres) -->
+            <jsonGeneratorDecorator class="net.logstash.logback.mask.MaskingJsonGeneratorDecorator">
+                <valueMask>
+                    <value>[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}</value>
+                    <mask>***@***</mask>
+                </valueMask>
+                <valueMask>
+                    <value>eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+</value>
+                    <mask>***</mask>
+                </valueMask>
+            </jsonGeneratorDecorator>
+        </encoder>
     </appender>
 
     <root level="INFO">

@@ -34,4 +34,9 @@ class AccessoryGatewayImpl implements AccessoryGateway {
     public void delete(Accessory accessory) {
         accessoryRepository.delete(accessory);
     }
+
+    @Override
+    public void deleteAllByUserId(UUID userId) {
+        accessoryRepository.deleteAllByUserId(userId);
+    }
 }

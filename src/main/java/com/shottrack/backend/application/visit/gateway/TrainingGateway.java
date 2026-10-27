@@ -21,4 +21,7 @@ public interface TrainingGateway {
     boolean existsByVisitIdInAndModalityId(Collection<UUID> visitIds, UUID modalityId);
 
     void delete(Training training);
+
+    List<Training> findAllByVisitIdIn(Collection<UUID> visitIds);
+    void deleteAllByVisitIdIn(Collection<UUID> visitIds);
 }

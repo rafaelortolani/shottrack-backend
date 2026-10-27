@@ -15,4 +15,6 @@ public interface WeaponGateway {
     Optional<Weapon> findById(UUID id);
 
     void delete(Weapon weapon);
+
+    void deleteAllByUserId(UUID userId);
 }

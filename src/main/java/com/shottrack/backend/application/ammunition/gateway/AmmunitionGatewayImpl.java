@@ -34,4 +34,9 @@ class AmmunitionGatewayImpl implements AmmunitionGateway {
     public void delete(Ammunition ammunition) {
         ammunitionRepository.delete(ammunition);
     }
+
+    @Override
+    public void deleteAllByUserId(UUID userId) {
+        ammunitionRepository.deleteAllByUserId(userId);
+    }
 }

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collection;
 
 public interface AccessoryWeaponRepository extends JpaRepository<AccessoryWeapon, UUID> {
 
@@ -14,4 +15,8 @@ public interface AccessoryWeaponRepository extends JpaRepository<AccessoryWeapon
     Optional<AccessoryWeapon> findByAccessoryIdAndWeaponId(UUID accessoryId, UUID weaponId);
 
     boolean existsByAccessoryIdAndWeaponId(UUID accessoryId, UUID weaponId);
+
+    List<AccessoryWeapon> findAllByAccessoryIdIn(Collection<UUID> accessoryIds);
+    void deleteAllByAccessoryIdIn(Collection<UUID> accessoryIds);
+    void deleteAllByWeaponIdIn(Collection<UUID> weaponIds);
 }

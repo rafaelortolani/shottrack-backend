@@ -44,6 +44,10 @@ management:
 sentry:
   # vazio (dev/testes) = Sentry desligado, sem erro na subida.
   dsn: ${SENTRY_DSN:}
+  # ADR-0019: nada de dados pessoais — sem usuário/IP/cabeçalhos/cookies automáticos
+  # e sem corpo de requisição nos eventos (SentryPiiScrubber mascara o resto).
+  send-default-pii: false
+  max-request-body-size: none
   logging:
     # logs ERROR viram evento no Sentry (inclui os 500 do ApiExceptionHandler);
     # WARN e INFO só entram como breadcrumb.
@@ -63,6 +67,14 @@ app:
   # usado pra montar o link de confirmação de cadastro (UC01/ADR-0009)
   # enviado por email — porta padrão do Next.js (shottrack-frontend) em dev.
   frontend-url: http://localhost:3000
+  cleanup:
+    # ADR-0019: limpeza diária de dados vencidos (ExpiredDataCleanupService)
+    enabled: true
+    cron: "0 0 3 * * *"   # 03:00 UTC
+  legal:
+    # ADR-0019: versão vigente dos Termos de Uso/Política de Privacidade, gravada
+    # em users.terms_version no aceite (UC23). Mudou o texto → mudar aqui.
+    version: "2026-10"
   jwt:
     # obrigatório via env (sem default) — nunca commitar chave de assinatura JWT.
     # gerar uma local com: openssl rand -base64 32
@@ -86,4 +98,11 @@ app:
     password-reset-request:
       per-email: 5
       per-ip: 20
+      window: 1h
+    # ADR-0019: por usuário autenticado (ou IP, quando não há usuário)
+    account-deletion:
+      attempts: 5
+      window: 1h
+    data-export:
+      attempts: 3
       window: 1h

@@ -34,4 +34,9 @@ class TrainingLocationGatewayImpl implements TrainingLocationGateway {
     public void delete(TrainingLocation trainingLocation) {
         trainingLocationRepository.delete(trainingLocation);
     }
+
+    @Override
+    public void deleteAllByUserId(UUID userId) {
+        trainingLocationRepository.deleteAllByUserId(userId);
+    }
 }

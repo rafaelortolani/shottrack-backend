@@ -14,4 +14,10 @@ public interface UserGateway {
     Optional<User> findById(UUID id);
 
     User save(User user);
+
+    boolean existsById(UUID id);
+
+    Optional<User> findByIdForUpdate(UUID id);
+
+    void deleteById(UUID id);
 }

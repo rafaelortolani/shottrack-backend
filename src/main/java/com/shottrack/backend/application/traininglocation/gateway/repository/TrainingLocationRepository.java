@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface TrainingLocationRepository extends JpaRepository<TrainingLocation, UUID> {
 
     List<TrainingLocation> findAllByUserId(UUID userId);
+
+    void deleteAllByUserId(UUID userId);
 }

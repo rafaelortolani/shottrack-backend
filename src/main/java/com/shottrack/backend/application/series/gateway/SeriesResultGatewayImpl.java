@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collection;
 
 @Component
 @RequiredArgsConstructor
@@ -33,5 +34,15 @@ class SeriesResultGatewayImpl implements SeriesResultGateway {
     @Override
     public void delete(SeriesResult seriesResult) {
         seriesResultRepository.delete(seriesResult);
+    }
+
+    @Override
+    public List<SeriesResult> findAllBySeriesIdIn(Collection<UUID> seriesIds) {
+        return seriesResultRepository.findAllBySeriesIdIn(seriesIds);
+    }
+
+    @Override
+    public void deleteAllBySeriesIdIn(Collection<UUID> seriesIds) {
+        seriesResultRepository.deleteAllBySeriesIdIn(seriesIds);
     }
 }

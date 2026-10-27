@@ -3,19 +3,29 @@ package com.shottrack.backend.application.user;
 import com.shottrack.backend.application.user.dto.ChangeEmailRequest;
 import com.shottrack.backend.application.user.dto.ChangePasswordRequest;
 import com.shottrack.backend.application.user.dto.CompleteRegistrationRequest;
+import com.shottrack.backend.application.user.dto.DeleteAccountRequest;
 import com.shottrack.backend.application.user.dto.ConfirmEmailChangeRequest;
 import com.shottrack.backend.application.user.dto.RegistrationRequest;
 import com.shottrack.backend.application.user.dto.UpdateProfileRequest;
+import com.shottrack.backend.application.user.dto.UserDataExportResponse;
 import com.shottrack.backend.application.user.dto.UserResponse;
+import com.shottrack.backend.application.user.usecase.AccountDeletionService;
+import com.shottrack.backend.application.user.usecase.UserDataExportService;
 import com.shottrack.backend.application.user.usecase.UserService;
 import com.shottrack.backend.common.web.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 @RestController
@@ -24,6 +34,8 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final AccountDeletionService accountDeletionService;
+    private final UserDataExportService userDataExportService;
 
     @PostMapping("/registration")
     public ResponseEntity<ApiResponse<Void>> requestRegistration(@Valid @RequestBody RegistrationRequest request) {
@@ -66,6 +78,29 @@ public class UserController {
         UUID userId = (UUID) authentication.getPrincipal();
         UserResponse response = userService.confirmEmailChange(userId, request);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * UC53/ADR-0019: arquivo JSON para download — propositalmente sem o
+     * envelope {"data": ...}, é o conteúdo que o atleta leva embora.
+     */
+    @GetMapping("/me/export")
+    public ResponseEntity<UserDataExportResponse> exportData(Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        UserDataExportResponse body = userDataExportService.export(userId);
+        String filename = "shottrack-dados-" + LocalDate.now(ZoneOffset.UTC).format(DateTimeFormatter.BASIC_ISO_DATE) + ".json";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename).build().toString())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
+    }
+
+    @PostMapping("/me/deletion")
+    public ResponseEntity<ApiResponse<Void>> deleteAccount(Authentication authentication,
+                                                           @Valid @RequestBody DeleteAccountRequest request) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        accountDeletionService.delete(userId, request);
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
     @PatchMapping("/me/password")

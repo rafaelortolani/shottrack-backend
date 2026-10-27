@@ -11,4 +11,6 @@ public interface VisitRepository extends JpaRepository<Visit, UUID> {
     List<Visit> findAllByUserId(UUID userId);
 
     boolean existsByTrainingLocationId(UUID trainingLocationId);
+
+    void deleteAllByUserId(UUID userId);
 }

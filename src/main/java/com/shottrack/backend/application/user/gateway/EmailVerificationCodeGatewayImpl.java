@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.Instant;
 
 @Component
 @RequiredArgsConstructor
@@ -30,5 +31,15 @@ class EmailVerificationCodeGatewayImpl implements EmailVerificationCodeGateway {
         List<EmailVerificationCode> pending = emailVerificationCodeRepository.findAllByUserIdAndUsedFalse(userId);
         pending.forEach(EmailVerificationCode::markUsed);
         emailVerificationCodeRepository.saveAll(pending);
+    }
+
+    @Override
+    public void deleteAllByUserId(UUID userId) {
+        emailVerificationCodeRepository.deleteAllByUserId(userId);
+    }
+
+    @Override
+    public long deleteByExpiresAtBefore(Instant cutoff) {
+        return emailVerificationCodeRepository.deleteByExpiresAtBefore(cutoff);
     }
 }

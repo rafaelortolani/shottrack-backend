@@ -45,11 +45,20 @@ public class User extends AbstractBaseEntity {
     @Column(name = "profile_completed_at")
     private Instant profileCompletedAt;
 
+    @Column(name = "terms_accepted_at")
+    private Instant termsAcceptedAt;
+
+    @Column(name = "terms_version")
+    private String termsVersion;
+
     @Builder
-    private User(@NonNull String name, @NonNull String email, @NonNull String passwordHash, ExperienceLevel experienceLevel) {
+    private User(@NonNull String name, @NonNull String email, @NonNull String passwordHash,
+                 ExperienceLevel experienceLevel, Instant termsAcceptedAt, String termsVersion) {
         this.name = name;
         this.email = email;
         this.passwordHash = passwordHash;
+        this.termsAcceptedAt = termsAcceptedAt;
+        this.termsVersion = termsVersion;
         if (experienceLevel != null) {
             this.experienceLevel = experienceLevel;
         }
