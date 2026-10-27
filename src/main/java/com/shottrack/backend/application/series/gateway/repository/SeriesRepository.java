@@ -9,4 +9,8 @@ import java.util.UUID;
 public interface SeriesRepository extends JpaRepository<Series, UUID> {
 
     List<Series> findAllByTrainingId(UUID trainingId);
+
+    boolean existsByWeaponId(UUID weaponId);
+
+    boolean existsByAmmunitionId(UUID ammunitionId);
 }

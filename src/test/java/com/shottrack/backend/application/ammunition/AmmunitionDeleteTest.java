@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.ammunition.dto.AmmunitionRegisterRequest;
 import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
 import com.shottrack.backend.support.TestUsers;
+import com.shottrack.backend.application.series.dto.RegisterSeriesRequest;
+import com.shottrack.backend.support.SeriesTestSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -79,6 +81,29 @@ class AmmunitionDeleteTest {
                         .header("Authorization", "Bearer " + tokenOutro))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("AMMUNITION_NOT_FOUND"));
+    }
+
+    @Test
+    void shouldRejectDeletionOfAmmunitionUsedInSeries() throws Exception {
+        String token = registerAndLogin("atleta.municaoemuso@shottrack.com");
+        UUID ammunitionId = registerAmmunition(token);
+        UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
+        mockMvc.perform(post("/api/series")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new RegisterSeriesRequest(trainingId, null, ammunitionId, null, null, null, null))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(delete("/api/ammunitions/" + ammunitionId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("AMMUNITION_IN_USE"));
+
+        mockMvc.perform(get("/api/ammunitions")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1));
     }
 
     private UUID registerAmmunition(String token) throws Exception {

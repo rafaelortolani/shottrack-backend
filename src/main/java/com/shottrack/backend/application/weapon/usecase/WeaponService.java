@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.weapon.usecase;
 
+import com.shottrack.backend.application.series.gateway.SeriesGateway;
 import com.shottrack.backend.application.weapon.dto.WeaponRegisterRequest;
 import com.shottrack.backend.application.weapon.dto.WeaponResponse;
 import com.shottrack.backend.application.weapon.dto.WeaponUpdateRequest;
@@ -31,6 +32,7 @@ public class WeaponService {
     private final WeaponBrandGateway weaponBrandGateway;
     private final WeaponModelGateway weaponModelGateway;
     private final WeaponCaliberGateway weaponCaliberGateway;
+    private final SeriesGateway seriesGateway;
     private final WeaponMapper weaponMapper;
 
     public WeaponResponse register(UUID userId, WeaponRegisterRequest request) {
@@ -76,12 +78,18 @@ public class WeaponService {
     }
 
     /**
-     * UC08: só exclui se a arma nunca foi usada em nenhum treino/resultado.
-     * Os domínios de Treino e Resultado ainda não existem, então essa checagem
-     * ainda não tem o que checar — toda exclusão é permitida por enquanto.
+     * UC08/ADR-0006: bloqueia a exclusão (nunca arquiva) se a arma já foi usada
+     * em alguma série. Associação com acessório não conta como "uso" (ADR-0008) —
+     * essas linhas saem via ON DELETE CASCADE.
      */
     public void delete(UUID userId, UUID weaponId) {
-        weaponGateway.delete(findOwnedWeaponOrThrow(userId, weaponId));
+        Weapon weapon = findOwnedWeaponOrThrow(userId, weaponId);
+
+        if (seriesGateway.existsByWeaponId(weapon.getId())) {
+            throw new BusinessException("WEAPON_IN_USE", HttpStatus.CONFLICT);
+        }
+
+        weaponGateway.delete(weapon);
     }
 
     /**
