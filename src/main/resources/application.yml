@@ -69,3 +69,21 @@ app:
     secret: ${JWT_SECRET}
     access-token-expiration-minutes: 60
     refresh-token-expiration-days: 7
+  # ADR-0018: rate limit em memória (Bucket4j) em login, cadastro e pedido de
+  # redefinição de senha. Excedeu = 429 + Retry-After.
+  rate-limit:
+    enabled: true
+    # só true atrás do proxy de produção — senão X-Forwarded-For é ignorado
+    # (qualquer cliente poderia forjá-lo pra furar o limite por IP).
+    trust-forwarded-header: false
+    login:
+      attempts: 10          # por IP + e-mail
+      window: 15m
+    registration:
+      per-email: 5
+      per-ip: 20
+      window: 1h
+    password-reset-request:
+      per-email: 5
+      per-ip: 20
+      window: 1h

@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.auth.usecase;
 
+import com.shottrack.backend.application.auth.dto.LogoutRequest;
 import com.shottrack.backend.application.auth.dto.RefreshRequest;
 import com.shottrack.backend.application.auth.dto.TokenResponse;
 import com.shottrack.backend.application.auth.gateway.RefreshTokenGateway;
@@ -21,6 +22,20 @@ public class RefreshTokenService {
 
     private final RefreshTokenGateway refreshTokenGateway;
     private final JwtTokenProvider jwtTokenProvider;
+
+    /**
+     * UC51/ADR-0018: idempotente — token desconhecido, já revogado ou expirado
+     * também é sucesso. Um token já revogado aqui NÃO dispara a derrubada de
+     * todas as sessões (isso é só do refresh, onde o reuso indica roubo).
+     */
+    public void logout(LogoutRequest request) {
+        refreshTokenGateway.findByToken(request.refreshToken())
+                .filter(stored -> !stored.isRevoked())
+                .ifPresent(stored -> {
+                    stored.revoke();
+                    refreshTokenGateway.save(stored);
+                });
+    }
 
     public TokenResponse refresh(RefreshRequest request) {
         RefreshToken stored = refreshTokenGateway.findByToken(request.refreshToken())

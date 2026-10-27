@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.user.usecase;
 
+import com.shottrack.backend.application.auth.gateway.RefreshTokenGateway;
 import com.shottrack.backend.application.user.dto.ChangeEmailRequest;
 import com.shottrack.backend.application.user.dto.ChangePasswordRequest;
 import com.shottrack.backend.application.user.dto.CompleteRegistrationRequest;
@@ -23,6 +24,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -41,6 +43,7 @@ public class UserService {
     private final UserGateway userGateway;
     private final EmailVerificationCodeGateway emailVerificationCodeGateway;
     private final PendingRegistrationGateway pendingRegistrationGateway;
+    private final RefreshTokenGateway refreshTokenGateway;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender;
@@ -154,6 +157,11 @@ public class UserService {
         return userMapper.toResponse(userGateway.save(user));
     }
 
+    /**
+     * UC05/ADR-0018: ao trocar a senha, todas as sessões (refresh tokens) do
+     * atleta são revogadas — o front leva de volta ao login.
+     */
+    @Transactional
     public void changePassword(UUID userId, ChangePasswordRequest request) {
         User user = findUserOrThrow(userId);
 
@@ -167,6 +175,8 @@ public class UserService {
 
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userGateway.save(user);
+
+        refreshTokenGateway.revokeAllByUserId(userId);
     }
 
     private User findUserOrThrow(UUID userId) {

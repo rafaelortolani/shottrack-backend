@@ -104,6 +104,17 @@
             <artifactId>spring-retry</artifactId>
         </dependency>
         <dependency>
+            <!-- ADR-0018: rate limit em memória -->
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j-core</artifactId>
+            <version>8.10.1</version>
+        </dependency>
+        <dependency>
+            <!-- ADR-0018: expira os buckets inativos do rate limit (sem vazar memória) -->
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+        <dependency>
             <!-- ADR-0017 (Onda 1): /actuator/health, monitorado externamente -->
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
