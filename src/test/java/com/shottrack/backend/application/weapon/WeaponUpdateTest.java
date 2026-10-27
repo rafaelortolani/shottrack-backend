@@ -92,6 +92,22 @@ class WeaponUpdateTest {
     }
 
     @Test
+    void shouldChangeOnlyCaliberToAnotherAllowedOneForSameModel() throws Exception {
+        UUID taurusId = idByName("/api/weapon-catalog/brands", "Taurus");
+        UUID model605Id = idByName("/api/weapon-catalog/brands/" + taurusId + "/models", "605");
+        UUID caliber357Id = idByName("/api/weapon-catalog/models/" + model605Id + "/calibers", ".357 Magnum");
+        UUID caliber38Id = idByName("/api/weapon-catalog/models/" + model605Id + "/calibers", ".38 Special");
+
+        update(weaponId, new WeaponUpdateRequest(model605Id, caliber357Id, "Original"))
+                .andExpect(status().isOk());
+
+        update(weaponId, new WeaponUpdateRequest(model605Id, caliber38Id, "Original"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.model.name").value("605"))
+                .andExpect(jsonPath("$.data.caliber.name").value(".38 Special"));
+    }
+
+    @Test
     void shouldRejectMissingModel() throws Exception {
         update(weaponId, new WeaponUpdateRequest(null, caliber9mmId, "Original"))
                 .andExpect(status().isBadRequest())

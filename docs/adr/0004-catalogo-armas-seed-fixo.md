@@ -156,3 +156,22 @@ pelo cliente, são derivados do modelo no servidor.
 
 ## Referências
 - Nenhuma
+
+## Revisão 3 — o que entra agora e o que fica para depois
+Decisão: a **Revisão 2 é implementada como foi desenhada** (tipo inerente ao
+modelo, `weapon_model_calibers` N:N, request só com `modelId` + `caliberId`).
+Ela é a base de qualquer crescimento futuro do catálogo.
+
+**Entra agora:** migration da nova modelagem, seed real das 5 marcas já
+levantadas, validação `WEAPON_CALIBER_NOT_ALLOWED_FOR_MODEL`, ajuste de
+UC06/UC09/UC10 e do formulário de arma no front.
+
+**Fica para depois (sem prazo):**
+- Ampliar o catálogo (mais marcas e modelos; acesso a acervos de fabricantes).
+- Fluxo de "arma não listada" com revisão/aprovação por admin (hoje o
+  catálogo continua fechado).
+- Importação de fontes oficiais ou autorizadas.
+
+Por que adiar é seguro: séries, treinos e armas já cadastradas apontam para o
+`modelId`; novos modelos entram só como dados (migration ou, no futuro,
+fluxo de aprovação), sem mudar a modelagem.
