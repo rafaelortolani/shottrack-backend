@@ -5,3 +5,11 @@ target/
 .DS_Store
 .env
 logs/
+
+# Inventario
+log.txt
+inventario-*.sh
+inventario-*.txt
+relatorio-*.txt
+relatorio-*.sh
+docs/seguranca/
