@@ -20,16 +20,16 @@ public interface TrainingRepository extends JpaRepository<Training, UUID> {
     boolean existsByVisitIdInAndModalityId(Collection<UUID> visitIds, UUID modalityId);
 
     @Query("select count(t) from Training t, Visit v where v.id = t.visitId and v.userId = :userId"
-            + " and t.createdAt >= :from and t.createdAt < :to")
+            + " and v.startedAt >= :from and v.startedAt < :to")
     long countByUserIdBetween(@Param("userId") UUID userId, @Param("from") Instant from, @Param("to") Instant to);
 
     @Query("select count(t) from Training t, Visit v where v.id = t.visitId and v.userId = :userId"
-            + " and t.modalityId = :modalityId and t.createdAt >= :from and t.createdAt < :to")
+            + " and t.modalityId = :modalityId and v.startedAt >= :from and v.startedAt < :to")
     long countByUserIdAndModalityIdBetween(@Param("userId") UUID userId, @Param("modalityId") UUID modalityId,
                                            @Param("from") Instant from, @Param("to") Instant to);
 
     @Query("select count(distinct t.modalityId) from Training t, Visit v where v.id = t.visitId"
-            + " and v.userId = :userId and t.createdAt >= :from and t.createdAt < :to")
+            + " and v.userId = :userId and v.startedAt >= :from and v.startedAt < :to")
     long countDistinctModalitiesByUserIdBetween(@Param("userId") UUID userId, @Param("from") Instant from,
                                                 @Param("to") Instant to);
 

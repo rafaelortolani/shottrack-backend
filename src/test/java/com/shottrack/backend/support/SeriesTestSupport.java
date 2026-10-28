@@ -112,15 +112,14 @@ public final class SeriesTestSupport {
     }
 
     /**
-     * O dia de uma série é o dia do treino (UC46/UC47/UC48) — como a
-     * auditoria sempre grava "agora", move o início do treino pro meio-dia
-     * (UTC) do dia informado direto no banco. Flush antes (o treino pode
+     * O dia de uma série é o dia da VISITA do treino (UC46/UC47/UC48, ADR-0024) — move o
+     * início da visita do treino pro meio-dia (UTC) do dia informado direto no banco. Flush antes (o treino pode
      * ainda não ter sido enviado ao banco) e clear depois (senão o
      * Hibernate devolve a entidade em cache, com a data antiga).
      */
     public static void backdateTraining(EntityManager entityManager, UUID trainingId, LocalDate day) {
         entityManager.flush();
-        entityManager.createNativeQuery("UPDATE trainings SET created_at = :createdAt WHERE id = :id")
+        entityManager.createNativeQuery("UPDATE visits SET started_at = :createdAt WHERE id = (SELECT visit_id FROM trainings WHERE id = :id)")
                 .setParameter("createdAt", day.atTime(LocalTime.NOON).toInstant(ZoneOffset.UTC))
                 .setParameter("id", trainingId)
                 .executeUpdate();

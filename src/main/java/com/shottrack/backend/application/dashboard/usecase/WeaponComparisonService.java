@@ -12,7 +12,7 @@ import com.shottrack.backend.application.series.gateway.SeriesResultGateway;
 import com.shottrack.backend.application.series.model.Series;
 import com.shottrack.backend.application.visit.gateway.TrainingGateway;
 import com.shottrack.backend.application.visit.gateway.VisitGateway;
-import com.shottrack.backend.application.visit.model.Training;
+import com.shottrack.backend.application.visit.model.Visit;
 import com.shottrack.backend.application.weapon.usecase.WeaponService;
 import com.shottrack.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -63,9 +63,10 @@ public class WeaponComparisonService {
         ResultType resultType = resultTypeGateway.findById(request.resultTypeId()).orElseThrow();
 
         Map<UUID, List<Series>> seriesByWeapon = visitGateway.findAllByUserId(userId).stream()
+                // ADR-0024: o dia é o de início da visita
+                .filter(visit -> isWithinPeriod(dayOf(visit), request))
                 .flatMap(visit -> trainingGateway.findAllByVisitId(visit.getId()).stream())
                 .filter(training -> training.getModalityId().equals(request.modalityId()))
-                .filter(training -> isWithinPeriod(dayOf(training), request))
                 .flatMap(training -> seriesGateway.findAllByTrainingId(training.getId()).stream())
                 .filter(series -> series.getWeaponId() != null && weaponIds.contains(series.getWeaponId()))
                 .collect(Collectors.groupingBy(Series::getWeaponId));
@@ -98,7 +99,7 @@ public class WeaponComparisonService {
                 && (request.endDate() == null || !day.isAfter(request.endDate()));
     }
 
-    private LocalDate dayOf(Training training) {
-        return training.getCreatedAt().atZone(ZoneOffset.UTC).toLocalDate();
+    private LocalDate dayOf(Visit visit) {
+        return visit.getStartedAt().atZone(ZoneOffset.UTC).toLocalDate();
     }
 }

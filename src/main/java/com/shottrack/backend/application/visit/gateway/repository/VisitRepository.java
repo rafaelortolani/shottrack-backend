@@ -21,16 +21,16 @@ public interface VisitRepository extends JpaRepository<Visit, UUID> {
     void deleteAllByUserId(UUID userId);
 
     @Query("select new com.shottrack.backend.application.visit.gateway.ClosedVisitFact("
-            + "v.visitType, v.competitionScope, l.club, v.trainingLocationId, v.createdAt) "
+            + "v.visitType, v.competitionScope, l.club, v.trainingLocationId, v.startedAt) "
             + "from Visit v, TrainingLocation l where l.id = v.trainingLocationId and v.userId = :userId "
             + "and v.status = com.shottrack.backend.application.visit.model.VisitStatus.CLOSED "
-            + "and v.createdAt >= :from and v.createdAt < :to")
+            + "and v.startedAt >= :from and v.startedAt < :to")
     List<ClosedVisitFact> findClosedFactsByUserIdBetween(@Param("userId") UUID userId, @Param("from") Instant from,
                                                          @Param("to") Instant to);
 
     @Query("select count(v) from Visit v where v.userId = :userId and v.visitType = :type "
             + "and v.status = com.shottrack.backend.application.visit.model.VisitStatus.CLOSED "
-            + "and v.createdAt >= :from and v.createdAt < :to")
+            + "and v.startedAt >= :from and v.startedAt < :to")
     long countClosedByUserIdAndTypeBetween(@Param("userId") UUID userId, @Param("type") VisitType type,
                                            @Param("from") Instant from, @Param("to") Instant to);
 }

@@ -2,6 +2,7 @@ package com.shottrack.backend.application.visit.usecase;
 
 import com.shottrack.backend.application.dashboard.event.DashboardRecalculationRequestedEvent;
 import com.shottrack.backend.application.traininglocation.usecase.TrainingLocationService;
+import com.shottrack.backend.application.visit.dto.EditVisitDatesRequest;
 import com.shottrack.backend.application.visit.dto.StartVisitRequest;
 import com.shottrack.backend.application.visit.dto.TrainingResponse;
 import com.shottrack.backend.application.visit.dto.VisitResponse;
@@ -16,7 +17,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,12 +29,25 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class VisitService {
 
+    /**
+     * ADR-0024: tolerância para relógio de cliente adiantado — uma data até 5 minutos à frente
+     * é aceita e tratada como "agora"; além disso é futuro (VISIT_DATE_IN_FUTURE).
+     */
+    static final Duration FUTURE_TOLERANCE = Duration.ofMinutes(5);
+    static final int MAX_MONTHS_BACK = 12;
+
     private final VisitGateway visitGateway;
     private final TrainingLocationService trainingLocationService;
     private final TrainingService trainingService;
     private final VisitMapper visitMapper;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final Clock clock;
 
+    /**
+     * UC31/ADR-0024: startedAt opcional (padrão agora). Transação própria porque a visita
+     * retroativa dispara o recálculo do dashboard, entregue só depois do commit (ADR-0015).
+     */
+    @Transactional
     public VisitResponse start(UUID userId, StartVisitRequest request) {
         trainingLocationService.findOwnedTrainingLocationOrThrow(userId, request.trainingLocationId());
 
@@ -44,9 +62,72 @@ public class VisitService {
                 .observations(request.observations())
                 .visitType(request.visitType())
                 .competitionScope(request.competitionScope())
+                .startedAt(request.startedAt() == null ? null : validatedStart(request.startedAt()))
                 .build();
 
-        return toResponse(visitGateway.save(visit));
+        Visit saved = visitGateway.save(visit);
+        if (request.startedAt() != null) {
+            applicationEventPublisher.publishEvent(new DashboardRecalculationRequestedEvent(userId));
+        }
+        return toResponse(saved);
+    }
+
+    /**
+     * UC59/ADR-0024: edita início e/ou fim. Ordem das validações: corpo vazio, fim em visita
+     * em andamento, futuro, 12 meses, ordem início ≤ fim. Os horários dos treinos e séries
+     * não mudam. Recalcula o dashboard depois do commit.
+     */
+    @Transactional
+    public VisitResponse editDates(UUID userId, UUID visitId, EditVisitDatesRequest request) {
+        Visit visit = findOwnedVisitOrThrow(userId, visitId);
+
+        if (request.startedAt() == null && request.endedAt() == null) {
+            throw new BusinessException("VALIDATION_ERROR", HttpStatus.BAD_REQUEST);
+        }
+        if (request.endedAt() != null && visit.isOpen()) {
+            throw new BusinessException("VALIDATION_ERROR", HttpStatus.BAD_REQUEST);
+        }
+
+        Instant newStart = request.startedAt() == null ? null : validatedStart(request.startedAt());
+        Instant newEnd = request.endedAt() == null ? null : validatedEnd(request.endedAt());
+
+        Instant start = newStart != null ? newStart : visit.getStartedAt();
+        Instant end = newEnd != null ? newEnd : visit.getEndedAt();
+        if (end != null && start.isAfter(end)) {
+            throw new BusinessException("VISIT_DATE_RANGE_INVALID", HttpStatus.BAD_REQUEST);
+        }
+
+        visit.changeDates(newStart, newEnd);
+        Visit saved = visitGateway.save(visit);
+        applicationEventPublisher.publishEvent(new DashboardRecalculationRequestedEvent(userId));
+        return toResponse(saved);
+    }
+
+    /**
+     * Não futuro (com a tolerância de relógio) e não anterior a 12 meses. O limite é por dia
+     * (UTC), como as demais janelas: vale a partir das 00:00 UTC do dia de hoje menos 12 meses.
+     * Um valor ligeiramente à frente do relógio é ajustado para "agora", para nunca ficar
+     * depois do encerramento.
+     */
+    private Instant validatedStart(Instant startedAt) {
+        Instant now = clock.instant();
+        Instant effective = notInFuture(startedAt, now);
+        LocalDate oldestDay = LocalDate.ofInstant(now, ZoneOffset.UTC).minusMonths(MAX_MONTHS_BACK);
+        if (effective.isBefore(oldestDay.atStartOfDay().toInstant(ZoneOffset.UTC))) {
+            throw new BusinessException("VISIT_DATE_TOO_OLD", HttpStatus.BAD_REQUEST);
+        }
+        return effective;
+    }
+
+    private Instant validatedEnd(Instant endedAt) {
+        return notInFuture(endedAt, clock.instant());
+    }
+
+    private Instant notInFuture(Instant value, Instant now) {
+        if (value.isAfter(now.plus(FUTURE_TOLERANCE))) {
+            throw new BusinessException("VISIT_DATE_IN_FUTURE", HttpStatus.BAD_REQUEST);
+        }
+        return value.isAfter(now) ? now : value;
     }
 
     public List<VisitResponse> listByUser(UUID userId) {
@@ -71,7 +152,7 @@ public class VisitService {
             throw new BusinessException("VISIT_ALREADY_CLOSED", HttpStatus.CONFLICT);
         }
 
-        Instant closedAt = Instant.now();
+        Instant closedAt = clock.instant();
         visit.close(closedAt);
         trainingService.closeAllOpenByVisitId(visitId, closedAt);
 

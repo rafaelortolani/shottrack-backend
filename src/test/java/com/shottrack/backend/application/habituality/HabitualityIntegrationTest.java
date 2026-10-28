@@ -25,6 +25,7 @@ import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -89,6 +90,7 @@ abstract class HabitualityIntegrationTest {
             case "GET" -> get(path);
             case "POST" -> post(path);
             case "PUT" -> put(path);
+            case "PATCH" -> patch(path);
             default -> delete(path);
         };
         if (token != null) {
@@ -211,7 +213,7 @@ abstract class HabitualityIntegrationTest {
 
     protected void backdateVisit(UUID visitId, LocalDate day) {
         flushAndClear();
-        entityManager.createNativeQuery("UPDATE visits SET created_at = :createdAt WHERE id = :id")
+        entityManager.createNativeQuery("UPDATE visits SET started_at = :createdAt WHERE id = :id")
                 .setParameter("createdAt", day.atTime(LocalTime.NOON).toInstant(ZoneOffset.UTC))
                 .setParameter("id", visitId)
                 .executeUpdate();

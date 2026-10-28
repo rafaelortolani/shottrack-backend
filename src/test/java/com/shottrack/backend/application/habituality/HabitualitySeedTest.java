@@ -19,27 +19,35 @@ class HabitualitySeedTest extends HabitualityIntegrationTest {
 
     private static final String RULE_NAME = "Habitualidade — Atirador Desportivo";
 
+    /** A versão de 2023-12-01 da regra carregada pela migration. */
+    private static final String SEED_VERSION = "(SELECT v.id FROM habituality_rule_versions v JOIN habituality_rules r ON r.id = v.rule_id "
+            + "WHERE r.name = '" + RULE_NAME + "' AND v.valid_from = DATE '2023-12-01')";
+
     private record Row(String level, String type, int min, boolean club, boolean distinct, String scope) {
     }
 
+    /**
+     * Os testes rodam contra o banco de desenvolvimento, que pode ter acompanhamentos reais de
+     * atletas e novas versões do admin depois da V52 — por isso as contagens são da regra e da
+     * versão carregadas pela migration, não do banco inteiro.
+     */
     @Test
-    void shouldLeaveExactlyOneActiveRuleWithOneVersionThreeLevelsAndSevenRequirements() {
-        assertThat(count("habituality_rules")).isEqualTo(1);
-        assertThat(count("habituality_rule_versions")).isEqualTo(1);
-        assertThat(count("habituality_levels")).isEqualTo(3);
-        assertThat(count("habituality_requirements")).isEqualTo(7);
-        assertThat(count("athlete_habituality_tracking")).isZero();
+    void shouldLeaveTheActiveRuleWithItsVersionThreeLevelsAndSevenRequirements() {
+        assertThat(count("habituality_rules WHERE name = '" + RULE_NAME + "'")).isEqualTo(1);
+        assertThat(count("habituality_rules WHERE name LIKE 'Regra %' OR name LIKE 'Probe%'")).isZero();
+        assertThat(count("habituality_levels WHERE version_id = " + SEED_VERSION)).isEqualTo(3);
+        assertThat(count("habituality_requirements WHERE level_id IN (SELECT id FROM habituality_levels WHERE version_id = "
+                + SEED_VERSION + ")")).isEqualTo(7);
 
         Map<String, Object> rule = jdbcTemplate.queryForMap(
-                "SELECT name, legal_reference, active, created_by FROM habituality_rules");
-        assertThat(rule.get("name")).isEqualTo(RULE_NAME);
+                "SELECT name, legal_reference, active, created_by FROM habituality_rules WHERE name = ?", RULE_NAME);
         assertThat(rule.get("legal_reference"))
                 .isEqualTo("Decreto 11.615/2023, art. 35; Portaria COLOG/C Ex 166/2023, art. 95");
         assertThat(rule.get("active")).isEqualTo(true);
         assertThat(rule.get("created_by")).isNull();
 
         Map<String, Object> version = jdbcTemplate.queryForMap(
-                "SELECT valid_from, window_months FROM habituality_rule_versions");
+                "SELECT valid_from, window_months FROM habituality_rule_versions WHERE id = " + SEED_VERSION);
         assertThat(version.get("valid_from").toString()).isEqualTo("2023-12-01");
         assertThat(version.get("window_months")).isEqualTo(12);
     }
@@ -47,7 +55,7 @@ class HabitualitySeedTest extends HabitualityIntegrationTest {
     @Test
     void shouldLoadLevelsInOrder() {
         List<Map<String, Object>> levels = jdbcTemplate.queryForList(
-                "SELECT name, position FROM habituality_levels ORDER BY position");
+                "SELECT name, position FROM habituality_levels WHERE version_id = " + SEED_VERSION + " ORDER BY position");
         assertThat(levels).extracting(l -> l.get("name")).containsExactly("Nível I", "Nível II", "Nível III");
         assertThat(levels).extracting(l -> l.get("position")).containsExactly(1, 2, 3);
     }
@@ -57,8 +65,9 @@ class HabitualitySeedTest extends HabitualityIntegrationTest {
         List<Row> rows = jdbcTemplate.query("""
                 SELECT l.name AS level, r.activity_type, r.min_quantity, r.only_in_club, r.distinct_events, r.min_scope
                 FROM habituality_requirements r JOIN habituality_levels l ON l.id = r.level_id
+                WHERE l.version_id = %s
                 ORDER BY l.position, r.activity_type, r.min_quantity
-                """, (rs, i) -> new Row(rs.getString("level"), rs.getString("activity_type"), rs.getInt("min_quantity"),
+                """.formatted(SEED_VERSION), (rs, i) -> new Row(rs.getString("level"), rs.getString("activity_type"), rs.getInt("min_quantity"),
                 rs.getBoolean("only_in_club"), rs.getBoolean("distinct_events"), rs.getString("min_scope")));
 
         assertThat(rows).containsExactlyInAnyOrder(
@@ -78,24 +87,27 @@ class HabitualitySeedTest extends HabitualityIntegrationTest {
     }
 
     @Test
-    void shouldExposeOnlyTheSeededRuleToAthletes() throws Exception {
-        send("GET", "/api/habituality/rules", athleteToken, null)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(1)))
-                .andExpect(jsonPath("$.data[0].name").value(RULE_NAME))
-                .andExpect(jsonPath("$.data[0].windowMonths").value(12))
-                .andExpect(jsonPath("$.data[0].validFrom").value("2023-12-01"))
-                .andExpect(jsonPath("$.data[0].levels", hasSize(3)))
-                .andExpect(jsonPath("$.data[0].levels[0].name").value("Nível I"))
-                .andExpect(jsonPath("$.data[0].levels[1].requirements", hasSize(3)))
-                .andExpect(jsonPath("$.data[0].levels[2].requirements", hasSize(3)))
-                .andExpect(jsonPath("$.data[0].upcomingVersion").isEmpty());
+    void shouldExposeTheSeededRuleToAthletesWithoutAnyTestRule() throws Exception {
+        var rules = data(send("GET", "/api/habituality/rules", athleteToken, null).andExpect(status().isOk()));
+
+        var seeded = java.util.stream.StreamSupport.stream(rules.spliterator(), false)
+                .filter(rule -> rule.get("name").asText().equals(RULE_NAME)).toList();
+        assertThat(seeded).hasSize(1);
+        assertThat(rules).allSatisfy(rule -> assertThat(rule.get("name").asText()).doesNotStartWith("Regra ").doesNotStartWith("Probe"));
+        var rule = seeded.get(0);
+        assertThat(rule.get("windowMonths").asInt()).isEqualTo(12);
+        assertThat(rule.get("validFrom").asText()).isEqualTo("2023-12-01");
+        assertThat(rule.get("levels")).hasSize(3);
+        assertThat(rule.get("levels").get(0).get("name").asText()).isEqualTo("Nível I");
+        assertThat(rule.get("levels").get(1).get("requirements")).hasSize(3);
+        assertThat(rule.get("levels").get(2).get("requirements")).hasSize(3);
     }
 
     @Test
     void shouldCountCumulativeCompetitionRequirementsIndependently() throws Exception {
         var rules = data(send("GET", "/api/habituality/rules", athleteToken, null));
-        String ruleId = rules.get(0).get("id").asText();
+        String ruleId = java.util.stream.StreamSupport.stream(rules.spliterator(), false)
+                .filter(rule -> rule.get("name").asText().equals(RULE_NAME)).findFirst().orElseThrow().get("id").asText();
         track(athleteToken, java.util.UUID.fromString(ruleId), "Nível II").andExpect(status().isOk());
 
         var location = location(athleteToken, false);

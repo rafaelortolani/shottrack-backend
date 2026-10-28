@@ -11,6 +11,6 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface VisitMapper {
 
-    @Mapping(target = "startedAt", source = "visit.createdAt")
+    @Mapping(target = "startedAt", source = "visit.startedAt")
     VisitResponse toResponse(Visit visit, List<TrainingResponse> trainings);
 }

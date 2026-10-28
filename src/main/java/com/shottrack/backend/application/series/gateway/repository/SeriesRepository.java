@@ -19,12 +19,12 @@ public interface SeriesRepository extends JpaRepository<Series, UUID> {
     boolean existsByAmmunitionId(UUID ammunitionId);
 
     @Query("select coalesce(sum(s.shotCount), 0) from Series s, Training t, Visit v where t.id = s.trainingId"
-            + " and v.id = t.visitId and v.userId = :userId and t.createdAt >= :from and t.createdAt < :to")
+            + " and v.id = t.visitId and v.userId = :userId and v.startedAt >= :from and v.startedAt < :to")
     long sumShotCountByUserIdBetween(@Param("userId") UUID userId, @Param("from") Instant from, @Param("to") Instant to);
 
     @Query("select coalesce(sum(s.shotCount), 0) from Series s, Training t, Visit v where t.id = s.trainingId"
             + " and v.id = t.visitId and v.userId = :userId and t.modalityId = :modalityId"
-            + " and t.createdAt >= :from and t.createdAt < :to")
+            + " and v.startedAt >= :from and v.startedAt < :to")
     long sumShotCountByUserIdAndModalityIdBetween(@Param("userId") UUID userId, @Param("modalityId") UUID modalityId,
                                                   @Param("from") Instant from, @Param("to") Instant to);
 

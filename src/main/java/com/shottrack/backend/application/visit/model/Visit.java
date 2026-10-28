@@ -20,7 +20,8 @@ import java.util.UUID;
 /**
  * Visita (ADR-0012): permanência do atleta num local de treino (ADR-0010),
  * dentro da qual ele pode abrir vários treinos. iniciada_em é o próprio
- * createdAt de auditoria — não duplicado aqui como campo à parte.
+ * started_at (ADR-0024): data de início da visita — pode ser retroativa e editada; é a data
+ * de referência de todas as apurações. O createdAt de auditoria é quando o registro foi lançado.
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)
@@ -46,6 +47,9 @@ public class Visit extends AbstractBaseEntity {
     @Column(nullable = false)
     private VisitStatus status = VisitStatus.IN_PROGRESS;
 
+    @Column(name = "started_at", nullable = false)
+    private Instant startedAt;
+
     @Column(name = "ended_at")
     private Instant endedAt;
 
@@ -60,7 +64,7 @@ public class Visit extends AbstractBaseEntity {
 
     @Builder
     private Visit(UUID userId, UUID trainingLocationId, String observations, VisitType visitType,
-                  CompetitionScope competitionScope) {
+                  CompetitionScope competitionScope, Instant startedAt) {
         this.userId = userId;
         this.trainingLocationId = trainingLocationId;
         this.observations = observations;
@@ -68,6 +72,7 @@ public class Visit extends AbstractBaseEntity {
             this.visitType = visitType;
         }
         this.competitionScope = competitionScope;
+        this.startedAt = startedAt != null ? startedAt : Instant.now();
     }
 
     /**
@@ -77,6 +82,19 @@ public class Visit extends AbstractBaseEntity {
     public void close(Instant closedAt) {
         this.status = VisitStatus.CLOSED;
         this.endedAt = closedAt;
+    }
+
+    /**
+     * UC59/ADR-0024: edição das datas; null = não alterar. A validação (futuro, 12 meses,
+     * ordem, visita em andamento) é do usecase.
+     */
+    public void changeDates(Instant newStartedAt, Instant newEndedAt) {
+        if (newStartedAt != null) {
+            this.startedAt = newStartedAt;
+        }
+        if (newEndedAt != null) {
+            this.endedAt = newEndedAt;
+        }
     }
 
     public boolean isOpen() {
