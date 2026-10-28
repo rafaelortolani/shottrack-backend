@@ -16,6 +16,16 @@ class HabitualityTrackingTest extends HabitualityIntegrationTest {
     private static final String RULES = "/api/habituality/rules";
     private static final String TRACKING = "/api/habituality/tracking";
 
+    /** A regra em vigor da migration V52 também é listada: localiza a regra do teste pelo id. */
+    private static com.fasterxml.jackson.databind.JsonNode ruleNode(com.fasterxml.jackson.databind.JsonNode rules, UUID ruleId) {
+        for (var rule : rules) {
+            if (rule.get("id").asText().equals(ruleId.toString())) {
+                return rule;
+            }
+        }
+        throw new AssertionError("Regra não listada: " + ruleId);
+    }
+
     private UUID twoLevelRule(String name) throws Exception {
         UUID ruleId = createRule(name);
         createVersion(ruleId, version(LocalDate.of(2020, 1, 1), 12,
@@ -28,18 +38,18 @@ class HabitualityTrackingTest extends HabitualityIntegrationTest {
     void shouldListActiveRulesWithCurrentVersionLevelsAndRequirements() throws Exception {
         UUID ruleId = twoLevelRule("Regra A");
 
-        send("GET", RULES, athleteToken, null)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(1)))
-                .andExpect(jsonPath("$.data[0].id").value(ruleId.toString()))
-                .andExpect(jsonPath("$.data[0].name").value("Regra A"))
-                .andExpect(jsonPath("$.data[0].legalReference").value("Norma de teste"))
-                .andExpect(jsonPath("$.data[0].validFrom").value("2020-01-01"))
-                .andExpect(jsonPath("$.data[0].windowMonths").value(12))
-                .andExpect(jsonPath("$.data[0].levels", hasSize(2)))
-                .andExpect(jsonPath("$.data[0].levels[1].name").value("Intermediário"))
-                .andExpect(jsonPath("$.data[0].levels[1].requirements[1].minScope").value("ESTADUAL"))
-                .andExpect(jsonPath("$.data[0].upcomingVersion").isEmpty());
+        var rules = data(send("GET", RULES, athleteToken, null).andExpect(status().isOk()));
+        var rule = ruleNode(rules, ruleId);
+
+        org.assertj.core.api.Assertions.assertThat(rule.get("name").asText()).isEqualTo("Regra A");
+        org.assertj.core.api.Assertions.assertThat(rule.get("legalReference").asText()).isEqualTo("Norma de teste");
+        org.assertj.core.api.Assertions.assertThat(rule.get("validFrom").asText()).isEqualTo("2020-01-01");
+        org.assertj.core.api.Assertions.assertThat(rule.get("windowMonths").asInt()).isEqualTo(12);
+        org.assertj.core.api.Assertions.assertThat(rule.get("levels")).hasSize(2);
+        org.assertj.core.api.Assertions.assertThat(rule.get("levels").get(1).get("name").asText()).isEqualTo("Intermediário");
+        org.assertj.core.api.Assertions.assertThat(rule.get("levels").get(1).get("requirements").get(1).get("minScope").asText())
+                .isEqualTo("ESTADUAL");
+        org.assertj.core.api.Assertions.assertThat(rule.get("upcomingVersion").isNull()).isTrue();
     }
 
     @Test
@@ -48,11 +58,13 @@ class HabitualityTrackingTest extends HabitualityIntegrationTest {
         send("PUT", "/api/admin/habituality/rules/" + inactive, adminToken, ruleBody("Inativa", false)).andExpect(status().isOk());
         UUID futureOnly = createRule("So futura");
         createVersion(futureOnly, version(LocalDate.now().plusDays(10), 12, level("N", 1, req("TREINO", 1))));
-        createRule("Sem versao");
+        UUID noVersion = createRule("Sem versao");
 
-        send("GET", RULES, athleteToken, null)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(0)));
+        for (UUID hidden : new UUID[]{inactive, futureOnly, noVersion}) {
+            send("GET", RULES, athleteToken, null)
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.id=='" + hidden + "')]", hasSize(0)));
+        }
     }
 
     @Test
@@ -61,10 +73,11 @@ class HabitualityTrackingTest extends HabitualityIntegrationTest {
         LocalDate future = LocalDate.now().plusDays(45);
         createVersion(ruleId, version(future, 6, level("Novo", 1, req("TREINO", 1))));
 
-        send("GET", RULES, athleteToken, null)
-                .andExpect(jsonPath("$.data[0].validFrom").value("2020-01-01"))
-                .andExpect(jsonPath("$.data[0].levels[0].name").value("Iniciante"))
-                .andExpect(jsonPath("$.data[0].upcomingVersion.validFrom").value(future.toString()));
+        var rule = ruleNode(data(send("GET", RULES, athleteToken, null)), ruleId);
+
+        org.assertj.core.api.Assertions.assertThat(rule.get("validFrom").asText()).isEqualTo("2020-01-01");
+        org.assertj.core.api.Assertions.assertThat(rule.get("levels").get(0).get("name").asText()).isEqualTo("Iniciante");
+        org.assertj.core.api.Assertions.assertThat(rule.get("upcomingVersion").get("validFrom").asText()).isEqualTo(future.toString());
     }
 
     @Test

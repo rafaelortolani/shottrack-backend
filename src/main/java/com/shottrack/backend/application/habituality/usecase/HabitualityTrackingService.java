@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.habituality.usecase;
 
+import org.springframework.transaction.annotation.Transactional;
 import com.shottrack.backend.application.habituality.dto.AthleteHabitualityRuleResponse;
 import com.shottrack.backend.application.habituality.dto.HabitualityTrackingRequest;
 import com.shottrack.backend.application.habituality.dto.HabitualityTrackingResponse;
@@ -73,6 +74,7 @@ public class HabitualityTrackingService {
     }
 
     /** Sem acompanhamento não é erro: o resultado desejado (não acompanhar) já vale. */
+    @Transactional
     public void stopTracking(UUID userId) {
         athleteGateway.deleteTrackingByUserId(userId);
     }

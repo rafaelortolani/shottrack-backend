@@ -36,6 +36,13 @@ Devolve o acompanhamento do atleta:
 - [x] Janela móvel (bordas), só visitas encerradas, isolamento entre atletas
 - [x] Sem acompanhamento; regra inativa; nível perdido; mudança futura
 
+## Limitações conhecidas
+- Não modela "por calibre" nem "12 meses de permanência em cada nível" da norma: a ferramenta
+  é de controle pessoal; a comprovação oficial é feita pelo clube.
+- Exigências do mesmo nível são contadas isoladamente. "N competições, sendo ao menos M de
+  âmbito X" é cadastrado como duas exigências (COMPETICAO N sem âmbito + COMPETICAO M com
+  `minScope` X): a segunda está contida na primeira e ambas precisam ser cumpridas.
+
 ## Decisões de implementação
 - A visita pertence à janela pelo dia de início (UTC); a janela inclui `periodStart` e hoje.
 - `description` é montada no idioma da requisição (`Accept-Language`, padrão pt); os campos

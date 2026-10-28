@@ -31,8 +31,13 @@ cadastro editável pelo administrador (ADR-0021), com histórico de vigência.
 6. **Dados novos na visita**: tipo (`TREINO` padrão / `COMPETICAO`) e âmbito (só para
    competição, opcional). **Local** de treino ganha a marca "é clube".
    "Eventos distintos" = pares distintos (data, local) entre as visitas de competição.
-7. **Sem valores legais no seed**: nenhuma regra é carregada por migration; o
-   administrador cadastra após conferir a norma vigente.
+7. **Regras vigentes carregadas por migration** (revisado): a migration V52 limpa as
+   regras de teste e carrega a regra em vigor — "Habitualidade — Atirador Desportivo"
+   (Decreto 11.615/2023, art. 35; Portaria COLOG/C Ex 166/2023, art. 95), com os níveis I,
+   II e III. Os valores foram confirmados em duas fontes secundárias e **falta conferir no
+   texto oficial**. O administrador mantém as novas versões (UC55) e pode ajustar a data
+   de vigência da versão carregada. Não é modelado "por calibre" nem "12 meses de
+   permanência em cada nível" (a ferramenta é de controle pessoal).
 8. **Texto obrigatório na interface**: "Controle pessoal. A comprovação oficial é feita
    pelo seu clube."
 9. Todas as rotas de gestão ficam em `/api/admin/habituality/**` (ADMIN).
@@ -43,6 +48,8 @@ cadastro editável pelo administrador (ADR-0021), com histórico de vigência.
 - Casar nível por id → rejeitado: ids mudam a cada versão; o nome sobrevive.
 
 ## Consequências
+- A V52 apaga os acompanhamentos de atletas que apontavam para regras de teste: quem já
+  escolheu regra e nível precisa escolher de novo. Metas pessoais não são afetadas.
 - Várias tabelas novas e alterações em visita e local de treino (migrations).
 - Visitas antigas ficam `TREINO` e sem âmbito; locais antigos ficam "não é clube".
 - Frontend ganha a 5ª aba do dashboard e telas em /admin/habitualidade.

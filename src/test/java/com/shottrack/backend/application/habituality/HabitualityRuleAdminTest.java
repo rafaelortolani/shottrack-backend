@@ -37,11 +37,13 @@ class HabitualityRuleAdminTest extends HabitualityIntegrationTest {
         createRule("Zeta");
         createRule("Alfa");
 
+        // a regra em vigor carregada por migration (V52) também está na lista
         send("GET", RULES, adminToken, null)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(2)))
+                .andExpect(jsonPath("$.data", hasSize(3)))
                 .andExpect(jsonPath("$.data[0].name").value("Alfa"))
-                .andExpect(jsonPath("$.data[1].name").value("Zeta"));
+                .andExpect(jsonPath("$.data[1].name").value("Habitualidade — Atirador Desportivo"))
+                .andExpect(jsonPath("$.data[2].name").value("Zeta"));
     }
 
     @Test
