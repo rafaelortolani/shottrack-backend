@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.Instant;
 import java.util.Collection;
 
 @Component
@@ -54,5 +55,12 @@ class SeriesGatewayImpl implements SeriesGateway {
     @Override
     public void deleteAllByTrainingIdIn(Collection<UUID> trainingIds) {
         seriesRepository.deleteAllByTrainingIdIn(trainingIds);
+    }
+
+    @Override
+    public long sumShotCountByUserId(UUID userId, UUID modalityId, Instant from, Instant to) {
+        return modalityId == null
+                ? seriesRepository.sumShotCountByUserIdBetween(userId, from, to)
+                : seriesRepository.sumShotCountByUserIdAndModalityIdBetween(userId, modalityId, from, to);
     }
 }

@@ -2,6 +2,7 @@ package com.shottrack.backend.application.series.gateway;
 
 import com.shottrack.backend.application.series.model.Series;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,6 +19,9 @@ public interface SeriesGateway {
     boolean existsByWeaponId(UUID weaponId);
 
     boolean existsByAmmunitionId(UUID ammunitionId);
+
+    /** ADR-0022: disparos das séries de treinos iniciados em [from, to); modalityId nulo = todas. */
+    long sumShotCountByUserId(UUID userId, UUID modalityId, Instant from, Instant to);
 
     void delete(Series series);
 

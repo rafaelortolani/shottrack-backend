@@ -121,7 +121,7 @@ public final class AthleteDataTestSupport {
 
         Map<String, Long> counts = new LinkedHashMap<>();
         counts.put("dashboard_summary", count(jdbc, "SELECT count(*) FROM dashboard_summary WHERE user_id = ?", id));
-        counts.put("dashboard_summary_modalities", count(jdbc, "SELECT count(*) FROM dashboard_summary_modalities WHERE dashboard_summary_id IN " + summaries, id));
+        counts.put("dashboard_summary_modality_records", count(jdbc, "SELECT count(*) FROM dashboard_summary_modality_records WHERE dashboard_summary_id IN " + summaries, id));
         counts.put("dashboard_summary_modality_stats", count(jdbc, "SELECT count(*) FROM dashboard_summary_modality_stats WHERE dashboard_summary_id IN " + summaries, id));
         counts.put("dashboard_summary_records", count(jdbc, "SELECT count(*) FROM dashboard_summary_records WHERE dashboard_summary_id IN " + summaries, id));
         counts.put("series_results", count(jdbc, "SELECT count(*) FROM series_results WHERE series_id IN " + series, id));

@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 /**
  * UC42 (Onda 1): uma linha do resumo de modalidades — contagem de treinos
@@ -18,6 +19,9 @@ import java.math.BigDecimal;
 @NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)
 @Embeddable
 public class ModalityStats {
+
+    @Column(name = "modality_id", nullable = false)
+    private final UUID modalityId;
 
     @Column(name = "modality_name", nullable = false)
     private final String modalityName;
@@ -32,7 +36,8 @@ public class ModalityStats {
     private final BigDecimal bestValue;
 
     @Builder
-    private ModalityStats(String modalityName, int trainingCount, String bestResultTypeName, BigDecimal bestValue) {
+    private ModalityStats(UUID modalityId, String modalityName, int trainingCount, String bestResultTypeName, BigDecimal bestValue) {
+        this.modalityId = modalityId;
         this.modalityName = modalityName;
         this.trainingCount = trainingCount;
         this.bestResultTypeName = bestResultTypeName;
