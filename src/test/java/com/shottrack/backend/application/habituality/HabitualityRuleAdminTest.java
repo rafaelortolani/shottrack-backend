@@ -37,13 +37,16 @@ class HabitualityRuleAdminTest extends HabitualityIntegrationTest {
         createRule("Zeta");
         createRule("Alfa");
 
-        // a regra em vigor carregada por migration (V52) também está na lista
-        send("GET", RULES, adminToken, null)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(3)))
-                .andExpect(jsonPath("$.data[0].name").value("Alfa"))
-                .andExpect(jsonPath("$.data[1].name").value("Habitualidade — Atirador Desportivo"))
-                .andExpect(jsonPath("$.data[2].name").value("Zeta"));
+        // só as regras deste teste e a da migration V52 entram na checagem: o que mais houver no
+        // banco (de outros testes/processos) não pode alterar o resultado
+        var names = new java.util.ArrayList<String>();
+        data(send("GET", RULES, adminToken, null).andExpect(status().isOk()))
+                .forEach(rule -> names.add(rule.get("name").asText()));
+
+        org.assertj.core.api.Assertions.assertThat(names)
+                .filteredOn(name -> name.equals("Alfa") || name.equals("Zeta")
+                        || name.equals("Habitualidade — Atirador Desportivo"))
+                .containsExactly("Alfa", "Habitualidade — Atirador Desportivo", "Zeta");
     }
 
     @Test

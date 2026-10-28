@@ -57,11 +57,30 @@ pelo Swagger (`http://localhost:8080/swagger-ui/index.html`, botão
 
 ## Rodando os testes
 
-```bash
-./mvnw test
-```
-> Precisa do `docker compose up -d` rodando antes — os testes de integração
-> usam o Postgres real, não um banco em memória.
+Os testes de integração (`@SpringBootTest`) usam **Postgres e RabbitMQ reais**, mas num banco e num
+vhost **dedicados** — nunca o banco de desenvolvimento (`shottrack`) nem o do E2E do front
+(`shottrack_test`). Uma trava (`TestDatabaseGuard`) recusa subir qualquer teste apontando para eles.
+
+1. Suba as dependências:
+   ```bash
+   docker compose up -d
+   ```
+2. Crie o banco `shottrack_unit_test` e o vhost `shottrack_unit_test` do RabbitMQ (uma vez; é idempotente):
+   ```bash
+   ./scripts/criar-ambiente-de-teste.sh
+   ```
+3. Rode a suíte (o `JWT_SECRET` é obrigatório porque o contexto Spring completo sobe):
+   ```bash
+   export JWT_SECRET=$(openssl rand -base64 32)
+   ./mvnw test
+   ```
+
+O Flyway aplica as migrations no `shottrack_unit_test` na primeira execução (ele já nasce com a regra de
+habitualidade da V52). Os testes de integração desfazem o que criam (`@Transactional`); um teste que precise
+commitar de verdade (ex.: `AccountDeletionRollbackTest`) apaga os próprios dados no fim. Para usar outro banco/vhost,
+defina `TEST_DB_URL` e `TEST_RABBIT_VHOST` — a trava continua valendo. Para zerar o banco de testes:
+`docker compose exec postgres sh -c "PGUSER=shottrack psql -d postgres -c 'DROP DATABASE shottrack_unit_test'"` e rode o
+script do passo 2 de novo.
 
 ## Endpoints disponíveis
 
