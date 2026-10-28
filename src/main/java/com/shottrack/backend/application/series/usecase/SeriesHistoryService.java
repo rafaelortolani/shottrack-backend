@@ -72,16 +72,18 @@ public class SeriesHistoryService {
 
         return visitGateway.findAllByUserId(userId).stream()
                 .flatMap(visit -> trainingGateway.findAllByVisitId(visit.getId()).stream()
-                        .filter(training -> matchesTraining(training, request))
+                        .filter(training -> matchesTraining(training, visit, request))
                         .flatMap(training -> seriesGateway.findAllByTrainingId(training.getId()).stream()
                                 .filter(series -> matchesSeries(series, request))
                                 .map(series -> new Entry(visit, training, series))))
-                .sorted(Comparator.comparing((Entry entry) -> entry.training().getCreatedAt())
+                // ADR-0024: ordena pela data da visita; o horário de lançamento só desempata
+                .sorted(Comparator.comparing((Entry entry) -> entry.visit().getStartedAt())
+                        .thenComparing(entry -> entry.training().getCreatedAt())
                         .thenComparing(entry -> entry.series().getCreatedAt())
                         .reversed())
                 .map(entry -> seriesMapper.toHistoryResponse(
                         entry.series(),
-                        dayOf(entry.training()),
+                        dayOf(entry.visit()),
                         locationsById.get(entry.visit().getTrainingLocationId()),
                         modalitiesById.get(entry.training().getModalityId()),
                         entry.series().getWeaponId() == null ? null : weaponsById.get(entry.series().getWeaponId()),
@@ -90,8 +92,8 @@ public class SeriesHistoryService {
                 .toList();
     }
 
-    private boolean matchesTraining(Training training, SeriesHistoryRequest request) {
-        LocalDate day = dayOf(training);
+    private boolean matchesTraining(Training training, Visit visit, SeriesHistoryRequest request) {
+        LocalDate day = dayOf(visit);
         return (request.modalityId() == null || training.getModalityId().equals(request.modalityId()))
                 && (request.startDate() == null || !day.isBefore(request.startDate()))
                 && (request.endDate() == null || !day.isAfter(request.endDate()));
@@ -110,8 +112,8 @@ public class SeriesHistoryService {
                         || (distance != null && distance.compareTo(request.maxDistanceMeters()) <= 0));
     }
 
-    private LocalDate dayOf(Training training) {
-        return training.getCreatedAt().atZone(ZoneOffset.UTC).toLocalDate();
+    private LocalDate dayOf(Visit visit) {
+        return visit.getStartedAt().atZone(ZoneOffset.UTC).toLocalDate();
     }
 
     private static <T> Map<UUID, T> indexById(List<T> items, Function<T, UUID> id) {

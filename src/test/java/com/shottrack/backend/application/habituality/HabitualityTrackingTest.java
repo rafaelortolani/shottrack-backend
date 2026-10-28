@@ -94,7 +94,8 @@ class HabitualityTrackingTest extends HabitualityIntegrationTest {
 
         flushAndClear();
         org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM athlete_habituality_tracking", Integer.class)).isEqualTo(1);
+                "SELECT count(*) FROM athlete_habituality_tracking WHERE user_id = (SELECT id FROM users WHERE email = ?)",
+                Integer.class, "atleta.habitualidade@shottrack.com")).isEqualTo(1);
         progress(athleteToken)
                 .andExpect(jsonPath("$.data.rule.id").value(second.toString()))
                 .andExpect(jsonPath("$.data.level").value("Avançado"));

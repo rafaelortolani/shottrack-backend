@@ -196,7 +196,7 @@ public class UserDataExportService {
                                 Collectors.toList())));
 
         return visits.stream()
-                .sorted(Comparator.comparing(Visit::getCreatedAt))
+                .sorted(Comparator.comparing(Visit::getStartedAt))
                 .map(visit -> mapper.toVisit(visit, locationNameById.get(visit.getTrainingLocationId()),
                         trainingsByVisitId.getOrDefault(visit.getId(), List.of())))
                 .toList();

@@ -262,7 +262,7 @@ class EvolutionTest {
      */
     private void backdateTraining(UUID trainingId, int daysAgo) {
         entityManager.flush();
-        entityManager.createNativeQuery("UPDATE trainings SET created_at = :createdAt WHERE id = :id")
+        entityManager.createNativeQuery("UPDATE visits SET started_at = :createdAt WHERE id = (SELECT visit_id FROM trainings WHERE id = :id)")
                 .setParameter("createdAt", daysAgo(daysAgo).atTime(LocalTime.NOON).toInstant(ZoneOffset.UTC))
                 .setParameter("id", trainingId)
                 .executeUpdate();

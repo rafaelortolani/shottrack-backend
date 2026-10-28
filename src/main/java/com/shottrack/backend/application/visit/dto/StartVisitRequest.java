@@ -4,6 +4,7 @@ import com.shottrack.backend.application.visit.model.CompetitionScope;
 import com.shottrack.backend.application.visit.model.VisitType;
 import jakarta.validation.constraints.NotNull;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -18,10 +19,13 @@ public record StartVisitRequest(
 
         VisitType visitType,
 
-        CompetitionScope competitionScope
+        CompetitionScope competitionScope,
+
+        /** ADR-0024: ISO-8601 com fuso (ex.: 2026-10-01T10:00:00-03:00); ausente = agora. */
+        Instant startedAt
 ) {
 
     public StartVisitRequest(UUID trainingLocationId, String observations) {
-        this(trainingLocationId, observations, null, null);
+        this(trainingLocationId, observations, null, null, null);
     }
 }

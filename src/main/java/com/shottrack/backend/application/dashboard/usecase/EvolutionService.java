@@ -15,6 +15,7 @@ import com.shottrack.backend.application.series.gateway.SeriesResultGateway;
 import com.shottrack.backend.application.visit.gateway.TrainingGateway;
 import com.shottrack.backend.application.visit.gateway.VisitGateway;
 import com.shottrack.backend.application.visit.model.Training;
+import com.shottrack.backend.application.visit.model.Visit;
 import com.shottrack.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -78,17 +79,19 @@ public class EvolutionService {
         LocalDate earliestDay = request.shouldComparePrevious() ? previousFirstDay : firstDay;
 
         // um único carregamento cobrindo as duas janelas
+        // ADR-0024: o dia de cada treino é o dia de início da VISITA, não o do lançamento.
         TreeMap<LocalDate, List<BigDecimal>> valuesByDay = visitGateway.findAllByUserId(userId).stream()
-                .flatMap(visit -> trainingGateway.findAllByVisitId(visit.getId()).stream())
-                .filter(training -> training.getModalityId().equals(request.modalityId()))
-                .filter(training -> !dayOf(training).isBefore(earliestDay) && !dayOf(training).isAfter(today))
-                .flatMap(training -> seriesGateway.findAllByTrainingId(training.getId()).stream()
+                .flatMap(visit -> trainingGateway.findAllByVisitId(visit.getId()).stream()
+                        .map(training -> new DatedTraining(training, dayOf(visit))))
+                .filter(dated -> dated.training().getModalityId().equals(request.modalityId()))
+                .filter(dated -> !dated.day().isBefore(earliestDay) && !dated.day().isAfter(today))
+                .flatMap(dated -> seriesGateway.findAllByTrainingId(dated.training().getId()).stream()
                         .flatMap(series -> seriesResultGateway
                                 .findBySeriesIdAndResultTypeId(series.getId(), request.resultTypeId()).stream())
                         .filter(result -> !result.isNotApplicable())
                         .map(result -> ResultValues.parseNumeric(result.getValue()))
                         .flatMap(Optional::stream)
-                        .map(value -> Map.entry(dayOf(training), value)))
+                        .map(value -> Map.entry(dated.day(), value)))
                 .collect(Collectors.groupingBy(Map.Entry::getKey, TreeMap::new,
                         Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
 
@@ -116,7 +119,10 @@ public class EvolutionService {
         return sum.divide(BigDecimal.valueOf(values.size()), MathContext.DECIMAL64);
     }
 
-    private LocalDate dayOf(Training training) {
-        return training.getCreatedAt().atZone(ZoneOffset.UTC).toLocalDate();
+    private LocalDate dayOf(Visit visit) {
+        return visit.getStartedAt().atZone(ZoneOffset.UTC).toLocalDate();
+    }
+
+    private record DatedTraining(Training training, LocalDate day) {
     }
 }

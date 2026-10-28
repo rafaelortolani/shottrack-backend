@@ -181,7 +181,7 @@ public class DashboardService {
     private MainActionResponse mainAction(List<Visit> visits) {
         return visits.stream()
                 .filter(Visit::isOpen)
-                .max(Comparator.comparing(Visit::getCreatedAt))
+                .max(Comparator.comparing(Visit::getStartedAt))
                 .map(visit -> new MainActionResponse(MainActionType.CONTINUE_VISIT, toActiveVisitResponse(visit)))
                 .orElseGet(() -> new MainActionResponse(MainActionType.START_VISIT, null));
     }
@@ -193,7 +193,7 @@ public class DashboardService {
                 .toList();
 
         return new ActiveVisitResponse(visit.getId(), trainingLocationName(visit.getTrainingLocationId()),
-                visit.getCreatedAt(), activeTrainingModalityNames);
+                visit.getStartedAt(), activeTrainingModalityNames);
     }
 
     /**
@@ -207,7 +207,9 @@ public class DashboardService {
         return visits.stream()
                 .flatMap(visit -> trainingGateway.findAllByVisitId(visit.getId()).stream())
                 .filter(training -> modalityId == null || training.getModalityId().equals(modalityId))
-                .sorted(Comparator.comparing(Training::getCreatedAt).reversed())
+                // ADR-0024: "mais recentes" pela data da visita; o lançamento só desempata
+                .sorted(Comparator.comparing((Training training) -> visitsById.get(training.getVisitId()).getStartedAt())
+                        .thenComparing(Training::getCreatedAt).reversed())
                 .limit(RECENT_TRAININGS_LIMIT)
                 .map(training -> toRecentTrainingResponse(training, visitsById.get(training.getVisitId())))
                 .toList();
@@ -221,7 +223,7 @@ public class DashboardService {
                 .map(best -> new DashboardHighlightResponse(best.resultTypeName(), best.value()))
                 .orElse(null);
 
-        return new RecentTrainingResponse(training.getId(), training.getCreatedAt(),
+        return new RecentTrainingResponse(training.getId(), visit.getStartedAt(),
                 trainingLocationName(visit.getTrainingLocationId()), modalityName(training.getModalityId()), highlight);
     }
 
