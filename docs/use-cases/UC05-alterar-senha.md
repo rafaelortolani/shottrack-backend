@@ -26,6 +26,10 @@ Usuário logado (UC02) com access token válido.
 - [x] Teste: todos os refresh tokens deixam de funcionar após a troca
 - [x] Teste: troca rejeitada não revoga os refresh tokens
 
+## Limite de tentativas (ADR-0018)
+`PATCH /api/users/me/password`: 5 tentativas / 15 min por usuário → `429 TOO_MANY_REQUESTS` (barra adivinhar a
+senha atual com um token roubado).
+
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0018 (revogação das sessões ao trocar a senha)

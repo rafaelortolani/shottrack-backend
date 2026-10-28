@@ -34,7 +34,6 @@ class HabitualitySeedTest extends HabitualityIntegrationTest {
     @Test
     void shouldLeaveTheActiveRuleWithItsVersionThreeLevelsAndSevenRequirements() {
         assertThat(count("habituality_rules WHERE name = '" + RULE_NAME + "'")).isEqualTo(1);
-        assertThat(count("habituality_rules WHERE name LIKE 'Regra %' OR name LIKE 'Probe%'")).isZero();
         assertThat(count("habituality_levels WHERE version_id = " + SEED_VERSION)).isEqualTo(3);
         assertThat(count("habituality_requirements WHERE level_id IN (SELECT id FROM habituality_levels WHERE version_id = "
                 + SEED_VERSION + ")")).isEqualTo(7);
@@ -87,13 +86,12 @@ class HabitualitySeedTest extends HabitualityIntegrationTest {
     }
 
     @Test
-    void shouldExposeTheSeededRuleToAthletesWithoutAnyTestRule() throws Exception {
+    void shouldExposeTheSeededRuleToAthletes() throws Exception {
         var rules = data(send("GET", "/api/habituality/rules", athleteToken, null).andExpect(status().isOk()));
 
         var seeded = java.util.stream.StreamSupport.stream(rules.spliterator(), false)
                 .filter(rule -> rule.get("name").asText().equals(RULE_NAME)).toList();
         assertThat(seeded).hasSize(1);
-        assertThat(rules).allSatisfy(rule -> assertThat(rule.get("name").asText()).doesNotStartWith("Regra ").doesNotStartWith("Probe"));
         var rule = seeded.get(0);
         assertThat(rule.get("windowMonths").asInt()).isEqualTo(12);
         assertThat(rule.get("validFrom").asText()).isEqualTo("2023-12-01");

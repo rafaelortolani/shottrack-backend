@@ -28,15 +28,32 @@ cadastro e pedidos de e-mail.
   no front: depois de trocar a senha, o atleta volta ao login.
 
 ### 3. Rate limit
-- No backend, em memória (Bucket4j), configurável em `application.yml`.
-- Aplica em: login, cadastro (`POST /api/users/registration`) e pedido de
-  redefinição de senha.
-- Limites iniciais: cadastro e redefinição — 5/hora por e-mail e 20/hora por
-  IP; login — 10 tentativas / 15 min por IP + e-mail.
+- No backend, em memória (Bucket4j), configurável em `application.yml` (`app.rate-limit.*`).
+- A regra é escolhida pelo caminho **normalizado** (decodificado, sem `;param` nem `//`, sem barra
+  final, em minúsculas) — não pela URL bruta. `/api/auth/log%69n` e `/api/auth/login/` caem no mesmo
+  bucket de `/api/auth/login` e respondem `400 INVALID_REQUEST_PATH` sem chegar ao controller; `//`,
+  `;jsessionid` e maiúsculas já são barrados antes pelo Spring Security.
+- Aplica em (limite padrão; chave):
+  - login — 10 / 15 min por IP + e-mail **e** 20 / hora por e-mail (minúsculas), qualquer IP;
+  - cadastro (`POST /api/users/registration`) e pedido de redefinição — 5/hora por e-mail e 20/hora por IP;
+  - conclusão do cadastro (`/registration/completion`) — 10 / hora por IP;
+  - renovação de sessão (`POST /api/auth/refresh`) — 30 / 15 min por IP;
+  - confirmação da redefinição (`/password-reset/confirm`) — 10 / 15 min por IP;
+  - troca de senha (`PATCH /api/users/me/password`) — 5 / 15 min por usuário;
+  - troca de e-mail (`POST /api/users/me/email`) — 5 / hora por usuário; confirmação do código
+    (`/me/email/confirmation`) — 10 / 15 min por usuário;
+  - exclusão da conta (5/h) e exportação de dados (3/h), por usuário (ADR-0019).
+  Rotas por usuário usam o id do token; sem usuário válido, o IP.
 - Ao exceder: HTTP 429, código `TOO_MANY_REQUESTS`, header `Retry-After`.
 - O IP real só é lido de `X-Forwarded-For` quando
-  `app.rate-limit.trust-forwarded-header=true` (atrás do proxy em produção);
-  caso contrário usa o IP da conexão, pra ninguém burlar o limite forjando o header.
+  `app.rate-limit.trust-forwarded-header=true` (atrás do proxy em produção); caso contrário usa o IP da
+  conexão, pra ninguém burlar o limite forjando o header. Com o header confiável vale a entrada a
+  `app.rate-limit.trusted-proxy-hops` posições do **fim** da lista (padrão 1 = a última, a que o proxy
+  acrescentou); as anteriores são escritas pelo cliente e ignoradas. Lista menor que isso → IP da conexão.
+- **Limitação conhecida:** os contadores ficam na memória de cada instância. Com mais de uma instância
+  do backend, o limite efetivo se multiplica pelo número de instâncias (e reiniciar zera os contadores).
+  Antes de escalar horizontalmente é preciso mover os buckets para um armazenamento compartilhado
+  (Redis ou o banco) — não implementado agora.
 - Testes usam limites configuráveis baixos.
 
 ## Alternativas consideradas

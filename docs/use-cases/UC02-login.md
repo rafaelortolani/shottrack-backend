@@ -31,6 +31,12 @@ Usuário já possui cadastro (email + senha) no sistema.
   todos os refresh tokens do atleta são revogados, erro "refresh token
   inválido", atleta precisa logar de novo (ADR-0001)
 
+## Limite de tentativas (ADR-0018)
+- Login: 10 tentativas / 15 min por IP + e-mail e 20 / hora por e-mail (qualquer IP) → `429 TOO_MANY_REQUESTS`
+  com `Retry-After`. Renovação de sessão (`POST /api/auth/refresh`): 30 / 15 min por IP.
+- Variações do caminho (`/api/auth/log%69n`, barra final) contam no mesmo limite e respondem
+  `400 INVALID_REQUEST_PATH`.
+
 ## Referências
 - ADR-0001 (autenticação JWT)
 

@@ -174,10 +174,9 @@ class RateLimitTest {
     }
 
     @Test
-    void shouldNotLimitOtherEndpointsOrRegistrationCompletion() throws Exception {
+    void shouldNotLimitRoutesWithoutARule() throws Exception {
         for (int i = 0; i < 10; i++) {
-            rawPost("/api/auth/refresh", "{\"refreshToken\":\"x\"}", "10.4.2.1").andExpect(status().isUnauthorized());
-            rawPost("/api/users/registration/completion", "{}", "10.4.2.1").andExpect(status().isBadRequest());
+            rawPost("/api/auth/logout", "{\"refreshToken\":\"x\"}", "10.4.2.1").andExpect(status().isOk());
         }
     }
 

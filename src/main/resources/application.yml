@@ -88,9 +88,15 @@ app:
     # só true atrás do proxy de produção — senão X-Forwarded-For é ignorado
     # (qualquer cliente poderia forjá-lo pra furar o limite por IP).
     trust-forwarded-header: false
+    # com trust-forwarded-header=true: nº de proxies confiáveis na frente. O IP do cliente é a entrada de
+    # X-Forwarded-For a essa distância do FIM da lista (1 = a última, a que o proxy acrescentou); as
+    # anteriores vêm do cliente e são ignoradas.
+    trusted-proxy-hops: 1
     login:
       attempts: 10          # por IP + e-mail
       window: 15m
+      per-email: 20         # por e-mail (minúsculas), qualquer IP — barra tentativas espalhadas por vários IPs
+      per-email-window: 1h
     registration:
       per-email: 5
       per-ip: 20
@@ -105,4 +111,23 @@ app:
       window: 1h
     data-export:
       attempts: 3
+      window: 1h
+    # S13 — demais pontos sensíveis (ADR-0018). Por IP quando não há usuário autenticado.
+    refresh:                    # por IP
+      attempts: 30
+      window: 15m
+    password-reset-confirm:     # por IP
+      attempts: 10
+      window: 15m
+    password-change:            # por usuário — barra adivinhar a senha atual com token roubado
+      attempts: 5
+      window: 15m
+    email-change:               # por usuário — barra e-mail em massa para endereços de terceiros
+      attempts: 5
+      window: 1h
+    email-change-confirmation:  # por usuário — barra adivinhar o código de 6 dígitos
+      attempts: 10
+      window: 15m
+    registration-completion:    # por IP
+      attempts: 10
       window: 1h

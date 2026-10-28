@@ -13,6 +13,8 @@ armas, modalidades e evolução de desempenho.
 2. `export JWT_SECRET=$(openssl rand -base64 32)` (obrigatório — também precisa
    estar setado pra rodar os testes, já que sobem o contexto Spring completo)
 3. `./mvnw spring-boot:run`
+   (testes: `./scripts/criar-ambiente-de-teste.sh` uma vez e depois `./mvnw test` — usam o banco
+   `shottrack_unit_test`, nunca o de desenvolvimento; ver README)
 4. API em `http://localhost:8080`
 
 ## Onde estão as coisas
