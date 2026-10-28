@@ -11,6 +11,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.MediaType;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -176,9 +178,58 @@ class UserDataExportTest {
 
     @Test
     void shouldRejectRequestWithoutToken() throws Exception {
-        mockMvc.perform(get("/api/users/me/export"))
+        mockMvc.perform(post("/api/users/me/export")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"senha12345\"}"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void shouldRejectExportWithoutPassword() throws Exception {
+        Athlete athlete = populatedAthlete("atleta.exportasemsenha@shottrack.com");
+
+        for (String body : new String[]{"{}", "{\"currentPassword\":\"\"}", "{\"currentPassword\":\"   \"}"}) {
+            mockMvc.perform(post("/api/users/me/export")
+                            .header("Authorization", "Bearer " + athlete.accessToken())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+                    .andExpect(jsonPath("$.profile").doesNotExist());
+        }
+    }
+
+    @Test
+    void shouldRejectExportWithWrongPasswordAndLeakNothing() throws Exception {
+        Athlete athlete = populatedAthlete("atleta.exportasenhaerrada@shottrack.com");
+
+        var body = exportWith(athlete, "senhaErrada1")
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("INVALID_CURRENT_PASSWORD"))
+                .andExpect(jsonPath("$.error.message").value("Senha atual incorreta"))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).doesNotContain(athlete.email()).doesNotContain("weapons").doesNotContain("visits");
+    }
+
+    @Test
+    void shouldExportWithTheCorrectPasswordAndNeverCacheTheFile() throws Exception {
+        Athlete athlete = populatedAthlete("atleta.exportasenhacerta@shottrack.com");
+
+        var result = export(athlete).andExpect(status().isOk()).andReturn();
+
+        assertThat(result.getResponse().getHeader("Cache-Control")).contains("no-store");
+    }
+
+    @Test
+    void shouldAnswerAClearErrorOnTheOldGetRoute() throws Exception {
+        Athlete athlete = populatedAthlete("atleta.exportagetantigo@shottrack.com");
+
+        mockMvc.perform(get("/api/users/me/export").header("Authorization", "Bearer " + athlete.accessToken()))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.error.code").value("DATA_EXPORT_REQUIRES_PASSWORD"))
+                .andExpect(jsonPath("$.profile").doesNotExist());
     }
 
     private Athlete populatedAthlete(String email) throws Exception {
@@ -190,7 +241,13 @@ class UserDataExportTest {
     }
 
     private ResultActions export(Athlete athlete) throws Exception {
-        return mockMvc.perform(get("/api/users/me/export")
-                .header("Authorization", "Bearer " + athlete.accessToken()));
+        return exportWith(athlete, AthleteDataTestSupport.PASSWORD);
+    }
+
+    private ResultActions exportWith(Athlete athlete, String password) throws Exception {
+        return mockMvc.perform(post("/api/users/me/export")
+                .header("Authorization", "Bearer " + athlete.accessToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(java.util.Map.of("currentPassword", password))));
     }
 }

@@ -100,7 +100,7 @@ class EditProfileTest {
         mockMvc.perform(post("/api/users/me/email")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new ChangeEmailRequest(newEmail))))
+                        .content(objectMapper.writeValueAsString(new ChangeEmailRequest(newEmail, PASSWORD))))
                 .andExpect(status().isAccepted());
 
         String codigo = pendingCodeFor(newEmail).getCode();
@@ -121,7 +121,7 @@ class EditProfileTest {
         mockMvc.perform(post("/api/users/me/email")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new ChangeEmailRequest(emailExistente))))
+                        .content(objectMapper.writeValueAsString(new ChangeEmailRequest(emailExistente, PASSWORD))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("EMAIL_ALREADY_REGISTERED"));
     }
@@ -141,7 +141,7 @@ class EditProfileTest {
         mockMvc.perform(post("/api/users/me/email")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new ChangeEmailRequest(newEmail))))
+                        .content(objectMapper.writeValueAsString(new ChangeEmailRequest(newEmail, PASSWORD))))
                 .andExpect(status().isAccepted());
 
         mockMvc.perform(post("/api/users/me/email/confirmation")
@@ -158,7 +158,7 @@ class EditProfileTest {
         mockMvc.perform(post("/api/users/me/email")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new ChangeEmailRequest(newEmail))))
+                        .content(objectMapper.writeValueAsString(new ChangeEmailRequest(newEmail, PASSWORD))))
                 .andExpect(status().isAccepted());
 
         EmailVerificationCode pendente = pendingCodeFor(newEmail);

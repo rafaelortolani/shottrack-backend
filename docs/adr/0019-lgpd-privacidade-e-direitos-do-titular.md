@@ -28,9 +28,14 @@ treinos, séries e resultados.
   Política de Privacidade.
 
 ### 2. Exportar dados (UC53)
-- `GET /api/users/me/export` devolve um arquivo JSON com tudo o que o sistema
-  guarda sobre o atleta (sem hash de senha e sem tokens). Síncrono (volume por
-  atleta é pequeno), com rate limit.
+- `POST /api/users/me/export` `{ "currentPassword": "..." }` devolve um arquivo JSON com tudo o
+  que o sistema guarda sobre o atleta (sem hash de senha e sem tokens). Síncrono (volume por
+  atleta é pequeno), com rate limit. **Exige a senha atual**, como a exclusão (UC52): só o token
+  de acesso (60 min) não basta para levar embora todos os dados pessoais. A rota `GET` antiga
+  responde `405 DATA_EXPORT_REQUIRES_PASSWORD` por uma versão.
+- **Troca de e-mail (UC04):** também exige a senha atual; o e-mail antigo é avisado do pedido e da
+  troca (sem o código), e a confirmação revoga todas as sessões. A unicidade do e-mail é
+  revalidada no cadastro (UC23) e na confirmação, e a violação no banco vira `EMAIL_ALREADY_REGISTERED`.
 
 ### 3. Consentimento (alteração no UC23)
 - Completar o cadastro exige aceitar Termos de Uso e Política de Privacidade.

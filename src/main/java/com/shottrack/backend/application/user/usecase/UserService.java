@@ -18,8 +18,13 @@ import com.shottrack.backend.application.user.model.PendingRegistration;
 import com.shottrack.backend.application.user.model.User;
 import com.shottrack.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,6 +36,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -47,6 +53,7 @@ public class UserService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender;
+    private final MessageSource messageSource;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
@@ -97,6 +104,11 @@ public class UserService {
             throw new BusinessException("TERMS_NOT_ACCEPTED", HttpStatus.BAD_REQUEST);
         }
 
+        // S22: o e-mail pode ter sido ocupado entre o pedido e a conclusão do cadastro.
+        if (userGateway.existsByEmail(pendingRegistration.getEmail())) {
+            throw new BusinessException("EMAIL_ALREADY_REGISTERED", HttpStatus.CONFLICT);
+        }
+
         pendingRegistration.markUsed();
         pendingRegistrationGateway.save(pendingRegistration);
 
@@ -108,7 +120,7 @@ public class UserService {
                 .termsAcceptedAt(Instant.now())
                 .termsVersion(legalVersion)
                 .build();
-        User saved = userGateway.save(user);
+        User saved = saveRevalidatingEmail(user);
 
         return userMapper.toResponse(saved);
     }
@@ -130,7 +142,12 @@ public class UserService {
      * login só muda quando o código for confirmado em confirmEmailChange.
      */
     public void requestEmailChange(UUID userId, ChangeEmailRequest request) {
-        findUserOrThrow(userId);
+        User user = findUserOrThrow(userId);
+
+        // S02: sem a senha atual, quem tem só o token de acesso trocaria o e-mail da conta.
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new BusinessException("INVALID_CURRENT_PASSWORD", HttpStatus.UNAUTHORIZED);
+        }
 
         if (userGateway.existsByEmail(request.email())) {
             throw new BusinessException("EMAIL_ALREADY_REGISTERED", HttpStatus.CONFLICT);
@@ -148,8 +165,16 @@ public class UserService {
         emailVerificationCodeGateway.save(verification);
 
         sendVerificationCodeEmail(request.email(), code);
+        // S02: o dono avisado no e-mail ANTIGO (sem o código) pode reagir a um pedido que não fez.
+        sendEmailChangeNotice(user.getEmail(), "EMAIL_CHANGE_REQUESTED_NOTICE");
     }
 
+    /**
+     * S02: ao efetivar a troca, todas as sessões (refresh tokens) são revogadas — como na troca de senha
+     * (UC05) — e o e-mail antigo é avisado. S22: a unicidade é revalidada aqui (o novo e-mail pode ter sido
+     * ocupado desde o pedido) e a violação no banco vira EMAIL_ALREADY_REGISTERED, não 500.
+     */
+    @Transactional
     public UserResponse confirmEmailChange(UUID userId, ConfirmEmailChangeRequest request) {
         EmailVerificationCode verification = emailVerificationCodeGateway.findLatestPendingByUserId(userId)
                 .filter(pending -> pending.getCode().equals(request.code()))
@@ -159,12 +184,48 @@ public class UserService {
             throw new BusinessException("VERIFICATION_CODE_EXPIRED", HttpStatus.BAD_REQUEST);
         }
 
+        if (userGateway.existsByEmail(verification.getNewEmail())) {
+            throw new BusinessException("EMAIL_ALREADY_REGISTERED", HttpStatus.CONFLICT);
+        }
+
         verification.markUsed();
         emailVerificationCodeGateway.save(verification);
 
         User user = findUserOrThrow(userId);
+        String oldEmail = user.getEmail();
         user.setEmail(verification.getNewEmail());
-        return userMapper.toResponse(userGateway.save(user));
+        User saved = saveRevalidatingEmail(user);
+
+        refreshTokenGateway.revokeAllByUserId(userId);
+        sendEmailChangeNotice(oldEmail, "EMAIL_CHANGED_NOTICE");
+        return userMapper.toResponse(saved);
+    }
+
+    /** S22: grava na hora e traduz a violação de unicidade do e-mail (corrida) em 409. */
+    private User saveRevalidatingEmail(User user) {
+        try {
+            return userGateway.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException("EMAIL_ALREADY_REGISTERED", HttpStatus.CONFLICT);
+        }
+    }
+
+    /**
+     * Aviso ao e-mail antigo (pt/en pelo Accept-Language). Nunca leva o código. Falha de envio não
+     * desfaz a troca: só é logada, sem o endereço.
+     */
+    private void sendEmailChangeNotice(String to, String messageKey) {
+        var locale = LocaleContextHolder.getLocale();
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(VERIFICATION_EMAIL_FROM);
+        message.setTo(to);
+        message.setSubject(messageSource.getMessage(messageKey + "_SUBJECT", null, locale));
+        message.setText(messageSource.getMessage(messageKey + "_BODY", null, locale));
+        try {
+            mailSender.send(message);
+        } catch (MailException e) {
+            log.error("Falha ao enviar aviso de troca de e-mail ({})", e.getClass().getSimpleName());
+        }
     }
 
     /**

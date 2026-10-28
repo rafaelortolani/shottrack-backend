@@ -23,6 +23,9 @@ Existe um cadastro pendente com token válido (gerado pelo UC01).
 - 3c. Token já usado → erro `REGISTRATION_TOKEN_ALREADY_USED`
 - 3d. Nome vazio → erro de validação
 - 3e. Senha com menos de 8 caracteres → erro de validação
+- 3g. O email foi ocupado por outra conta entre o pedido e a conclusão (inclusive corrida contra a
+  restrição única do banco) → `EMAIL_ALREADY_REGISTERED` (409); o link não é consumido
+  (checado depois do aceite dos termos e antes de consumir o token)
 - 3f. `acceptedTerms` ausente ou falso → erro `TERMS_NOT_ACCEPTED` (o cadastro
   não é concluído e o link continua válido; checado depois do token e antes de
   consumi-lo)
@@ -32,6 +35,7 @@ Existe um cadastro pendente com token válido (gerado pelo UC01).
 - [x] Um teste para CADA fluxo alternativo listado acima
 - [x] Teste: conclusão com aceite grava data e versão
 - [x] Teste: sem aceite → `TERMS_NOT_ACCEPTED`, link ainda utilizável
+- [x] Teste: email ocupado antes de concluir → `EMAIL_ALREADY_REGISTERED` (e corrida no banco), link não consumido
 
 ## Limite de tentativas (ADR-0018)
 `POST /api/users/registration/completion`: 10 tentativas / hora por IP → `429 TOO_MANY_REQUESTS`.

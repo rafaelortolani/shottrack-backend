@@ -4,6 +4,7 @@ import com.shottrack.backend.application.user.dto.ChangeEmailRequest;
 import com.shottrack.backend.application.user.dto.ChangePasswordRequest;
 import com.shottrack.backend.application.user.dto.CompleteRegistrationRequest;
 import com.shottrack.backend.application.user.dto.DeleteAccountRequest;
+import com.shottrack.backend.application.user.dto.ExportDataRequest;
 import com.shottrack.backend.application.user.dto.ConfirmEmailChangeRequest;
 import com.shottrack.backend.application.user.dto.RegistrationRequest;
 import com.shottrack.backend.application.user.dto.UpdateProfileRequest;
@@ -12,6 +13,7 @@ import com.shottrack.backend.application.user.dto.UserResponse;
 import com.shottrack.backend.application.user.usecase.AccountDeletionService;
 import com.shottrack.backend.application.user.usecase.UserDataExportService;
 import com.shottrack.backend.application.user.usecase.UserService;
+import com.shottrack.backend.common.exception.BusinessException;
 import com.shottrack.backend.common.web.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -84,15 +86,25 @@ public class UserController {
      * UC53/ADR-0019: arquivo JSON para download — propositalmente sem o
      * envelope {"data": ...}, é o conteúdo que o atleta leva embora.
      */
-    @GetMapping("/me/export")
-    public ResponseEntity<UserDataExportResponse> exportData(Authentication authentication) {
+    @PostMapping("/me/export")
+    public ResponseEntity<UserDataExportResponse> exportData(Authentication authentication,
+                                                              @Valid @RequestBody ExportDataRequest request) {
         UUID userId = (UUID) authentication.getPrincipal();
-        UserDataExportResponse body = userDataExportService.export(userId);
+        UserDataExportResponse body = userDataExportService.export(userId, request.currentPassword());
         String filename = "shottrack-dados-" + LocalDate.now(ZoneOffset.UTC).format(DateTimeFormatter.BASIC_ISO_DATE) + ".json";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename).build().toString())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body);
+    }
+
+    /**
+     * S12: a exportação deixou de ser GET (agora exige a senha no corpo — POST). A rota antiga responde um
+     * erro claro por uma versão, em vez de 404/500, para o front migrar sem ambiguidade.
+     */
+    @GetMapping("/me/export")
+    public ResponseEntity<ApiResponse<Void>> exportDataMovedToPost() {
+        throw new BusinessException("DATA_EXPORT_REQUIRES_PASSWORD", HttpStatus.METHOD_NOT_ALLOWED);
     }
 
     @PostMapping("/me/deletion")

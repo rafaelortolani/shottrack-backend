@@ -64,6 +64,18 @@ class AccountRateLimitTest {
     }
 
     @Test
+    void shouldCountWrongPasswordExportAttemptsAgainstTheLimit() throws Exception {
+        Athlete athlete = athlete("limite.exportacao.senha@shottrack.com");
+
+        exportWith(athlete, "errada1").andExpect(status().isUnauthorized());
+        exportWith(athlete, "errada2").andExpect(status().isUnauthorized());
+
+        exportWith(athlete, "senha12345")
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.error.code").value("TOO_MANY_REQUESTS"));
+    }
+
+    @Test
     void shouldKeepExportLimitIndependentBetweenUsers() throws Exception {
         Athlete first = athlete("limite.usuario.a@shottrack.com");
         Athlete second = athlete("limite.usuario.b@shottrack.com");
@@ -90,7 +102,10 @@ class AccountRateLimitTest {
     @Test
     void shouldNotCountUnauthenticatedRequestsAgainstAnyone() throws Exception {
         for (int i = 0; i < 5; i++) {
-            mockMvc.perform(get("/api/users/me/export")).andExpect(status().isUnauthorized());
+            mockMvc.perform(post("/api/users/me/export")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"currentPassword\":\"senha12345\"}"))
+                    .andExpect(status().isUnauthorized());
         }
     }
 
@@ -99,7 +114,14 @@ class AccountRateLimitTest {
     }
 
     private ResultActions export(Athlete athlete) throws Exception {
-        return mockMvc.perform(get("/api/users/me/export").header("Authorization", "Bearer " + athlete.accessToken()));
+        return exportWith(athlete, "senha12345");
+    }
+
+    private ResultActions exportWith(Athlete athlete, String password) throws Exception {
+        return mockMvc.perform(post("/api/users/me/export")
+                .header("Authorization", "Bearer " + athlete.accessToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"currentPassword\":\"" + password + "\"}"));
     }
 
     private ResultActions deletion(Athlete athlete, String password) throws Exception {
