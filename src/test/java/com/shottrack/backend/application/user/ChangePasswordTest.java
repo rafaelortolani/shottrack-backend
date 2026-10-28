@@ -2,6 +2,7 @@ package com.shottrack.backend.application.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.auth.dto.LoginRequest;
+import com.shottrack.backend.application.auth.dto.RefreshRequest;
 import com.shottrack.backend.application.user.dto.ChangePasswordRequest;
 import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
 import com.shottrack.backend.support.TestUsers;
@@ -103,5 +104,49 @@ class ChangePasswordTest {
                         .content(objectMapper.writeValueAsString(new ChangePasswordRequest(PASSWORD, PASSWORD))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("PASSWORD_UNCHANGED"));
+    }
+
+    @Test
+    void shouldRevokeAllRefreshTokensAfterChangingPassword() throws Exception {
+        String firstSession = loginAndGetRefreshToken();
+        String secondSession = loginAndGetRefreshToken();
+
+        mockMvc.perform(patch("/api/users/me/password")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ChangePasswordRequest(PASSWORD, "senhaNova123"))))
+                .andExpect(status().isOk());
+
+        for (String refreshToken : new String[]{firstSession, secondSession}) {
+            mockMvc.perform(post("/api/auth/refresh")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new RefreshRequest(refreshToken))))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.error.code").value("INVALID_REFRESH_TOKEN"));
+        }
+    }
+
+    @Test
+    void shouldKeepRefreshTokensWhenPasswordChangeIsRejected() throws Exception {
+        String refreshToken = loginAndGetRefreshToken();
+
+        mockMvc.perform(patch("/api/users/me/password")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ChangePasswordRequest("senhaErrada123", "senhaNova123"))))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new RefreshRequest(refreshToken))))
+                .andExpect(status().isOk());
+    }
+
+    private String loginAndGetRefreshToken() throws Exception {
+        String body = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequest(EMAIL, PASSWORD))))
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(body).get("data").get("refreshToken").asText();
     }
 }

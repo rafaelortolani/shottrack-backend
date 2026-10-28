@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -22,6 +23,14 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> handleBusiness(BusinessException ex) {
         String message = messageSource.getMessage(ex.getCode(), null, LocaleContextHolder.getLocale());
         return ResponseEntity.status(ex.getStatus())
+                .body(ApiResponse.error(ex.getCode(), message));
+    }
+
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<ApiResponse<Object>> handleTooManyRequests(TooManyRequestsException ex) {
+        String message = messageSource.getMessage(ex.getCode(), null, LocaleContextHolder.getLocale());
+        return ResponseEntity.status(ex.getStatus())
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
                 .body(ApiResponse.error(ex.getCode(), message));
     }
 
