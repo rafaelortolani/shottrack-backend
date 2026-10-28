@@ -28,5 +28,8 @@ Atleta não autenticado, com o link recebido por e-mail (UC49).
 - [x] Um teste para CADA fluxo alternativo (2a a 2e)
 - [x] Teste: o mesmo token não pode ser usado duas vezes
 
+## Limite de tentativas (ADR-0018)
+`POST /api/auth/password-reset/confirm`: 10 tentativas / 15 min por IP → `429 TOO_MANY_REQUESTS`.
+
 ## Referências
 - ADR-0018, ADR-0001

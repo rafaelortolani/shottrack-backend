@@ -18,9 +18,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * ADR-0018: com app.rate-limit.trust-forwarded-header=true (atrás do proxy),
- * o IP do limite é o primeiro de X-Forwarded-For — clientes diferentes que
- * chegam pelo mesmo IP do proxy não dividem o mesmo bucket.
+ * ADR-0018 / S14: com app.rate-limit.trust-forwarded-header=true (atrás do proxy),
+ * o IP do limite é o ÚLTIMO de X-Forwarded-For (o que o proxy acrescentou) — as
+ * entradas anteriores são escritas pelo cliente e não valem. Clientes diferentes
+ * que chegam pelo mesmo IP do proxy não dividem o mesmo bucket.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -42,11 +43,33 @@ class RateLimitForwardedHeaderTest {
     private JavaMailSenderImpl mailSender;
 
     @Test
-    void shouldUseFirstForwardedAddressAsClientIp() throws Exception {
-        register("fwd1@shottrack.com", "198.51.100.1, 10.0.0.1").andExpect(status().isAccepted());
+    void shouldUseLastForwardedAddressAsClientIp() throws Exception {
+        register("fwd1@shottrack.com", "10.0.0.1, 198.51.100.1").andExpect(status().isAccepted());
         register("fwd2@shottrack.com", "198.51.100.1").andExpect(status().isAccepted());
 
-        register("fwd3@shottrack.com", "198.51.100.1, 10.0.0.9").andExpect(status().isTooManyRequests());
+        register("fwd3@shottrack.com", "10.0.0.9, 198.51.100.1").andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void shouldNotLetTheClientEscapeTheLimitByForgingTheFirstEntries() throws Exception {
+        register("forjado1@shottrack.com", "1.1.1.1, 198.51.100.50").andExpect(status().isAccepted());
+        register("forjado2@shottrack.com", "2.2.2.2, 198.51.100.50").andExpect(status().isAccepted());
+
+        register("forjado3@shottrack.com", "3.3.3.3, 198.51.100.50").andExpect(status().isTooManyRequests());
+        register("forjado4@shottrack.com", "4.4.4.4, 5.5.5.5, 198.51.100.50").andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void shouldReadForwardedAddressesSplitAcrossHeaderLines() throws Exception {
+        mockMvc.perform(post("/api/users/registration")
+                .header("X-Forwarded-For", "9.9.9.9")
+                .header("X-Forwarded-For", "198.51.100.60")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new RegistrationRequest("duaslinhas1@shottrack.com"))))
+                .andExpect(status().isAccepted());
+        register("duaslinhas2@shottrack.com", "198.51.100.60").andExpect(status().isAccepted());
+
+        register("duaslinhas3@shottrack.com", "7.7.7.7, 198.51.100.60").andExpect(status().isTooManyRequests());
     }
 
     @Test

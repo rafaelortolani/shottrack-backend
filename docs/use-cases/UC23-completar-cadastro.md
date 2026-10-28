@@ -33,6 +33,9 @@ Existe um cadastro pendente com token válido (gerado pelo UC01).
 - [x] Teste: conclusão com aceite grava data e versão
 - [x] Teste: sem aceite → `TERMS_NOT_ACCEPTED`, link ainda utilizável
 
+## Limite de tentativas (ADR-0018)
+`POST /api/users/registration/completion`: 10 tentativas / hora por IP → `429 TOO_MANY_REQUESTS`.
+
 ## Referências
 - ADR-0009 (cadastro em duas etapas via link)
 - ADR-0019 (aceite de termos)

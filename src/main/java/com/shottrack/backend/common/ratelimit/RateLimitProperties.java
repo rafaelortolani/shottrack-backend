@@ -13,17 +13,72 @@ import java.time.Duration;
 public record RateLimitProperties(
         @DefaultValue("true") boolean enabled,
         @DefaultValue("false") boolean trustForwardedHeader,
+        /** Quantos proxies confiáveis estão na frente: o IP do cliente é a entrada de X-Forwarded-For a essa distância do fim. */
+        @DefaultValue("1") int trustedProxyHops,
         @DefaultValue Login login,
         @DefaultValue Registration registration,
         @DefaultValue Registration passwordResetRequest,
         @DefaultValue AccountDeletion accountDeletion,
-        @DefaultValue DataExport dataExport
+        @DefaultValue DataExport dataExport,
+        @DefaultValue Refresh refresh,
+        @DefaultValue PasswordResetConfirm passwordResetConfirm,
+        @DefaultValue PasswordChange passwordChange,
+        @DefaultValue EmailChange emailChange,
+        @DefaultValue EmailChangeConfirmation emailChangeConfirmation,
+        @DefaultValue RegistrationCompletion registrationCompletion
 ) {
 
-    /** Tentativas de login por IP + e-mail na janela. */
+    /**
+     * Tentativas de login por IP + e-mail na janela e, além disso, por e-mail (em minúsculas) sem
+     * olhar o IP — para barrar quem espalha as tentativas por muitos IPs (S14).
+     */
     public record Login(
             @DefaultValue("10") int attempts,
+            @DefaultValue("15m") Duration window,
+            @DefaultValue("20") int perEmail,
+            @DefaultValue("1h") Duration perEmailWindow
+    ) {
+    }
+
+    /** S13: renovações de sessão por IP na janela. */
+    public record Refresh(
+            @DefaultValue("30") int attempts,
             @DefaultValue("15m") Duration window
+    ) {
+    }
+
+    /** S13: confirmações de redefinição de senha por IP na janela. */
+    public record PasswordResetConfirm(
+            @DefaultValue("10") int attempts,
+            @DefaultValue("15m") Duration window
+    ) {
+    }
+
+    /** S13: trocas de senha por usuário (ou IP, sem usuário) na janela — barra adivinhar a senha atual. */
+    public record PasswordChange(
+            @DefaultValue("5") int attempts,
+            @DefaultValue("15m") Duration window
+    ) {
+    }
+
+    /** S13: pedidos de troca de e-mail por usuário (ou IP) na janela — barra e-mail em massa. */
+    public record EmailChange(
+            @DefaultValue("5") int attempts,
+            @DefaultValue("1h") Duration window
+    ) {
+    }
+
+    /** S13: confirmações do código de troca de e-mail por usuário (ou IP) na janela. */
+    public record EmailChangeConfirmation(
+            @DefaultValue("10") int attempts,
+            @DefaultValue("15m") Duration window
+    ) {
+    }
+
+    /** S13: conclusões de cadastro por IP na janela. */
+    public record RegistrationCompletion(
+            @DefaultValue("10") int attempts,
+            @DefaultValue("1h") Duration window
     ) {
     }
 

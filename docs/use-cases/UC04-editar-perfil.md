@@ -41,6 +41,10 @@ Usuário logado (UC02) com access token válido.
 - [x] Teste para CADA fluxo alternativo listado acima
 - [x] Teste: `role` no corpo não altera o papel (1d)
 
+## Limite de tentativas (ADR-0018)
+`POST /api/users/me/email`: 5 pedidos / hora por usuário; `POST /api/users/me/email/confirmation`: 10 tentativas /
+15 min por usuário → `429 TOO_MANY_REQUESTS` com `Retry-After`.
+
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0002 (verificação de email)
