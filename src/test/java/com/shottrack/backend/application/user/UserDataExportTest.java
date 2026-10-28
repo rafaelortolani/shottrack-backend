@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -37,6 +38,9 @@ class UserDataExportTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @MockBean
     private JavaMailSenderImpl mailSender;
@@ -75,10 +79,13 @@ class UserDataExportTest {
                 .andExpect(jsonPath("$.trainingLocations[0].name").value("Clube de Tiro Central"))
                 .andExpect(jsonPath("$.trainingLocations[0].city").value("São Paulo"))
                 .andExpect(jsonPath("$.trainingLocations[0].state").value("SP"))
+                .andExpect(jsonPath("$.trainingLocations[0].club").value(false))
                 .andExpect(jsonPath("$.visits.length()").value(1))
                 .andExpect(jsonPath("$.visits[0].trainingLocation").value("Clube de Tiro Central"))
                 .andExpect(jsonPath("$.visits[0].startedAt").isNotEmpty())
                 .andExpect(jsonPath("$.visits[0].status").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$.visits[0].visitType").value("TREINO"))
+                .andExpect(jsonPath("$.visits[0].competitionScope").isEmpty())
                 .andExpect(jsonPath("$.visits[0].trainings.length()").value(1))
                 .andExpect(jsonPath("$.visits[0].trainings[0].modality").value("IPSC"))
                 .andExpect(jsonPath("$.visits[0].trainings[0].series.length()").value(1))
@@ -91,7 +98,10 @@ class UserDataExportTest {
                 .andExpect(jsonPath("$.visits[0].trainings[0].series[0].results.length()").value(3))
                 .andExpect(jsonPath("$.visits[0].trainings[0].series[0].results[?(@.resultType=='Tempo')].value").value("9.8"))
                 .andExpect(jsonPath("$.visits[0].trainings[0].series[0].results[?(@.resultType=='Pontuação')].value").value("0"))
-                .andExpect(jsonPath("$.visits[0].trainings[0].series[0].results[?(@.resultType=='Fator de desempenho')].notApplicable").value(true));
+                .andExpect(jsonPath("$.visits[0].trainings[0].series[0].results[?(@.resultType=='Fator de desempenho')].notApplicable").value(true))
+                .andExpect(jsonPath("$.habituality.tracking.rule").value(org.hamcrest.Matchers.startsWith("Regra de teste")))
+                .andExpect(jsonPath("$.habituality.tracking.level").value("Iniciante"))
+                .andExpect(jsonPath("$.habituality.personalGoalYearlyTrainings").value(40));
     }
 
     @Test
@@ -143,7 +153,9 @@ class UserDataExportTest {
                 .andExpect(jsonPath("$.ammunitions").isEmpty())
                 .andExpect(jsonPath("$.accessories").isEmpty())
                 .andExpect(jsonPath("$.trainingLocations").isEmpty())
-                .andExpect(jsonPath("$.visits").isEmpty());
+                .andExpect(jsonPath("$.visits").isEmpty())
+                .andExpect(jsonPath("$.habituality.tracking").isEmpty())
+                .andExpect(jsonPath("$.habituality.personalGoalYearlyTrainings").isEmpty());
     }
 
     @Test
@@ -173,6 +185,7 @@ class UserDataExportTest {
         Athlete athlete = AthleteDataTestSupport.registerAthlete(mockMvc, objectMapper, pendingRegistrationRepository,
                 userRepository, email);
         AthleteDataTestSupport.populate(mockMvc, objectMapper, pendingRegistrationRepository, athlete);
+        AthleteDataTestSupport.populateHabituality(mockMvc, objectMapper, jdbcTemplate, athlete);
         return athlete;
     }
 

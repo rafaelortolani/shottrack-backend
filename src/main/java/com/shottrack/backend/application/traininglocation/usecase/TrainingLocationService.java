@@ -29,6 +29,7 @@ public class TrainingLocationService {
                 .name(request.name())
                 .city(request.city())
                 .state(request.state())
+                .club(request.club())
                 .build();
 
         TrainingLocation saved = trainingLocationGateway.save(trainingLocation);
@@ -66,6 +67,9 @@ public class TrainingLocationService {
                 throw new BusinessException("TRAINING_LOCATION_FIELD_REQUIRED", HttpStatus.BAD_REQUEST);
             }
             trainingLocation.setState(request.state());
+        }
+        if (request.club() != null) {
+            trainingLocation.setClub(request.club());
         }
 
         TrainingLocation saved = trainingLocationGateway.save(trainingLocation);

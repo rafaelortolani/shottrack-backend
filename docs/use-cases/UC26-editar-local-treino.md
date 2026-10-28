@@ -8,9 +8,9 @@ Usuário logado (UC02) com access token válido. Local pertence ao atleta
 autenticado.
 
 ## Fluxo principal
-1. Atleta envia nome, cidade e/ou estado a alterar
-2. Sistema valida (campos não podem ficar vazios) e atualiza os campos
-   enviados (edição parcial — mesmo padrão de Munição, ADR-0007)
+1. Atleta envia nome, cidade, estado e/ou `club` a alterar
+2. Sistema valida (campos de texto não podem ficar vazios) e atualiza os
+   campos enviados (edição parcial — mesmo padrão de Munição, ADR-0007)
 
 ## Fluxos alternativos
 - 1a. Token ausente ou inválido → erro `UNAUTHORIZED`
@@ -20,7 +20,9 @@ autenticado.
 ## Definição de pronto
 - [x] Teste cobrindo edição de um único campo, sem afetar os demais
 - [x] Um teste para CADA fluxo alternativo listado acima
+- [x] Teste alterando somente `club`, sem afetar os demais campos
 
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0010 (local de treino livre)
+- ADR-0023 (habitualidade configurável)

@@ -7,6 +7,7 @@ import com.shottrack.backend.application.ammunition.gateway.AmmunitionGateway;
 import com.shottrack.backend.application.auth.gateway.PasswordResetTokenGateway;
 import com.shottrack.backend.application.auth.gateway.RefreshTokenGateway;
 import com.shottrack.backend.application.dashboard.gateway.DashboardSummaryGateway;
+import com.shottrack.backend.application.habituality.gateway.AthleteHabitualityGateway;
 import com.shottrack.backend.application.modality.gateway.ModalityResultTypeSelectionGateway;
 import com.shottrack.backend.application.modality.gateway.PracticedModalityGateway;
 import com.shottrack.backend.application.series.gateway.SeriesGateway;
@@ -56,6 +57,7 @@ public class AccountDeletionService {
 
     private final UserGateway userGateway;
     private final DashboardSummaryGateway dashboardSummaryGateway;
+    private final AthleteHabitualityGateway athleteHabitualityGateway;
     private final SeriesResultGateway seriesResultGateway;
     private final SeriesGateway seriesGateway;
     private final TrainingGateway trainingGateway;
@@ -95,7 +97,7 @@ public class AccountDeletionService {
 
     /**
      * Ordem: o que referencia vem antes do que é referenciado — resumo do
-     * dashboard, resultados, séries, treinos, visitas, locais, associações
+     * dashboard, acompanhamento e meta de habitualidade, resultados, séries, treinos, visitas, locais, associações
      * acessório-arma, acessórios, munições, armas, seleções de resultado,
      * modalidades, tokens, cadastros pendentes e, por fim, o usuário.
      */
@@ -107,6 +109,9 @@ public class AccountDeletionService {
                 .orElseThrow(() -> new BusinessException("UNAUTHORIZED", HttpStatus.UNAUTHORIZED));
 
         dashboardSummaryGateway.deleteByUserId(userId);
+        // ADR-0023: acompanhamento e meta de habitualidade são dados do atleta.
+        athleteHabitualityGateway.deleteTrackingByUserId(userId);
+        athleteHabitualityGateway.deleteGoalByUserId(userId);
 
         List<UUID> visitIds = visitGateway.findAllByUserId(userId).stream().map(Visit::getId).toList();
         if (!visitIds.isEmpty()) {

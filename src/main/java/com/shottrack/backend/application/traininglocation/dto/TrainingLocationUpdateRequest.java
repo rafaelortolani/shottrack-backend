@@ -9,6 +9,11 @@ package com.shottrack.backend.application.traininglocation.dto;
 public record TrainingLocationUpdateRequest(
         String name,
         String city,
-        String state
+        String state,
+        Boolean club
 ) {
+
+    public TrainingLocationUpdateRequest(String name, String city, String state) {
+        this(name, city, state, null);
+    }
 }

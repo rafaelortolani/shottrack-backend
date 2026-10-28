@@ -10,6 +10,13 @@ public record TrainingLocationRegisterRequest(
         String city,
 
         @NotBlank(message = "estado é obrigatório")
-        String state
+        String state,
+
+        /** ADR-0023: ausente = false. */
+        Boolean club
 ) {
+
+    public TrainingLocationRegisterRequest(String name, String city, String state) {
+        this(name, city, state, null);
+    }
 }

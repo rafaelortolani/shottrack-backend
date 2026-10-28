@@ -269,6 +269,7 @@ class AccountDeletionTest {
         Athlete athlete = AthleteDataTestSupport.registerAthlete(mockMvc, objectMapper, pendingRegistrationRepository,
                 userRepository, email);
         AthleteDataTestSupport.populate(mockMvc, objectMapper, pendingRegistrationRepository, athlete);
+        AthleteDataTestSupport.populateHabituality(mockMvc, objectMapper, jdbcTemplate, athlete);
         dashboardRecalculationService.recalculate(athlete.userId());
         return athlete;
     }
