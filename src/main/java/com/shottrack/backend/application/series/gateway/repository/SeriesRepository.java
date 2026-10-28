@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Collection;
 
 public interface SeriesRepository extends JpaRepository<Series, UUID> {
 
@@ -13,4 +14,7 @@ public interface SeriesRepository extends JpaRepository<Series, UUID> {
     boolean existsByWeaponId(UUID weaponId);
 
     boolean existsByAmmunitionId(UUID ammunitionId);
+
+    List<Series> findAllByTrainingIdIn(Collection<UUID> trainingIds);
+    void deleteAllByTrainingIdIn(Collection<UUID> trainingIds);
 }

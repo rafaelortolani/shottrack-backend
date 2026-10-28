@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.time.Instant;
 
 @Component
 @RequiredArgsConstructor
@@ -27,5 +28,15 @@ class PasswordResetTokenGatewayImpl implements PasswordResetTokenGateway {
     @Override
     public void deletePendingByUserId(UUID userId) {
         passwordResetTokenRepository.deleteAll(passwordResetTokenRepository.findAllByUserIdAndUsedAtIsNull(userId));
+    }
+
+    @Override
+    public void deleteAllByUserId(UUID userId) {
+        passwordResetTokenRepository.deleteAllByUserId(userId);
+    }
+
+    @Override
+    public long deleteByExpiresAtBefore(Instant cutoff) {
+        return passwordResetTokenRepository.deleteByExpiresAtBefore(cutoff);
     }
 }

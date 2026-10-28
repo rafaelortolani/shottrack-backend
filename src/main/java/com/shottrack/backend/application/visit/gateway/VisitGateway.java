@@ -17,4 +17,6 @@ public interface VisitGateway {
     boolean existsByTrainingLocationId(UUID trainingLocationId);
 
     void delete(Visit visit);
+
+    void deleteAllByUserId(UUID userId);
 }

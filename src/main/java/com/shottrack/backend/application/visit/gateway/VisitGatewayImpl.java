@@ -39,4 +39,9 @@ class VisitGatewayImpl implements VisitGateway {
     public void delete(Visit visit) {
         visitRepository.delete(visit);
     }
+
+    @Override
+    public void deleteAllByUserId(UUID userId) {
+        visitRepository.deleteAllByUserId(userId);
+    }
 }

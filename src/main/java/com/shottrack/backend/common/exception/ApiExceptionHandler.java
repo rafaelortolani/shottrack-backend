@@ -8,9 +8,11 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @Slf4j
 @RestControllerAdvice
@@ -38,10 +40,24 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> handleValidation(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getFieldErrors().stream()
                 .findFirst()
-                .map(f -> f.getField() + ": " + f.getDefaultMessage())
+                // ADR-0019: falha de conversão (ex: UUID inválido) traz o valor recebido na
+                // mensagem padrão — pode ser dado pessoal, então não vai pra resposta.
+                .map(f -> f.getField() + ": " + (f.isBindingFailure() ? "valor inválido" : f.getDefaultMessage()))
                 .orElse("Dados inválidos");
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error("VALIDATION_ERROR", message));
+    }
+
+    /**
+     * ADR-0019: corpo ilegível ou parâmetro com tipo errado (ex: UUID inválido).
+     * A mensagem da exceção ecoa o valor recebido — pode ser dado pessoal — então
+     * nem vai pra resposta nem pro log (e não é um erro nosso, não vira evento
+     * no Sentry).
+     */
+    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<ApiResponse<Object>> handleUnreadableInput() {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error("VALIDATION_ERROR", "Dados inválidos"));
     }
 
     /**

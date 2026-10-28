@@ -7,6 +7,7 @@ import com.shottrack.backend.application.dashboard.model.ResultRecord;
 import com.shottrack.backend.application.modality.gateway.ModalityGateway;
 import com.shottrack.backend.application.modality.model.Modality;
 import com.shottrack.backend.application.series.gateway.SeriesGateway;
+import com.shottrack.backend.application.user.gateway.UserGateway;
 import com.shottrack.backend.application.series.gateway.SeriesResultGateway;
 import com.shottrack.backend.application.series.model.Series;
 import com.shottrack.backend.application.series.model.SeriesResult;
@@ -50,9 +51,19 @@ public class DashboardRecalculationService {
     private final SeriesResultGateway seriesResultGateway;
     private final ModalityGateway modalityGateway;
     private final DashboardSummaryGateway dashboardSummaryGateway;
+    private final UserGateway userGateway;
     private final HighlightCalculator highlightCalculator;
 
+    /**
+     * ADR-0019: um evento pode chegar depois que o atleta excluiu a conta (UC52).
+     * Usuário inexistente é ignorado em silêncio — gravar o resumo violaria a FK,
+     * e a exceção cairia no retry/DLQ do consumidor sem nunca poder dar certo.
+     */
     public void recalculate(UUID userId) {
+        if (!userGateway.existsById(userId)) {
+            return;
+        }
+
         DashboardStats stats = calculate(userId);
 
         DashboardSummary summary = dashboardSummaryGateway.findByUserId(userId)

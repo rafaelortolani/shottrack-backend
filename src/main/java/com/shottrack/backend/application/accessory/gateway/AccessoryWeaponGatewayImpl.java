@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collection;
 
 @Component
 @RequiredArgsConstructor
@@ -38,5 +39,20 @@ class AccessoryWeaponGatewayImpl implements AccessoryWeaponGateway {
     @Override
     public void delete(AccessoryWeapon accessoryWeapon) {
         accessoryWeaponRepository.delete(accessoryWeapon);
+    }
+
+    @Override
+    public List<AccessoryWeapon> findAllByAccessoryIdIn(Collection<UUID> accessoryIds) {
+        return accessoryWeaponRepository.findAllByAccessoryIdIn(accessoryIds);
+    }
+
+    @Override
+    public void deleteAllByAccessoryIdIn(Collection<UUID> accessoryIds) {
+        accessoryWeaponRepository.deleteAllByAccessoryIdIn(accessoryIds);
+    }
+
+    @Override
+    public void deleteAllByWeaponIdIn(Collection<UUID> weaponIds) {
+        accessoryWeaponRepository.deleteAllByWeaponIdIn(weaponIds);
     }
 }

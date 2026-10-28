@@ -35,7 +35,7 @@ public final class TestUsers {
 
         mockMvc.perform(post("/api/users/registration/completion")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new CompleteRegistrationRequest(token, name, password))));
+                .content(objectMapper.writeValueAsString(new CompleteRegistrationRequest(token, name, password, true))));
     }
 
     public static String registerAndLogin(MockMvc mockMvc, ObjectMapper objectMapper,

@@ -34,4 +34,9 @@ class WeaponGatewayImpl implements WeaponGateway {
     public void delete(Weapon weapon) {
         weaponRepository.delete(weapon);
     }
+
+    @Override
+    public void deleteAllByUserId(UUID userId) {
+        weaponRepository.deleteAllByUserId(userId);
+    }
 }

@@ -91,7 +91,7 @@ class UserRegistrationTest {
         mockMvc.perform(post("/api/users/registration/completion")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new CompleteRegistrationRequest(firstPending.getToken(), "Atleta Reenvio", "senha12345"))))
+                                new CompleteRegistrationRequest(firstPending.getToken(), "Atleta Reenvio", "senha12345", true))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("REGISTRATION_TOKEN_ALREADY_USED"));
     }
@@ -105,7 +105,7 @@ class UserRegistrationTest {
 
         mockMvc.perform(post("/api/users/registration/completion")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new CompleteRegistrationRequest(token, name, password))));
+                .content(objectMapper.writeValueAsString(new CompleteRegistrationRequest(token, name, password, true))));
     }
 
     private PendingRegistration pendingFor(String email) {

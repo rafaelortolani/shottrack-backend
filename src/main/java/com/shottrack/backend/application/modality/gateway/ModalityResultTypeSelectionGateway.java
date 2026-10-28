@@ -19,4 +19,7 @@ public interface ModalityResultTypeSelectionGateway {
     void delete(ModalityResultTypeSelection selection);
 
     void deleteAllByUserIdAndModalityId(UUID userId, UUID modalityId);
+
+    void deleteAllByUserId(UUID userId);
+    List<ModalityResultTypeSelection> findAllByUserId(UUID userId);
 }

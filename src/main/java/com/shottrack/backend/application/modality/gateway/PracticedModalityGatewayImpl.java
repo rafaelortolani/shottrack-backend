@@ -39,4 +39,9 @@ class PracticedModalityGatewayImpl implements PracticedModalityGateway {
     public void delete(PracticedModality practicedModality) {
         practicedModalityRepository.delete(practicedModality);
     }
+
+    @Override
+    public void deleteAllByUserId(UUID userId) {
+        practicedModalityRepository.deleteAllByUserId(userId);
+    }
 }

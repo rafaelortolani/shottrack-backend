@@ -42,14 +42,30 @@ public class User extends AbstractBaseEntity {
     @Column(name = "experience_level", nullable = false)
     private ExperienceLevel experienceLevel = ExperienceLevel.BEGINNER;
 
+    /**
+     * ADR-0021: fora do builder e sem setter — só muda por UPDATE direto no banco.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role = Role.USER;
+
     @Column(name = "profile_completed_at")
     private Instant profileCompletedAt;
 
+    @Column(name = "terms_accepted_at")
+    private Instant termsAcceptedAt;
+
+    @Column(name = "terms_version")
+    private String termsVersion;
+
     @Builder
-    private User(@NonNull String name, @NonNull String email, @NonNull String passwordHash, ExperienceLevel experienceLevel) {
+    private User(@NonNull String name, @NonNull String email, @NonNull String passwordHash,
+                 ExperienceLevel experienceLevel, Instant termsAcceptedAt, String termsVersion) {
         this.name = name;
         this.email = email;
         this.passwordHash = passwordHash;
+        this.termsAcceptedAt = termsAcceptedAt;
+        this.termsVersion = termsVersion;
         if (experienceLevel != null) {
             this.experienceLevel = experienceLevel;
         }

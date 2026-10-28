@@ -23,4 +23,9 @@ class DashboardSummaryGatewayImpl implements DashboardSummaryGateway {
     public Optional<DashboardSummary> findByUserId(UUID userId) {
         return dashboardSummaryRepository.findByUserId(userId);
     }
+
+    @Override
+    public void deleteByUserId(UUID userId) {
+        dashboardSummaryRepository.findByUserId(userId).ifPresent(dashboardSummaryRepository::delete);
+    }
 }

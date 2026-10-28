@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface AmmunitionRepository extends JpaRepository<Ammunition, UUID> {
 
     List<Ammunition> findAllByUserId(UUID userId);
+
+    void deleteAllByUserId(UUID userId);
 }

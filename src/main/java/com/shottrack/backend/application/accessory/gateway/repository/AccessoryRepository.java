@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface AccessoryRepository extends JpaRepository<Accessory, UUID> {
 
     List<Accessory> findAllByUserId(UUID userId);
+
+    void deleteAllByUserId(UUID userId);
 }

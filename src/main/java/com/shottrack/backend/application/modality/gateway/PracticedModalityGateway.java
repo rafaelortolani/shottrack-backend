@@ -17,4 +17,6 @@ public interface PracticedModalityGateway {
     boolean existsByUserIdAndModalityId(UUID userId, UUID modalityId);
 
     void delete(PracticedModality practicedModality);
+
+    void deleteAllByUserId(UUID userId);
 }

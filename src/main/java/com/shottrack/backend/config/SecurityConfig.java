@@ -1,5 +1,7 @@
 package com.shottrack.backend.config;
 
+import com.shottrack.backend.common.security.AdminAuthorizationManager;
+import com.shottrack.backend.common.security.ForbiddenAccessDeniedHandler;
 import com.shottrack.backend.common.security.JwtAuthenticationEntryPoint;
 import com.shottrack.backend.common.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +19,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * Stateless: CSRF desligado e sem sessão — a única forma de autenticar um endpoint
  * protegido é via Authorization: Bearer <token>, validado pelo JwtAuthenticationFilter
  * (ADR-0001). Rotas de cadastro/login/refresh continuam públicas, assim como
- * /actuator/health (ADR-0017, monitor externo de disponibilidade).
+ * /actuator/health (ADR-0017, monitor externo de disponibilidade). /api/admin/**
+ * exige papel ADMIN, conferido no banco a cada requisição (ADR-0021).
  */
 @Configuration
 @RequiredArgsConstructor
@@ -25,6 +28,8 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final AdminAuthorizationManager adminAuthorizationManager;
+    private final ForbiddenAccessDeniedHandler forbiddenAccessDeniedHandler;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -40,9 +45,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/users/registration", "/api/users/registration/completion", "/api/auth/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/api/admin/**").access(adminAuthorizationManager)
                         .anyRequest().authenticated()
                 )
-                .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        .accessDeniedHandler(forbiddenAccessDeniedHandler))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
