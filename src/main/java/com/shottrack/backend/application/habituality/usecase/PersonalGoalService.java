@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.habituality.usecase;
 
+import org.springframework.transaction.annotation.Transactional;
 import com.shottrack.backend.application.habituality.dto.PersonalGoalRequest;
 import com.shottrack.backend.application.habituality.dto.PersonalGoalResponse;
 import com.shottrack.backend.application.habituality.gateway.AthleteHabitualityGateway;
@@ -37,6 +38,7 @@ public class PersonalGoalService {
         return toResponse(userId, athleteGateway.saveGoal(goal));
     }
 
+    @Transactional
     public void remove(UUID userId) {
         athleteGateway.deleteGoalByUserId(userId);
     }

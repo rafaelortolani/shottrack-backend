@@ -39,7 +39,8 @@ class PersonalGoalTest extends HabitualityIntegrationTest {
 
         flushAndClear();
         org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM athlete_personal_goal", Integer.class)).isEqualTo(1);
+                "SELECT count(*) FROM athlete_personal_goal WHERE user_id = (SELECT id FROM users WHERE email = ?)",
+                Integer.class, "atleta.habitualidade@shottrack.com")).isEqualTo(1);
     }
 
     @Test

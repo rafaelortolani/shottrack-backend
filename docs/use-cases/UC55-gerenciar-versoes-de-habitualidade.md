@@ -54,6 +54,13 @@ partir de `validFrom`. O PUT substitui níveis e exigências da versão.
 - [x] Datas inválidas/duplicadas; níveis duplicados; exigência inválida
 - [x] 401/403; regra/versão inexistente
 
+## Regra carregada por migration
+A regra vigente ("Habitualidade — Atirador Desportivo", versão de 01/12/2023, janela de
+12 meses, níveis I a III) é carregada pela migration V52 (ADR-0023). O admin mantém as
+novas versões: mudança de norma = nova versão com data futura. Como a versão carregada é a
+primeira da regra, e passa a valer a partir de 2023-12-01, ela só é editável enquanto nenhum
+atleta acompanha a regra — e nunca removível.
+
 ## Decisões de implementação
 - Primeira versão: qualquer data. Seguintes: data futura (`400 HABITUALITY_VERSION_DATE_INVALID`);
   data repetida na regra: `409 HABITUALITY_VERSION_DATE_INVALID`.
