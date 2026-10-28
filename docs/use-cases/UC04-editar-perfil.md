@@ -27,6 +27,7 @@ Usuário logado (UC02) com access token válido.
 - 1a. Nome vazio → erro de validação
 - 1b. Nível de experiência vazio ou fora dos valores permitidos → erro de validação
 - 1c. Token ausente ou inválido → erro `UNAUTHORIZED`
+- 1d. `role` enviado no corpo → ignorado; o papel só muda direto no banco (ADR-0021)
 - 2a. Novo email já cadastrado por outra conta → erro `EMAIL_ALREADY_REGISTERED`
 - 3a. Token ausente ou inválido → erro `UNAUTHORIZED`
 - 4a. Código incorreto → erro `INVALID_VERIFICATION_CODE`
@@ -38,7 +39,9 @@ Usuário logado (UC02) com access token válido.
 - [x] Teste cobrindo o fluxo alternativo 1b (nível de experiência inválido)
 - [x] Teste cobrindo o fluxo principal (trocar email, incluindo confirmação do código)
 - [x] Teste para CADA fluxo alternativo listado acima
+- [x] Teste: `role` no corpo não altera o papel (1d)
 
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0002 (verificação de email)
+- ADR-0021 (papel de administrador)

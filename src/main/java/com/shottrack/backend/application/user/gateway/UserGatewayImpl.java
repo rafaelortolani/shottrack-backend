@@ -1,6 +1,7 @@
 package com.shottrack.backend.application.user.gateway;
 
 import com.shottrack.backend.application.user.gateway.repository.UserRepository;
+import com.shottrack.backend.application.user.model.Role;
 import com.shottrack.backend.application.user.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -42,6 +43,11 @@ class UserGatewayImpl implements UserGateway {
     @Override
     public boolean existsById(UUID id) {
         return userRepository.existsById(id);
+    }
+
+    @Override
+    public Optional<Role> findRoleById(UUID id) {
+        return userRepository.findRoleById(id);
     }
 
     @Override

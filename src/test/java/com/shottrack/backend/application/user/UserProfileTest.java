@@ -55,6 +55,7 @@ class UserProfileTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value(NAME))
                 .andExpect(jsonPath("$.data.email").value(EMAIL))
+                .andExpect(jsonPath("$.data.role").value("USER"))
                 .andExpect(jsonPath("$.data.createdAt").isNotEmpty())
                 .andExpect(jsonPath("$.data.passwordHash").doesNotExist());
     }

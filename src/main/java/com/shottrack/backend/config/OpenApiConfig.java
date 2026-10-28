@@ -18,7 +18,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("ShotTrack API")
-                        .description("Backend do ShotTrack — treinos, competições, resultados e evolução de atletas de tiro esportivo.")
+                        .description("Backend do ShotTrack — treinos, competições, resultados e evolução de atletas de tiro esportivo. Erros de acesso: UNAUTHORIZED (401, token ausente/inválido) e FORBIDDEN (403, rotas /api/admin/** exigem papel ADMIN).")
                         .version("v0.1"))
                 .addSecurityItem(new SecurityRequirement().addList(BEARER_SCHEME))
                 .components(new Components().addSecuritySchemes(BEARER_SCHEME,
