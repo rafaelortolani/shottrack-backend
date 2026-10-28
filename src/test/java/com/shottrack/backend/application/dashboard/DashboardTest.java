@@ -40,7 +40,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * dinâmico, ignorar valor não numérico etc.) é coberta em
  * DashboardRecalculationServiceTest — aqui o foco é o contrato HTTP, os
  * dois caminhos de leitura (resumo pré-calculado vs. fallback) e as seções
- * calculadas na hora (onboarding, ação principal, últimos treinos, acervo).
+ * calculadas na hora (onboarding, ação principal, últimos treinos). Filtro por
+ * modalidade e comparação com o mês anterior: DashboardTabsTest (UC42 v7).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -69,12 +70,15 @@ class DashboardTest {
         // valores propositalmente diferentes de qualquer coisa calculável a
         // partir dos dados reais do atleta (não há nenhum) — prova que a
         // leitura vem do resumo, não de um recálculo na hora
+        UUID skeetId = UUID.randomUUID();
+        UUID trapId = UUID.randomUUID();
         DashboardSummary summary = DashboardSummary.builder().userId(userId).build();
-        summary.replaceWith(7, 123, List.of("Trap", "Skeet"),
+        summary.replaceWith(
                 List.of(
-                        ModalityStats.builder().modalityName("Skeet").trainingCount(4).build(),
-                        ModalityStats.builder().modalityName("Trap").trainingCount(3)
+                        ModalityStats.builder().modalityId(skeetId).modalityName("Skeet").trainingCount(4).build(),
+                        ModalityStats.builder().modalityId(trapId).modalityName("Trap").trainingCount(3)
                                 .bestResultTypeName("Acertos").bestValue(new BigDecimal("24")).build()),
+                List.of(),
                 List.of(
                         ResultRecord.builder().resultTypeName("Acertos").bestValue(new BigDecimal("24")).build(),
                         ResultRecord.builder().resultTypeName("Agrupamento").bestValue(new BigDecimal("3.30")).build()));
@@ -83,19 +87,22 @@ class DashboardTest {
         mockMvc.perform(get("/api/dashboard")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.trainingsThisMonth").value(7))
-                .andExpect(jsonPath("$.data.shotsThisMonth").value(123))
-                .andExpect(jsonPath("$.data.practicedModalities", containsInAnyOrder("Trap", "Skeet")))
-                .andExpect(jsonPath("$.data.modalitySummaries.length()").value(2))
-                .andExpect(jsonPath("$.data.modalitySummaries[?(@.modalityName == 'Skeet')].trainingCount").value(4))
-                .andExpect(jsonPath("$.data.modalitySummaries[?(@.modalityName == 'Trap')].best.resultTypeName").value("Acertos"))
-                .andExpect(jsonPath("$.data.modalitySummaries[?(@.modalityName == 'Trap')].best.value").value(24))
                 .andExpect(jsonPath("$.data.records.length()").value(2))
                 .andExpect(jsonPath("$.data.records[0].resultTypeName").value("Acertos"))
                 .andExpect(jsonPath("$.data.records[0].value").value(24))
                 .andExpect(jsonPath("$.data.records[1].resultTypeName").value("Agrupamento"))
                 .andExpect(jsonPath("$.data.records[1].value").value(3.30))
-                .andExpect(jsonPath("$.data.recentTrainings.length()").value(0));
+                .andExpect(jsonPath("$.data.recentTrainings.length()").value(0))
+                // indicadores do mês nunca vêm do resumo: sem treinos reais, zero
+                .andExpect(jsonPath("$.data.trainingsThisMonth.value").value(0));
+
+        mockMvc.perform(get("/api/dashboard/modalities")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[?(@.modalityName == 'Skeet')].trainingCount").value(4))
+                .andExpect(jsonPath("$.data[?(@.modalityName == 'Trap')].best.resultTypeName").value("Acertos"))
+                .andExpect(jsonPath("$.data[?(@.modalityName == 'Trap')].best.value").value(24));
     }
 
     @Test
@@ -122,9 +129,9 @@ class DashboardTest {
         mockMvc.perform(get("/api/dashboard")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.trainingsThisMonth").value(1))
-                .andExpect(jsonPath("$.data.shotsThisMonth").value(25))
-                .andExpect(jsonPath("$.data.practicedModalities", contains("IPSC")))
+                .andExpect(jsonPath("$.data.trainingsThisMonth.value").value(1))
+                .andExpect(jsonPath("$.data.shotsThisMonth.value").value(25))
+                .andExpect(jsonPath("$.data.modalitiesPracticed.value").value(1))
                 .andExpect(jsonPath("$.data.records.length()").value(1))
                 .andExpect(jsonPath("$.data.records[0].resultTypeName").value("Tempo"))
                 .andExpect(jsonPath("$.data.records[0].value").value(9.8));
@@ -143,14 +150,15 @@ class DashboardTest {
                 .andExpect(jsonPath("$.data.onboarding.pendingSteps",
                         contains("CREATE_PROFILE", "CONFIGURE_MODALITIES", "REGISTER_WEAPON")))
                 .andExpect(jsonPath("$.data.mainAction.type").value("START_VISIT"))
-                .andExpect(jsonPath("$.data.trainingsThisMonth").value(0))
-                .andExpect(jsonPath("$.data.shotsThisMonth").value(0))
-                .andExpect(jsonPath("$.data.practicedModalities.length()").value(0))
+                .andExpect(jsonPath("$.data.trainingsThisMonth.value").value(0))
+                .andExpect(jsonPath("$.data.trainingsThisMonth.previous").value(0))
+                .andExpect(jsonPath("$.data.shotsThisMonth.value").value(0))
+                .andExpect(jsonPath("$.data.shotsThisMonth.previous").value(0))
+                .andExpect(jsonPath("$.data.modalitiesPracticed.value").value(0))
+                .andExpect(jsonPath("$.data.modalitiesPracticed.previous").value(0))
                 .andExpect(jsonPath("$.data.recentTrainings.length()").value(0))
-                .andExpect(jsonPath("$.data.modalitySummaries.length()").value(0))
-                .andExpect(jsonPath("$.data.weaponCollection.weaponCount").value(0))
-                .andExpect(jsonPath("$.data.weaponCollection.weaponNames.length()").value(0))
-                .andExpect(jsonPath("$.data.records.length()").value(0));
+                .andExpect(jsonPath("$.data.records.length()").value(0))
+                .andExpect(jsonPath("$.data.suggestedEvolution").value(org.hamcrest.Matchers.nullValue()));
     }
 
     @Test
@@ -209,11 +217,11 @@ class DashboardTest {
     }
 
     @Test
-    void shouldListLastFiveTrainingsWithHighlightScopedToEachTraining() throws Exception {
+    void shouldListLastThreeTrainingsWithHighlightScopedToEachTraining() throws Exception {
         String token = registerAndLogin("atleta.dashboardultimostreinos@shottrack.com");
         UUID tempoId = resultTypeIdByName(token, "Tempo");
 
-        // mais antigo — fica fora dos 5, mesmo tendo o melhor tempo geral
+        // mais antigo — fica fora dos 3, mesmo tendo o melhor tempo geral
         UUID oldest = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
         registerSeriesWithResult(token, oldest, tempoId, "5.0");
         SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
@@ -228,7 +236,7 @@ class DashboardTest {
         mockMvc.perform(get("/api/dashboard")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.recentTrainings.length()").value(5))
+                .andExpect(jsonPath("$.data.recentTrainings.length()").value(3))
                 .andExpect(jsonPath("$.data.recentTrainings[0].trainingId").value(newest.toString()))
                 .andExpect(jsonPath("$.data.recentTrainings[0].trainingLocationName").value("Clube de Tiro Central"))
                 .andExpect(jsonPath("$.data.recentTrainings[0].modalityName").value("IPSC"))
@@ -240,6 +248,7 @@ class DashboardTest {
                 .andExpect(jsonPath("$.data.recentTrainings[2].trainingId").value(withTwoResults.toString()))
                 .andExpect(jsonPath("$.data.recentTrainings[2].highlight.value").value(10.0))
                 .andExpect(jsonPath("$.data.recentTrainings[?(@.trainingId == '" + oldest + "')]").isEmpty())
+                .andExpect(jsonPath("$.data.recentTrainings[?(@.trainingId == '" + withTwoResults + "')]").isNotEmpty())
                 // recordes continuam olhando o histórico inteiro
                 .andExpect(jsonPath("$.data.records[0].resultTypeName").value("Tempo"))
                 .andExpect(jsonPath("$.data.records[0].value").value(5.0));
@@ -263,41 +272,42 @@ class DashboardTest {
         // Trap: treino sem resultado nenhum
         SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "Trap");
 
-        mockMvc.perform(get("/api/dashboard")
+        mockMvc.perform(get("/api/dashboard/modalities")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.modalitySummaries.length()").value(3))
-                .andExpect(jsonPath("$.data.modalitySummaries[0].modalityName").value("IPSC"))
-                .andExpect(jsonPath("$.data.modalitySummaries[0].trainingCount").value(2))
-                .andExpect(jsonPath("$.data.modalitySummaries[0].best.resultTypeName").value("Tempo"))
-                .andExpect(jsonPath("$.data.modalitySummaries[0].best.value").value(9.8))
-                .andExpect(jsonPath("$.data.modalitySummaries[1].modalityName").value("Precisão"))
-                .andExpect(jsonPath("$.data.modalitySummaries[1].trainingCount").value(1))
-                .andExpect(jsonPath("$.data.modalitySummaries[1].best.resultTypeName").value("Pontuação"))
-                .andExpect(jsonPath("$.data.modalitySummaries[1].best.value").value(98))
-                .andExpect(jsonPath("$.data.modalitySummaries[2].modalityName").value("Trap"))
-                .andExpect(jsonPath("$.data.modalitySummaries[2].trainingCount").value(1))
-                .andExpect(jsonPath("$.data.modalitySummaries[2].best").isEmpty());
+                .andExpect(jsonPath("$.data.length()").value(3))
+                .andExpect(jsonPath("$.data[0].modalityName").value("IPSC"))
+                .andExpect(jsonPath("$.data[0].trainingCount").value(2))
+                .andExpect(jsonPath("$.data[0].best.resultTypeName").value("Tempo"))
+                .andExpect(jsonPath("$.data[0].best.value").value(9.8))
+                .andExpect(jsonPath("$.data[1].modalityName").value("Precisão"))
+                .andExpect(jsonPath("$.data[1].trainingCount").value(1))
+                .andExpect(jsonPath("$.data[1].best.resultTypeName").value("Pontuação"))
+                .andExpect(jsonPath("$.data[1].best.value").value(98))
+                .andExpect(jsonPath("$.data[2].modalityName").value("Trap"))
+                .andExpect(jsonPath("$.data[2].trainingCount").value(1))
+                .andExpect(jsonPath("$.data[2].best").isEmpty());
     }
 
     @Test
-    void shouldSummarizeWeaponCollection() throws Exception {
-        String token = registerAndLogin("atleta.dashboardacervo@shottrack.com");
+    void shouldNotExposeWeaponCollectionNorModalitySummariesOnDashboard() throws Exception {
+        String token = registerAndLogin("atleta.dashboardsemacervo@shottrack.com");
         SeriesTestSupport.registerWeapon(mockMvc, objectMapper, token);
-        SeriesTestSupport.registerWeapon(mockMvc, objectMapper, token);
-        SeriesTestSupport.registerWeapon(mockMvc, objectMapper, token);
-        SeriesTestSupport.registerWeapon(mockMvc, objectMapper, token, "Minha Glock");
+        SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
 
         mockMvc.perform(get("/api/dashboard")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.weaponCollection.weaponCount").value(4))
-                .andExpect(jsonPath("$.data.weaponCollection.weaponNames",
-                        contains("Minha Glock", "Glock G17", "Glock G17")));
+                .andExpect(jsonPath("$.data.weaponCollection").doesNotExist())
+                .andExpect(jsonPath("$.data.weaponsSummary").doesNotExist())
+                .andExpect(jsonPath("$.data.modalitySummaries").doesNotExist())
+                .andExpect(jsonPath("$.data.practicedModalities").doesNotExist());
     }
 
     @Test
     void shouldRejectRequestWithoutToken() throws Exception {
+        mockMvc.perform(get("/api/dashboard/modalities"))
+                .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/dashboard"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));

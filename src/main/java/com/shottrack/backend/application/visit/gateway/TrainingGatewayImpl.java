@@ -6,6 +6,7 @@ import com.shottrack.backend.application.visit.model.TrainingStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -55,5 +56,17 @@ class TrainingGatewayImpl implements TrainingGateway {
     @Override
     public void deleteAllByVisitIdIn(Collection<UUID> visitIds) {
         trainingRepository.deleteAllByVisitIdIn(visitIds);
+    }
+
+    @Override
+    public long countByUserId(UUID userId, UUID modalityId, Instant from, Instant to) {
+        return modalityId == null
+                ? trainingRepository.countByUserIdBetween(userId, from, to)
+                : trainingRepository.countByUserIdAndModalityIdBetween(userId, modalityId, from, to);
+    }
+
+    @Override
+    public long countDistinctModalitiesByUserId(UUID userId, Instant from, Instant to) {
+        return trainingRepository.countDistinctModalitiesByUserIdBetween(userId, from, to);
     }
 }

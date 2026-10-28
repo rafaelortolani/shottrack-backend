@@ -24,9 +24,10 @@ import java.util.UUID;
 /**
  * ADR-0015: um registro por atleta, recalculado do zero a cada evento
  * DashboardRecalculationRequested — nunca atualizado incrementalmente.
- * Só guarda o que depende de histórico inteiro de séries/resultados; as
- * seções do UC42 que dependem de dados sem evento (onboarding, ação
- * principal, últimos treinos, acervo) ficam fora (ADR-0015).
+ * Só guarda o que depende de histórico inteiro de séries/resultados
+ * (recordes e estatísticas por modalidade); o que depende de dados sem evento
+ * (onboarding, ação principal, últimos treinos) ou da data de hoje (indicadores
+ * do mês, ADR-0022) é calculado na hora (ADR-0015).
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)
@@ -41,28 +42,13 @@ public class DashboardSummary extends AbstractBaseEntity {
     @Column(name = "user_id", nullable = false, unique = true)
     private final UUID userId;
 
-    @Column(name = "trainings_this_month", nullable = false)
-    private int trainingsThisMonth;
-
-    @Column(name = "shots_this_month", nullable = false)
-    private int shotsThisMonth;
-
     /**
      * EAGER: quem carrega um DashboardSummary sempre precisa das
-     * modalidades junto (é um "read model" completo, não uma entidade de
-     * navegação parcial) — sem isso, acessar a lista fora da sessão que
-     * carregou o resumo (UC42 não abre transação só pra ler) lançaria
-     * LazyInitializationException.
-     */
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "dashboard_summary_modalities", joinColumns = @JoinColumn(name = "dashboard_summary_id"))
-    @Column(name = "modality_name")
-    private List<String> practicedModalities = new ArrayList<>();
-
-    /**
-     * EAGER pelo mesmo motivo de practicedModalities. FetchMode.SELECT
-     * carrega numa query separada: duas listas EAGER no mesmo JOIN fazem o
-     * Hibernate lançar MultipleBagFetchException.
+     * modalidades junto (é um "read model" completo) — sem isso, acessar a lista fora
+     * da sessão que carregou o resumo (UC42 não abre transação só pra ler) lançaria
+     * LazyInitializationException. FetchMode.SELECT carrega numa query separada:
+     * várias listas EAGER no mesmo JOIN fazem o Hibernate lançar
+     * MultipleBagFetchException.
      */
     @ElementCollection(fetch = FetchType.EAGER)
     @Fetch(FetchMode.SELECT)
@@ -77,6 +63,14 @@ public class DashboardSummary extends AbstractBaseEntity {
     @CollectionTable(name = "dashboard_summary_records", joinColumns = @JoinColumn(name = "dashboard_summary_id"))
     private List<ResultRecord> records = new ArrayList<>();
 
+    /**
+     * ADR-0022: EAGER + FetchMode.SELECT pelo mesmo motivo de modalityStats.
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @Fetch(FetchMode.SELECT)
+    @CollectionTable(name = "dashboard_summary_modality_records", joinColumns = @JoinColumn(name = "dashboard_summary_id"))
+    private List<ModalityRecord> modalityRecords = new ArrayList<>();
+
     @Builder
     private DashboardSummary(UUID userId) {
         this.userId = userId;
@@ -87,14 +81,12 @@ public class DashboardSummary extends AbstractBaseEntity {
      * completa de um recálculo do zero, nunca ajuste incremental de um
      * campo isolado.
      */
-    public void replaceWith(int trainingsThisMonth, int shotsThisMonth, List<String> practicedModalities,
-                             List<ModalityStats> modalityStats, List<ResultRecord> records) {
-        this.trainingsThisMonth = trainingsThisMonth;
-        this.shotsThisMonth = shotsThisMonth;
-        this.practicedModalities.clear();
-        this.practicedModalities.addAll(practicedModalities);
+    public void replaceWith(List<ModalityStats> modalityStats, List<ModalityRecord> modalityRecords,
+                             List<ResultRecord> records) {
         this.modalityStats.clear();
         this.modalityStats.addAll(modalityStats);
+        this.modalityRecords.clear();
+        this.modalityRecords.addAll(modalityRecords);
         this.records.clear();
         this.records.addAll(records);
     }

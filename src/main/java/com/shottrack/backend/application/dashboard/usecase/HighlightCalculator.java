@@ -47,6 +47,18 @@ public class HighlightCalculator {
                 .toList();
     }
 
+    /**
+     * ADR-0022: o mesmo apuro de records, mas com id do tipo e quantidade de
+     * registros válidos — base dos recordes por modalidade e da evolução sugerida.
+     */
+    public List<ResultTypeBest> bests(Collection<SeriesResult> results) {
+        return candidates(results).stream()
+                .map(candidate -> new ResultTypeBest(candidate.resultTypeId(), candidate.resultTypeName(),
+                        candidate.value(), candidate.count()))
+                .sorted(Comparator.comparing(ResultTypeBest::resultTypeName))
+                .toList();
+    }
+
     private List<Candidate> candidates(Collection<SeriesResult> results) {
         if (results.isEmpty()) {
             return List.of();
@@ -81,13 +93,13 @@ public class HighlightCalculator {
         BigDecimal bestValue = ResultValues.best(type.getOrientation(), entriesForType.stream().map(Entry::value).toList());
         Instant mostRecentlyUsedAt = entriesForType.stream().map(Entry::recordedAt).max(Comparator.naturalOrder()).orElseThrow();
 
-        return new Candidate(type.getName(), bestValue, entriesForType.size(), mostRecentlyUsedAt);
+        return new Candidate(type.getId(), type.getName(), bestValue, entriesForType.size(), mostRecentlyUsedAt);
     }
 
     private record Entry(ResultType type, BigDecimal value, Instant recordedAt) {
     }
 
-    private record Candidate(String resultTypeName, BigDecimal value, int count, Instant mostRecentlyUsedAt) {
+    private record Candidate(UUID resultTypeId, String resultTypeName, BigDecimal value, int count, Instant mostRecentlyUsedAt) {
 
         ResultHighlight toHighlight() {
             return new ResultHighlight(resultTypeName, value);

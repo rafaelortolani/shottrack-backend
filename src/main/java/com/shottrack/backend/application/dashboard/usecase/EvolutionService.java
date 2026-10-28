@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.dashboard.usecase;
 
+import com.shottrack.backend.application.dashboard.dto.EvolutionComparisonResponse;
 import com.shottrack.backend.application.dashboard.dto.EvolutionPointResponse;
 import com.shottrack.backend.application.dashboard.dto.EvolutionRequest;
 import com.shottrack.backend.application.dashboard.model.EvolutionMode;
@@ -23,6 +24,7 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,6 +38,8 @@ import java.util.stream.Collectors;
  * gera ponto (nunca zero). O dia de um valor é o dia do treino (início,
  * em UTC — mesmo critério dos indicadores do mês no UC42), não o do
  * registro: completar o resultado depois não move o ponto de dia.
+ * Com comparePrevious, devolve também o período imediatamente anterior, de
+ * mesma duração em dias, com o mesmo modo e as mesmas regras.
  */
 @Service
 @RequiredArgsConstructor
@@ -49,7 +53,7 @@ public class EvolutionService {
     private final SeriesGateway seriesGateway;
     private final SeriesResultGateway seriesResultGateway;
 
-    public List<EvolutionPointResponse> getEvolution(UUID userId, EvolutionRequest request) {
+    public Object getEvolution(UUID userId, EvolutionRequest request) {
         if (!practicedModalityGateway.existsByUserIdAndModalityId(userId, request.modalityId())) {
             throw new BusinessException("MODALITY_NOT_PRACTICED", HttpStatus.NOT_FOUND);
         }
@@ -63,16 +67,21 @@ public class EvolutionService {
         // MELHOR depende de orientação (ADR-0011) — tipo sem orientação não
         // tem "melhor valor do dia", então não há ponto a mostrar
         if (mode == EvolutionMode.MELHOR && resultType.getOrientation() == ResultOrientation.NAO_APLICAVEL) {
-            return List.of();
+            return request.shouldComparePrevious() ? new EvolutionComparisonResponse(List.of(), List.of()) : List.of();
         }
 
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         LocalDate firstDay = EvolutionPeriod.fromCode(request.period()).firstDay(today);
+        // UC46: período anterior = os mesmos N dias imediatamente antes da janela pedida
+        long periodDays = ChronoUnit.DAYS.between(firstDay, today) + 1;
+        LocalDate previousFirstDay = firstDay.minusDays(periodDays);
+        LocalDate earliestDay = request.shouldComparePrevious() ? previousFirstDay : firstDay;
 
-        Map<LocalDate, List<BigDecimal>> valuesByDay = visitGateway.findAllByUserId(userId).stream()
+        // um único carregamento cobrindo as duas janelas
+        TreeMap<LocalDate, List<BigDecimal>> valuesByDay = visitGateway.findAllByUserId(userId).stream()
                 .flatMap(visit -> trainingGateway.findAllByVisitId(visit.getId()).stream())
                 .filter(training -> training.getModalityId().equals(request.modalityId()))
-                .filter(training -> !dayOf(training).isBefore(firstDay) && !dayOf(training).isAfter(today))
+                .filter(training -> !dayOf(training).isBefore(earliestDay) && !dayOf(training).isAfter(today))
                 .flatMap(training -> seriesGateway.findAllByTrainingId(training.getId()).stream()
                         .flatMap(series -> seriesResultGateway
                                 .findBySeriesIdAndResultTypeId(series.getId(), request.resultTypeId()).stream())
@@ -83,6 +92,17 @@ public class EvolutionService {
                 .collect(Collectors.groupingBy(Map.Entry::getKey, TreeMap::new,
                         Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
 
+        List<EvolutionPointResponse> points = toPoints(valuesByDay.subMap(firstDay, true, today, true), mode, resultType);
+        if (!request.shouldComparePrevious()) {
+            return points;
+        }
+        List<EvolutionPointResponse> previousPoints = toPoints(
+                valuesByDay.subMap(previousFirstDay, true, firstDay, false), mode, resultType);
+        return new EvolutionComparisonResponse(points, previousPoints);
+    }
+
+    private List<EvolutionPointResponse> toPoints(Map<LocalDate, List<BigDecimal>> valuesByDay, EvolutionMode mode,
+                                                  ResultType resultType) {
         return valuesByDay.entrySet().stream()
                 .map(day -> new EvolutionPointResponse(day.getKey(), aggregate(mode, resultType, day.getValue())))
                 .toList();

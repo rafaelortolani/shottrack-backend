@@ -86,9 +86,13 @@ class DashboardRecalculationServiceTest {
         entityManager.clear();
 
         DashboardSummary summary = dashboardSummaryRepository.findByUserId(userId).orElseThrow();
-        assertThat(summary.getTrainingsThisMonth()).isEqualTo(2);
-        assertThat(summary.getShotsThisMonth()).isEqualTo(50);
-        assertThat(summary.getPracticedModalities()).containsExactlyInAnyOrder("IPSC", "Trap");
+        assertThat(summary.getModalityRecords()).singleElement().satisfies(record -> {
+            assertThat(record.getModalityId()).isEqualTo(modalityId);
+            assertThat(record.getResultTypeId()).isEqualTo(tempoId);
+            assertThat(record.getResultTypeName()).isEqualTo("Tempo");
+            assertThat(record.getBestValue()).isEqualByComparingTo(new BigDecimal("10.0"));
+            assertThat(record.getRecordCount()).isEqualTo(2);
+        });
         assertThat(summary.getRecords()).singleElement().satisfies(record -> {
             assertThat(record.getResultTypeName()).isEqualTo("Tempo");
             assertThat(record.getBestValue()).isEqualByComparingTo(new BigDecimal("10.0"));
@@ -96,6 +100,7 @@ class DashboardRecalculationServiceTest {
 
         assertThat(summary.getModalityStats()).extracting(ModalityStats::getModalityName).containsExactly("IPSC", "Trap");
         ModalityStats ipsc = summary.getModalityStats().get(0);
+        assertThat(ipsc.getModalityId()).isEqualTo(modalityId);
         assertThat(ipsc.getTrainingCount()).isEqualTo(1);
         assertThat(ipsc.getBestResultTypeName()).isEqualTo("Tempo");
         assertThat(ipsc.getBestValue()).isEqualByComparingTo(new BigDecimal("10.0"));
@@ -113,16 +118,18 @@ class DashboardRecalculationServiceTest {
         UUID trainingId = SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
         registerSeriesWithShotCount(token, trainingId, 10);
         dashboardRecalculationService.recalculate(userId);
-        assertThat(dashboardSummaryRepository.findByUserId(userId).orElseThrow().getShotsThisMonth()).isEqualTo(10);
+        assertThat(dashboardSummaryRepository.findByUserId(userId).orElseThrow().getModalityStats())
+                .singleElement().satisfies(stats -> assertThat(stats.getTrainingCount()).isEqualTo(1));
 
-        registerSeriesWithShotCount(token, trainingId, 15);
+        SeriesTestSupport.openTraining(mockMvc, objectMapper, token, "IPSC");
         dashboardRecalculationService.recalculate(userId);
 
         // filtra pelo atleta: o banco de desenvolvimento pode ter resumos de outros atletas
         assertThat(dashboardSummaryRepository.findAll())
                 .filteredOn(summary -> summary.getUserId().equals(userId))
                 .hasSize(1);
-        assertThat(dashboardSummaryRepository.findByUserId(userId).orElseThrow().getShotsThisMonth()).isEqualTo(25);
+        assertThat(dashboardSummaryRepository.findByUserId(userId).orElseThrow().getModalityStats())
+                .singleElement().satisfies(stats -> assertThat(stats.getTrainingCount()).isEqualTo(2));
     }
 
     @Test

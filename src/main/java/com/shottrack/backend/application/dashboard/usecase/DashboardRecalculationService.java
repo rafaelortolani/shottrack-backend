@@ -2,6 +2,7 @@ package com.shottrack.backend.application.dashboard.usecase;
 
 import com.shottrack.backend.application.dashboard.gateway.DashboardSummaryGateway;
 import com.shottrack.backend.application.dashboard.model.DashboardSummary;
+import com.shottrack.backend.application.dashboard.model.ModalityRecord;
 import com.shottrack.backend.application.dashboard.model.ModalityStats;
 import com.shottrack.backend.application.dashboard.model.ResultRecord;
 import com.shottrack.backend.application.modality.gateway.ModalityGateway;
@@ -18,14 +19,9 @@ import com.shottrack.backend.application.visit.model.Visit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.YearMonth;
-import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
@@ -68,8 +64,7 @@ public class DashboardRecalculationService {
 
         DashboardSummary summary = dashboardSummaryGateway.findByUserId(userId)
                 .orElseGet(() -> DashboardSummary.builder().userId(userId).build());
-        summary.replaceWith(stats.trainingsThisMonth(), stats.shotsThisMonth(), stats.practicedModalities(),
-                stats.modalityStats(), stats.records());
+        summary.replaceWith(stats.modalityStats(), stats.modalityRecords(), stats.records());
 
         dashboardSummaryGateway.save(summary);
     }
@@ -87,29 +82,15 @@ public class DashboardRecalculationService {
                         Collectors.flatMapping(s -> seriesResultGateway.findAllBySeriesId(s.getId()).stream(),
                                 Collectors.toList())));
 
-        YearMonth currentMonth = YearMonth.now(ZoneOffset.UTC);
-
-        int trainingsThisMonth = (int) trainings.stream()
-                .filter(training -> isInMonth(training.getCreatedAt(), currentMonth))
-                .count();
-        int shotsThisMonth = series.stream()
-                .filter(s -> isInMonth(s.getCreatedAt(), currentMonth))
-                .map(Series::getShotCount)
-                .filter(Objects::nonNull)
-                .mapToInt(Integer::intValue)
-                .sum();
-
         List<ModalityStats> modalityStats = calculateModalityStats(trainings, resultsByTrainingId);
-        List<String> practicedModalities = modalityStats.stream()
-                .map(ModalityStats::getModalityName)
-                .toList();
+        List<ModalityRecord> modalityRecords = calculateModalityRecords(trainings, resultsByTrainingId);
 
         List<ResultRecord> records = highlightCalculator.records(
                         resultsByTrainingId.values().stream().flatMap(List::stream).toList()).stream()
                 .map(best -> ResultRecord.builder().resultTypeName(best.resultTypeName()).bestValue(best.value()).build())
                 .toList();
 
-        return new DashboardStats(trainingsThisMonth, shotsThisMonth, practicedModalities, modalityStats, records);
+        return new DashboardStats(modalityStats, modalityRecords, records);
     }
 
     /**
@@ -133,6 +114,7 @@ public class DashboardRecalculationService {
                             .toList();
                     Optional<ResultHighlight> best = highlightCalculator.calculate(results);
                     return ModalityStats.builder()
+                            .modalityId(entry.getKey())
                             .modalityName(modalitiesById.get(entry.getKey()).getName())
                             .trainingCount(entry.getValue().size())
                             .bestResultTypeName(best.map(ResultHighlight::resultTypeName).orElse(null))
@@ -143,8 +125,25 @@ public class DashboardRecalculationService {
                 .toList();
     }
 
-    private boolean isInMonth(Instant instant, YearMonth month) {
-        LocalDate date = instant.atZone(ZoneOffset.UTC).toLocalDate();
-        return YearMonth.from(date).equals(month);
+    /**
+     * ADR-0022: melhor valor e nº de registros de cada tipo elegível, por modalidade
+     * em que o atleta já treinou — base do filtro de recordes e da evolução sugerida.
+     */
+    private List<ModalityRecord> calculateModalityRecords(List<Training> trainings,
+                                                          Map<UUID, List<SeriesResult>> resultsByTrainingId) {
+        return trainings.stream()
+                .collect(Collectors.groupingBy(Training::getModalityId))
+                .entrySet().stream()
+                .flatMap(entry -> highlightCalculator.bests(entry.getValue().stream()
+                                .flatMap(training -> resultsByTrainingId.getOrDefault(training.getId(), List.of()).stream())
+                                .toList()).stream()
+                        .map(best -> ModalityRecord.builder()
+                                .modalityId(entry.getKey())
+                                .resultTypeId(best.resultTypeId())
+                                .resultTypeName(best.resultTypeName())
+                                .bestValue(best.value())
+                                .recordCount(best.count())
+                                .build()))
+                .toList();
     }
 }

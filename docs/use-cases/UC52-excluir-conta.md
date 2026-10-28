@@ -22,7 +22,7 @@ Atleta autenticado.
 - Rota: `POST /api/users/me/deletion` com `{"password": "..."}` → `200` e
   `{"data": null}`.
 - Tabelas apagadas, nesta ordem, numa única transação: `dashboard_summary`
-  (com `dashboard_summary_modalities`, `dashboard_summary_modality_stats` e
+  (com `dashboard_summary_modality_records`, `dashboard_summary_modality_stats` e
   `dashboard_summary_records`), `series_results`, `series`, `trainings`,
   `visits`, `training_locations`, `accessory_weapons`, `accessories`,
   `ammunitions`, `weapons`, `modality_result_type_selections`,

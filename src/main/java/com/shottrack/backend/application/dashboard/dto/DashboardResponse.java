@@ -9,12 +9,12 @@ public record DashboardResponse(
         @JsonInclude(JsonInclude.Include.NON_NULL)
         OnboardingResponse onboarding,
         MainActionResponse mainAction,
-        int trainingsThisMonth,
-        int shotsThisMonth,
-        List<String> practicedModalities,
+        IndicatorResponse trainingsThisMonth,
+        IndicatorResponse shotsThisMonth,
+        IndicatorResponse modalitiesPracticed,
         List<RecentTrainingResponse> recentTrainings,
-        List<ModalitySummaryResponse> modalitySummaries,
-        WeaponCollectionResponse weaponCollection,
-        List<ResultRecordResponse> records
+        List<ResultRecordResponse> records,
+        // UC42 v7: sempre presente; null quando não há dados no filtro atual
+        SuggestedEvolutionResponse suggestedEvolution
 ) {
 }

@@ -22,6 +22,13 @@ public record EvolutionRequest(
 
         @NotBlank(message = "modo é obrigatório")
         @Pattern(regexp = "MEDIA|MELHOR", message = "modo inválido")
-        String mode
+        String mode,
+
+        // UC46: ausente = false; com true a resposta inclui o período anterior
+        Boolean comparePrevious
 ) {
+
+    public boolean shouldComparePrevious() {
+        return Boolean.TRUE.equals(comparePrevious);
+    }
 }
