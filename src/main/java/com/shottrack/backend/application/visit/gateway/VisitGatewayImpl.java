@@ -2,9 +2,11 @@ package com.shottrack.backend.application.visit.gateway;
 
 import com.shottrack.backend.application.visit.gateway.repository.VisitRepository;
 import com.shottrack.backend.application.visit.model.Visit;
+import com.shottrack.backend.application.visit.model.VisitType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -43,5 +45,15 @@ class VisitGatewayImpl implements VisitGateway {
     @Override
     public void deleteAllByUserId(UUID userId) {
         visitRepository.deleteAllByUserId(userId);
+    }
+
+    @Override
+    public List<ClosedVisitFact> findClosedFactsByUserIdBetween(UUID userId, Instant from, Instant to) {
+        return visitRepository.findClosedFactsByUserIdBetween(userId, from, to);
+    }
+
+    @Override
+    public long countClosedByUserIdAndTypeBetween(UUID userId, VisitType type, Instant from, Instant to) {
+        return visitRepository.countClosedByUserIdAndTypeBetween(userId, type, from, to);
     }
 }

@@ -81,6 +81,8 @@ public interface UserDataExportMapper {
     @Mapping(target = "startedAt", source = "visit.createdAt")
     @Mapping(target = "endedAt", source = "visit.endedAt")
     @Mapping(target = "status", source = "visit.status")
+    @Mapping(target = "visitType", source = "visit.visitType")
+    @Mapping(target = "competitionScope", source = "visit.competitionScope")
     @Mapping(target = "observations", source = "visit.observations")
     @Mapping(target = "trainings", source = "trainings")
     VisitExport toVisit(Visit visit, String trainingLocation, List<TrainingExport> trainings);

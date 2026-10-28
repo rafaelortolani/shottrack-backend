@@ -8,7 +8,8 @@ Usuário logado (UC02) com access token válido.
 
 ## Fluxo principal
 1. Atleta solicita a lista de suas visitas
-2. Sistema retorna todas as visitas do atleta, cada uma com seus treinos
+2. Sistema retorna todas as visitas do atleta, cada uma com o tipo
+   (`visitType`), o âmbito (`competitionScope`, quando houver) e seus treinos
    aninhados (id, modalidade, status, horários)
 
 ## Fluxos alternativos
@@ -20,7 +21,9 @@ Usuário logado (UC02) com access token válido.
 - [x] Teste cobrindo lista vazia
 - [x] Teste cobrindo o fluxo alternativo 1a (sem token)
 - [x] Teste garantindo que a listagem nunca inclui visita de outro atleta
+- [x] Teste confirmando `visitType` e `competitionScope` na resposta (treino e competição)
 
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0012 (Visita e Treino)
+- ADR-0023 (habitualidade configurável)

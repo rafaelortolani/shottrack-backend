@@ -8,6 +8,7 @@ import com.shottrack.backend.application.visit.dto.VisitResponse;
 import com.shottrack.backend.application.visit.gateway.VisitGateway;
 import com.shottrack.backend.application.visit.mapper.VisitMapper;
 import com.shottrack.backend.application.visit.model.Visit;
+import com.shottrack.backend.application.visit.model.VisitType;
 import com.shottrack.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -32,10 +33,17 @@ public class VisitService {
     public VisitResponse start(UUID userId, StartVisitRequest request) {
         trainingLocationService.findOwnedTrainingLocationOrThrow(userId, request.trainingLocationId());
 
+        // ADR-0023: âmbito só faz sentido numa competição (visitType ausente = TREINO).
+        if (request.competitionScope() != null && request.visitType() != VisitType.COMPETICAO) {
+            throw new BusinessException("VALIDATION_ERROR", HttpStatus.BAD_REQUEST);
+        }
+
         Visit visit = Visit.builder()
                 .userId(userId)
                 .trainingLocationId(request.trainingLocationId())
                 .observations(request.observations())
+                .visitType(request.visitType())
+                .competitionScope(request.competitionScope())
                 .build();
 
         return toResponse(visitGateway.save(visit));

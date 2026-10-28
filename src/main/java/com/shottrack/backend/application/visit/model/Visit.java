@@ -49,11 +49,25 @@ public class Visit extends AbstractBaseEntity {
     @Column(name = "ended_at")
     private Instant endedAt;
 
+    /** ADR-0023: padrão TREINO; o âmbito só existe para COMPETICAO. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visit_type", nullable = false)
+    private VisitType visitType = VisitType.TREINO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "competition_scope")
+    private CompetitionScope competitionScope;
+
     @Builder
-    private Visit(UUID userId, UUID trainingLocationId, String observations) {
+    private Visit(UUID userId, UUID trainingLocationId, String observations, VisitType visitType,
+                  CompetitionScope competitionScope) {
         this.userId = userId;
         this.trainingLocationId = trainingLocationId;
         this.observations = observations;
+        if (visitType != null) {
+            this.visitType = visitType;
+        }
+        this.competitionScope = competitionScope;
     }
 
     /**

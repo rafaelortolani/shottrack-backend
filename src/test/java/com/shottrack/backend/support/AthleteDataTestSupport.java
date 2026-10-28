@@ -26,6 +26,7 @@ import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
  * ADR-0019 (UC52/UC53): monta um atleta com dados em TODAS as tabelas que
@@ -111,6 +112,35 @@ public final class AthleteDataTestSupport {
                 .build());
     }
 
+    /**
+     * ADR-0023: acompanhamento e meta de habitualidade. A regra e a versão são dados da
+     * administração (não do atleta) e entram direto no banco — dentro da transação do
+     * teste, que desfaz tudo. Chamado à parte de {@link #populate} porque o teste de
+     * rollback commita de verdade e não pode deixar uma regra para trás.
+     */
+    public static void populateHabituality(MockMvc mockMvc, ObjectMapper objectMapper, JdbcTemplate jdbc,
+                                           Athlete athlete) throws Exception {
+        UUID ruleId = UUID.randomUUID();
+        UUID versionId = UUID.randomUUID();
+        UUID levelId = UUID.randomUUID();
+        jdbc.update("INSERT INTO habituality_rules (id, name, active) VALUES (?, ?, TRUE)", ruleId, "Regra de teste " + ruleId);
+        jdbc.update("INSERT INTO habituality_rule_versions (id, rule_id, valid_from, window_months) VALUES (?, ?, DATE '2020-01-01', 12)",
+                versionId, ruleId);
+        jdbc.update("INSERT INTO habituality_levels (id, version_id, name, position) VALUES (?, ?, 'Iniciante', 1)", levelId, versionId);
+        jdbc.update("INSERT INTO habituality_requirements (id, level_id, activity_type, min_quantity) VALUES (?, ?, 'TREINO', 1)",
+                UUID.randomUUID(), levelId);
+
+        String token = athlete.accessToken();
+        mockMvc.perform(put("/api/habituality/tracking")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("ruleId", ruleId, "levelName", "Iniciante"))));
+        mockMvc.perform(put("/api/habituality/personal-goal")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("yearlyTrainings", 40))));
+    }
+
     /** Linhas que pertencem ao atleta em cada tabela (a ordem é a da exclusão). */
     public static Map<String, Long> countRows(JdbcTemplate jdbc, Athlete athlete) {
         UUID id = athlete.userId();
@@ -124,6 +154,8 @@ public final class AthleteDataTestSupport {
         counts.put("dashboard_summary_modality_records", count(jdbc, "SELECT count(*) FROM dashboard_summary_modality_records WHERE dashboard_summary_id IN " + summaries, id));
         counts.put("dashboard_summary_modality_stats", count(jdbc, "SELECT count(*) FROM dashboard_summary_modality_stats WHERE dashboard_summary_id IN " + summaries, id));
         counts.put("dashboard_summary_records", count(jdbc, "SELECT count(*) FROM dashboard_summary_records WHERE dashboard_summary_id IN " + summaries, id));
+        counts.put("athlete_habituality_tracking", count(jdbc, "SELECT count(*) FROM athlete_habituality_tracking WHERE user_id = ?", id));
+        counts.put("athlete_personal_goal", count(jdbc, "SELECT count(*) FROM athlete_personal_goal WHERE user_id = ?", id));
         counts.put("series_results", count(jdbc, "SELECT count(*) FROM series_results WHERE series_id IN " + series, id));
         counts.put("series", count(jdbc, "SELECT count(*) FROM series WHERE training_id IN " + trainings, id));
         counts.put("trainings", count(jdbc, "SELECT count(*) FROM trainings WHERE visit_id IN " + visits, id));

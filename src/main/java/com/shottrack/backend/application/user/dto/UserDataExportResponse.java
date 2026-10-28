@@ -17,7 +17,8 @@ public record UserDataExportResponse(
         List<AmmunitionExport> ammunitions,
         List<AccessoryExport> accessories,
         List<TrainingLocationExport> trainingLocations,
-        List<VisitExport> visits
+        List<VisitExport> visits,
+        HabitualityExport habituality
 ) {
 
     public record ProfileExport(
@@ -51,7 +52,7 @@ public record UserDataExportResponse(
     public record AccessoryExport(String name, String type, String notes, List<WeaponExport> weapons) {
     }
 
-    public record TrainingLocationExport(String name, String city, String state) {
+    public record TrainingLocationExport(String name, String city, String state, boolean club) {
     }
 
     public record VisitExport(
@@ -59,6 +60,8 @@ public record UserDataExportResponse(
             Instant startedAt,
             Instant endedAt,
             String status,
+            String visitType,
+            String competitionScope,
             String observations,
             List<TrainingExport> trainings
     ) {
@@ -85,5 +88,15 @@ public record UserDataExportResponse(
     }
 
     public record ResultExport(String resultType, String value, boolean notApplicable) {
+    }
+
+    /**
+     * ADR-0023: regra e nível que o atleta acompanha e a meta pessoal; ambos nulos
+     * quando não definidos.
+     */
+    public record HabitualityExport(TrackingExport tracking, Integer personalGoalYearlyTrainings) {
+    }
+
+    public record TrackingExport(String rule, String level) {
     }
 }

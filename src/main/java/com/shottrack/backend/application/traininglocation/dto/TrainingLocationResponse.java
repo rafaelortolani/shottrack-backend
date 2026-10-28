@@ -8,6 +8,7 @@ public record TrainingLocationResponse(
         String name,
         String city,
         String state,
+        boolean club,
         Instant createdAt
 ) {
 }

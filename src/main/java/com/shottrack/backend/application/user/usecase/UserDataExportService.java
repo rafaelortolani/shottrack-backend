@@ -10,6 +10,8 @@ import com.shottrack.backend.application.ammunition.gateway.AmmunitionGateway;
 import com.shottrack.backend.application.ammunition.gateway.AmmunitionManufacturerGateway;
 import com.shottrack.backend.application.ammunition.model.Ammunition;
 import com.shottrack.backend.application.ammunition.model.AmmunitionManufacturer;
+import com.shottrack.backend.application.habituality.gateway.AthleteHabitualityGateway;
+import com.shottrack.backend.application.habituality.gateway.HabitualityRuleGateway;
 import com.shottrack.backend.application.modality.gateway.ModalityGateway;
 import com.shottrack.backend.application.modality.gateway.ModalityResultTypeSelectionGateway;
 import com.shottrack.backend.application.modality.gateway.PracticedModalityGateway;
@@ -26,7 +28,9 @@ import com.shottrack.backend.application.traininglocation.model.TrainingLocation
 import com.shottrack.backend.application.user.dto.UserDataExportResponse;
 import com.shottrack.backend.application.user.dto.UserDataExportResponse.AccessoryExport;
 import com.shottrack.backend.application.user.dto.UserDataExportResponse.AmmunitionExport;
+import com.shottrack.backend.application.user.dto.UserDataExportResponse.HabitualityExport;
 import com.shottrack.backend.application.user.dto.UserDataExportResponse.PracticedModalityExport;
+import com.shottrack.backend.application.user.dto.UserDataExportResponse.TrackingExport;
 import com.shottrack.backend.application.user.dto.UserDataExportResponse.ResultExport;
 import com.shottrack.backend.application.user.dto.UserDataExportResponse.SeriesExport;
 import com.shottrack.backend.application.user.dto.UserDataExportResponse.TrainingExport;
@@ -93,6 +97,8 @@ public class UserDataExportService {
     private final TrainingGateway trainingGateway;
     private final SeriesGateway seriesGateway;
     private final SeriesResultGateway seriesResultGateway;
+    private final AthleteHabitualityGateway athleteHabitualityGateway;
+    private final HabitualityRuleGateway habitualityRuleGateway;
     private final UserDataExportMapper mapper;
 
     public UserDataExportResponse export(UUID userId) {
@@ -116,7 +122,19 @@ public class UserDataExportService {
                 ammunitions.stream().map(ammunition -> ammunitionExportById.get(ammunition.getId())).toList(),
                 accessories(userId, catalogs, weaponExportById),
                 trainingLocationGateway.findAllByUserId(userId).stream().map(mapper::toTrainingLocation).toList(),
-                visits(userId, catalogs, weaponExportById, ammunitionExportById));
+                visits(userId, catalogs, weaponExportById, ammunitionExportById),
+                habituality(userId));
+    }
+
+    private HabitualityExport habituality(UUID userId) {
+        TrackingExport tracking = athleteHabitualityGateway.findTrackingByUserId(userId)
+                .flatMap(t -> habitualityRuleGateway.findById(t.getRuleId())
+                        .map(rule -> new TrackingExport(rule.getName(), t.getLevelName())))
+                .orElse(null);
+        Integer goal = athleteHabitualityGateway.findGoalByUserId(userId)
+                .map(g -> g.getYearlyTrainings())
+                .orElse(null);
+        return new HabitualityExport(tracking, goal);
     }
 
     private List<PracticedModalityExport> practicedModalities(UUID userId, Catalogs catalogs) {

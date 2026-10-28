@@ -42,11 +42,20 @@ public class TrainingLocation extends AbstractBaseEntity {
     @Column(nullable = false)
     private String state;
 
+    /** ADR-0023: marca usada na apuração de habitualidade; padrão false. */
+    @Setter
+    @Column(nullable = false)
+    private boolean club = false;
+
     @Builder
-    private TrainingLocation(UUID userId, @NonNull String name, @NonNull String city, @NonNull String state) {
+    private TrainingLocation(UUID userId, @NonNull String name, @NonNull String city, @NonNull String state,
+                             Boolean club) {
         this.userId = userId;
         this.name = name;
         this.city = city;
         this.state = state;
+        if (club != null) {
+            this.club = club;
+        }
     }
 }
