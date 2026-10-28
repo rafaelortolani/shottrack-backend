@@ -44,4 +44,14 @@ class ModalityResultTypeSelectionGatewayImpl implements ModalityResultTypeSelect
     public void deleteAllByUserIdAndModalityId(UUID userId, UUID modalityId) {
         modalityResultTypeSelectionRepository.deleteAllByUserIdAndModalityId(userId, modalityId);
     }
+
+    @Override
+    public void deleteAllByUserId(UUID userId) {
+        modalityResultTypeSelectionRepository.deleteAllByUserId(userId);
+    }
+
+    @Override
+    public List<ModalityResultTypeSelection> findAllByUserId(UUID userId) {
+        return modalityResultTypeSelectionRepository.findAllByUserId(userId);
+    }
 }

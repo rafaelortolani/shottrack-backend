@@ -15,4 +15,6 @@ public interface TrainingLocationGateway {
     Optional<TrainingLocation> findById(UUID id);
 
     void delete(TrainingLocation trainingLocation);
+
+    void deleteAllByUserId(UUID userId);
 }

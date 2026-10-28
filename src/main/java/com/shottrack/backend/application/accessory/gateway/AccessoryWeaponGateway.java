@@ -5,6 +5,7 @@ import com.shottrack.backend.application.accessory.model.AccessoryWeapon;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collection;
 
 public interface AccessoryWeaponGateway {
 
@@ -17,4 +18,8 @@ public interface AccessoryWeaponGateway {
     boolean existsByAccessoryIdAndWeaponId(UUID accessoryId, UUID weaponId);
 
     void delete(AccessoryWeapon accessoryWeapon);
+
+    List<AccessoryWeapon> findAllByAccessoryIdIn(Collection<UUID> accessoryIds);
+    void deleteAllByAccessoryIdIn(Collection<UUID> accessoryIds);
+    void deleteAllByWeaponIdIn(Collection<UUID> weaponIds);
 }

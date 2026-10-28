@@ -14,4 +14,6 @@ public interface PracticedModalityRepository extends JpaRepository<PracticedModa
     Optional<PracticedModality> findByUserIdAndModalityId(UUID userId, UUID modalityId);
 
     boolean existsByUserIdAndModalityId(UUID userId, UUID modalityId);
+
+    void deleteAllByUserId(UUID userId);
 }

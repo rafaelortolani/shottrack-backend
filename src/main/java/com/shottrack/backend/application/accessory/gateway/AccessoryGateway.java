@@ -15,4 +15,6 @@ public interface AccessoryGateway {
     Optional<Accessory> findById(UUID id);
 
     void delete(Accessory accessory);
+
+    void deleteAllByUserId(UUID userId);
 }

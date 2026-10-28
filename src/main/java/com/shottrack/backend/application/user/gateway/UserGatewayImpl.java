@@ -33,4 +33,19 @@ class UserGatewayImpl implements UserGateway {
     public User save(User user) {
         return userRepository.save(user);
     }
+
+    @Override
+    public Optional<User> findByIdForUpdate(UUID id) {
+        return userRepository.findByIdForUpdate(id);
+    }
+
+    @Override
+    public boolean existsById(UUID id) {
+        return userRepository.existsById(id);
+    }
+
+    @Override
+    public void deleteById(UUID id) {
+        userRepository.deleteById(id);
+    }
 }

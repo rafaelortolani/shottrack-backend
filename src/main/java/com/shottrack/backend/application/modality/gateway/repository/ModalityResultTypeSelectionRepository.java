@@ -28,4 +28,7 @@ public interface ModalityResultTypeSelectionRepository extends JpaRepository<Mod
     @Modifying
     @Query("delete from ModalityResultTypeSelection s where s.userId = :userId and s.modalityId = :modalityId")
     void deleteAllByUserIdAndModalityId(@Param("userId") UUID userId, @Param("modalityId") UUID modalityId);
+
+    void deleteAllByUserId(UUID userId);
+    List<ModalityResultTypeSelection> findAllByUserId(UUID userId);
 }

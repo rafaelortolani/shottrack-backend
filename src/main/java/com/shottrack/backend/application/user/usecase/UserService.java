@@ -51,6 +51,9 @@ public class UserService {
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
+    @Value("${app.legal.version}")
+    private String legalVersion;
+
     /**
      * Etapa 1 do cadastro (UC01/ADR-0009) — só o email, sem provar posse ainda.
      * Reenvio (mesmo email antes de completar) invalida o token anterior e
@@ -89,6 +92,11 @@ public class UserService {
             throw new BusinessException("REGISTRATION_TOKEN_ALREADY_USED", HttpStatus.BAD_REQUEST);
         }
 
+        // ADR-0019: checado antes de consumir o token — sem aceite o link continua utilizável.
+        if (!Boolean.TRUE.equals(request.acceptedTerms())) {
+            throw new BusinessException("TERMS_NOT_ACCEPTED", HttpStatus.BAD_REQUEST);
+        }
+
         pendingRegistration.markUsed();
         pendingRegistrationGateway.save(pendingRegistration);
 
@@ -97,6 +105,8 @@ public class UserService {
                 .name(request.name())
                 .email(pendingRegistration.getEmail())
                 .passwordHash(passwordHash)
+                .termsAcceptedAt(Instant.now())
+                .termsVersion(legalVersion)
                 .build();
         User saved = userGateway.save(user);
 

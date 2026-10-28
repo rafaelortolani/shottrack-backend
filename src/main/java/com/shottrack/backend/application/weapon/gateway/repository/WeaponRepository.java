@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface WeaponRepository extends JpaRepository<Weapon, UUID> {
 
     List<Weapon> findAllByUserId(UUID userId);
+
+    void deleteAllByUserId(UUID userId);
 }

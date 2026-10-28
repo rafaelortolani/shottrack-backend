@@ -10,4 +10,6 @@ public interface DashboardSummaryGateway {
     DashboardSummary save(DashboardSummary summary);
 
     Optional<DashboardSummary> findByUserId(UUID userId);
+
+    void deleteByUserId(UUID userId);
 }

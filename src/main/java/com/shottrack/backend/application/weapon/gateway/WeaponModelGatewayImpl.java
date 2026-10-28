@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collection;
 
 @Component
 @RequiredArgsConstructor
@@ -23,5 +24,10 @@ class WeaponModelGatewayImpl implements WeaponModelGateway {
     @Override
     public Optional<WeaponModel> findById(UUID id) {
         return weaponModelRepository.findById(id);
+    }
+
+    @Override
+    public List<WeaponModel> findAllById(Collection<UUID> ids) {
+        return weaponModelRepository.findAllById(ids);
     }
 }

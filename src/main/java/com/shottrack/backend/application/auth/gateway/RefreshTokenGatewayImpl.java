@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.Instant;
 
 @Component
 @RequiredArgsConstructor
@@ -30,5 +31,15 @@ class RefreshTokenGatewayImpl implements RefreshTokenGateway {
         List<RefreshToken> active = refreshTokenRepository.findAllByUserIdAndRevokedFalse(userId);
         active.forEach(RefreshToken::revoke);
         refreshTokenRepository.saveAll(active);
+    }
+
+    @Override
+    public void deleteAllByUserId(UUID userId) {
+        refreshTokenRepository.deleteAllByUserId(userId);
+    }
+
+    @Override
+    public long deleteByExpiresAtBefore(Instant cutoff) {
+        return refreshTokenRepository.deleteByExpiresAtBefore(cutoff);
     }
 }

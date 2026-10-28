@@ -12,6 +12,9 @@ public record CompleteRegistrationRequest(
 
         @NotBlank(message = "senha é obrigatória")
         @Size(min = 8, message = "senha deve ter ao menos 8 caracteres")
-        String password
+        String password,
+
+        /** ADR-0019: sem aceite explícito (true) o cadastro não conclui — validado no usecase (TERMS_NOT_ACCEPTED). */
+        Boolean acceptedTerms
 ) {
 }

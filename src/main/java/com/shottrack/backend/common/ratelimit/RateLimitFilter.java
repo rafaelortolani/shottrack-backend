@@ -12,6 +12,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
@@ -23,6 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -39,13 +43,19 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    private static final String LOGIN_PATH = "/api/auth/login";
-    private static final String REGISTRATION_PATH = "/api/users/registration";
-    private static final String PASSWORD_RESET_PATH = "/api/auth/password-reset/request";
-    private static final Map<String, String> RULE_BY_PATH = Map.of(
-            LOGIN_PATH, "login",
-            REGISTRATION_PATH, "registration",
-            PASSWORD_RESET_PATH, "password-reset");
+    private static final String LOGIN = "login";
+    private static final String REGISTRATION = "registration";
+    private static final String PASSWORD_RESET = "password-reset";
+    private static final String ACCOUNT_DELETION = "account-deletion";
+    private static final String DATA_EXPORT = "data-export";
+    private static final Map<String, String> RULE_BY_ENDPOINT = Map.of(
+            "POST /api/auth/login", LOGIN,
+            "POST /api/users/registration", REGISTRATION,
+            "POST /api/auth/password-reset/request", PASSWORD_RESET,
+            "POST /api/users/me/deletion", ACCOUNT_DELETION,
+            "GET /api/users/me/export", DATA_EXPORT);
+    /** Regras limitadas pelo e-mail do corpo; as demais são por usuário autenticado (ou IP). */
+    private static final Set<String> RULES_KEYED_BY_BODY_EMAIL = Set.of(LOGIN, REGISTRATION, PASSWORD_RESET);
 
     /** Corpos de login/cadastro/e-mail são minúsculos; acima disso só vale o limite por IP. */
     private static final int MAX_BODY_BYTES = 16 * 1024;
@@ -71,20 +81,29 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !properties.enabled()
-                || !"POST".equals(request.getMethod())
-                || !RULE_BY_PATH.containsKey(request.getRequestURI());
+        return !properties.enabled() || ruleOf(request) == null;
+    }
+
+    private static String ruleOf(HttpServletRequest request) {
+        return RULE_BY_ENDPOINT.get(request.getMethod() + " " + request.getRequestURI());
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        byte[] prefix = request.getInputStream().readNBytes(MAX_BODY_BYTES + 1);
-        String email = prefix.length <= MAX_BODY_BYTES ? extractEmail(prefix) : null;
-        HttpServletRequest forwarded = new CachedBodyRequest(request, prefix);
+        String rule = ruleOf(request);
+        HttpServletRequest forwarded = request;
+        String subject;
+        if (RULES_KEYED_BY_BODY_EMAIL.contains(rule)) {
+            byte[] prefix = request.getInputStream().readNBytes(MAX_BODY_BYTES + 1);
+            subject = prefix.length <= MAX_BODY_BYTES ? extractEmail(prefix) : null;
+            forwarded = new CachedBodyRequest(request, prefix);
+        } else {
+            subject = authenticatedUserId();
+        }
 
         try {
-            consume(RULE_BY_PATH.get(request.getRequestURI()), clientIp(request), email);
+            consume(rule, clientIp(request), subject);
         } catch (TooManyRequestsException ex) {
             LocaleContextHolder.setLocale(localeResolver.resolveLocale(request));
             try {
@@ -98,8 +117,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         chain.doFilter(forwarded, response);
     }
 
-    private void consume(String rule, String ip, String email) {
-        for (Limit limit : limitsFor(rule, ip, email)) {
+    private void consume(String rule, String ip, String subject) {
+        for (Limit limit : limitsFor(rule, ip, subject)) {
             Bucket bucket = buckets.get(limit.key(), key -> newBucket(limit));
             ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
             if (!probe.isConsumed()) {
@@ -113,13 +132,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
      * Sem e-mail legível no corpo, só entra o limite por IP (no login, a chave
      * IP + e-mail degenera pra só IP).
      */
-    private List<Limit> limitsFor(String rule, String ip, String email) {
+    private List<Limit> limitsFor(String rule, String ip, String subject) {
         List<Limit> limits = new ArrayList<>();
         switch (rule) {
-            case "login" -> limits.add(new Limit("login:" + ip + "|" + (email == null ? "" : email),
+            case LOGIN -> limits.add(new Limit("login:" + ip + "|" + (subject == null ? "" : subject),
                     properties.login().attempts(), properties.login().window()));
-            case "registration" -> addEmailAndIpLimits(limits, rule, properties.registration(), ip, email);
-            default -> addEmailAndIpLimits(limits, rule, properties.passwordResetRequest(), ip, email);
+            case REGISTRATION -> addEmailAndIpLimits(limits, rule, properties.registration(), ip, subject);
+            case PASSWORD_RESET -> addEmailAndIpLimits(limits, rule, properties.passwordResetRequest(), ip, subject);
+            case ACCOUNT_DELETION -> limits.add(new Limit(rule + ":" + (subject != null ? "user:" + subject : "ip:" + ip),
+                    properties.accountDeletion().attempts(), properties.accountDeletion().window()));
+            default -> limits.add(new Limit(rule + ":" + (subject != null ? "user:" + subject : "ip:" + ip),
+                    properties.dataExport().attempts(), properties.dataExport().window()));
         }
         return limits;
     }
@@ -137,6 +160,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 .addLimit(bandwidth -> bandwidth.capacity(limit.capacity())
                         .refillIntervally(limit.capacity(), limit.window()))
                 .build();
+    }
+
+    /**
+     * O filtro roda depois da cadeia do Spring Security, então o usuário do
+     * token já está no contexto; sem token válido o limite cai pro IP.
+     */
+    private String authenticatedUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.getPrincipal() instanceof UUID userId
+                ? userId.toString()
+                : null;
     }
 
     private String extractEmail(byte[] body) {
@@ -167,7 +201,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private static Duration longestWindow(RateLimitProperties properties) {
         return List.of(properties.login().window(), properties.registration().window(),
-                        properties.passwordResetRequest().window()).stream()
+                        properties.passwordResetRequest().window(), properties.accountDeletion().window(),
+                        properties.dataExport().window()).stream()
                 .max(Duration::compareTo)
                 .orElseThrow();
     }

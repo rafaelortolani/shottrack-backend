@@ -4,6 +4,7 @@ import com.shottrack.backend.application.auth.model.RefreshToken;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.time.Instant;
 
 public interface RefreshTokenGateway {
 
@@ -12,4 +13,7 @@ public interface RefreshTokenGateway {
     Optional<RefreshToken> findByToken(String token);
 
     void revokeAllByUserId(UUID userId);
+
+    void deleteAllByUserId(UUID userId);
+    long deleteByExpiresAtBefore(Instant cutoff);
 }

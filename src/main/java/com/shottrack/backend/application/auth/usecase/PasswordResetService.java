@@ -131,7 +131,9 @@ public class PasswordResetService {
         try {
             mailSender.send(message);
         } catch (MailException e) {
-            log.error("Falha ao enviar e-mail de redefinição de senha", e);
+            // ADR-0019: a mensagem da exceção do SMTP costuma trazer o endereço do
+            // destinatário — loga só o tipo, nunca o e-mail.
+            log.error("Falha ao enviar e-mail de redefinição de senha ({})", e.getClass().getSimpleName());
         }
     }
 }

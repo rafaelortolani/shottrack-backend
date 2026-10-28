@@ -15,4 +15,7 @@ public interface TrainingRepository extends JpaRepository<Training, UUID> {
     List<Training> findAllByVisitIdAndStatus(UUID visitId, TrainingStatus status);
 
     boolean existsByVisitIdInAndModalityId(Collection<UUID> visitIds, UUID modalityId);
+
+    List<Training> findAllByVisitIdIn(Collection<UUID> visitIds);
+    void deleteAllByVisitIdIn(Collection<UUID> visitIds);
 }

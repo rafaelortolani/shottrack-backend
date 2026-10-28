@@ -61,7 +61,7 @@ class RefreshTokenTest {
 
         MvcResult result = mockMvc.perform(post("/api/users/registration/completion")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new CompleteRegistrationRequest(token, "Atleta Refresh", PASSWORD))))
+                        .content(objectMapper.writeValueAsString(new CompleteRegistrationRequest(token, "Atleta Refresh", PASSWORD, true))))
                 .andReturn();
         userId = UUID.fromString(objectMapper.readTree(result.getResponse().getContentAsString())
                 .get("data").get("id").asText());

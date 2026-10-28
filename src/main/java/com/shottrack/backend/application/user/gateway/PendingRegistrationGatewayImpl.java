@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.Instant;
 
 @Component
 @RequiredArgsConstructor
@@ -29,5 +30,15 @@ class PendingRegistrationGatewayImpl implements PendingRegistrationGateway {
         List<PendingRegistration> pending = pendingRegistrationRepository.findAllByEmailAndUsedFalse(email);
         pending.forEach(PendingRegistration::markUsed);
         pendingRegistrationRepository.saveAll(pending);
+    }
+
+    @Override
+    public void deleteAllByEmail(String email) {
+        pendingRegistrationRepository.deleteAllByEmail(email);
+    }
+
+    @Override
+    public long deleteByExpiresAtBefore(Instant cutoff) {
+        return pendingRegistrationRepository.deleteByExpiresAtBefore(cutoff);
     }
 }
