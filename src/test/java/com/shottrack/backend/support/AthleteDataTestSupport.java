@@ -100,7 +100,7 @@ public final class AthleteDataTestSupport {
                 new MarkSeriesResultNotApplicableRequest(fatorId));
 
         // tokens: refresh token já existe (login); código de e-mail e token de redefinição:
-        postJson(mockMvc, objectMapper, token, "/api/users/me/email", new ChangeEmailRequest("novo." + athlete.email()));
+        postJson(mockMvc, objectMapper, token, "/api/users/me/email", new ChangeEmailRequest("novo." + athlete.email(), PASSWORD));
         mockMvc.perform(post("/api/auth/password-reset/request")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new PasswordResetRequest(athlete.email()))));

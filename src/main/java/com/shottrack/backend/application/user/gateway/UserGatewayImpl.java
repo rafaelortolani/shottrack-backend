@@ -36,6 +36,11 @@ class UserGatewayImpl implements UserGateway {
     }
 
     @Override
+    public User saveAndFlush(User user) {
+        return userRepository.saveAndFlush(user);
+    }
+
+    @Override
     public Optional<User> findByIdForUpdate(UUID id) {
         return userRepository.findByIdForUpdate(id);
     }

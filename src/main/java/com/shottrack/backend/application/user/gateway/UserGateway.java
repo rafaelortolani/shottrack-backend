@@ -16,6 +16,9 @@ public interface UserGateway {
 
     User save(User user);
 
+    /** S22: grava e envia ao banco na hora — a violação de unicidade do e-mail aparece aqui, não só no commit. */
+    User saveAndFlush(User user);
+
     boolean existsById(UUID id);
 
     Optional<User> findByIdForUpdate(UUID id);

@@ -56,6 +56,7 @@ import com.shottrack.backend.application.weapon.model.WeaponType;
 import com.shottrack.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -100,10 +101,19 @@ public class UserDataExportService {
     private final AthleteHabitualityGateway athleteHabitualityGateway;
     private final HabitualityRuleGateway habitualityRuleGateway;
     private final UserDataExportMapper mapper;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserDataExportResponse export(UUID userId) {
+    /**
+     * S12: a exportação leva todos os dados pessoais — só com a senha atual (como a exclusão, UC52).
+     * Senha errada conta no limite de tentativas da rota, igual à exclusão.
+     */
+    public UserDataExportResponse export(UUID userId, String currentPassword) {
         User user = userGateway.findById(userId)
                 .orElseThrow(() -> new BusinessException("UNAUTHORIZED", HttpStatus.UNAUTHORIZED));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new BusinessException("INVALID_CURRENT_PASSWORD", HttpStatus.UNAUTHORIZED);
+        }
 
         List<Weapon> weapons = weaponGateway.findAllByUserId(userId);
         Catalogs catalogs = loadCatalogs(ids(weapons, Weapon::getModelId));

@@ -126,10 +126,10 @@ class SensitiveRoutesRateLimitTest {
 
         for (int i = 0; i < 2; i++) {
             call(HttpMethod.POST, "/api/users/me/email", token, "10.30.0.6",
-                    "{\"email\":\"destino" + i + "@example.invalid\"}").andExpect(status().isAccepted());
+                    "{\"email\":\"destino" + i + "@example.invalid\",\"currentPassword\":\"senha12345\"}").andExpect(status().isAccepted());
         }
         assertLimited(call(HttpMethod.POST, "/api/users/me/email", token, "10.30.0.6",
-                "{\"email\":\"destino-extra@example.invalid\"}"));
+                "{\"email\":\"destino-extra@example.invalid\",\"currentPassword\":\"senha12345\"}"));
     }
 
     @Test

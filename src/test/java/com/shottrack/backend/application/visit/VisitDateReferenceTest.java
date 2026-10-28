@@ -198,7 +198,10 @@ class VisitDateReferenceTest extends VisitDatesIntegrationTest {
         Instant start = noon(today().minusDays(6));
         startVisit(start);
 
-        mockMvc.perform(get("/api/users/me/export").header("Authorization", "Bearer " + token))
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/users/me/export")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"senha12345\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.visits[0].startedAt").value(start.toString()));
     }
