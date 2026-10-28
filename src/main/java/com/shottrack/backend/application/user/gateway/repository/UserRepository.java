@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.user.gateway.repository;
 
+import com.shottrack.backend.application.user.model.Role;
 import com.shottrack.backend.application.user.model.User;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,6 +16,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
 
     boolean existsByEmail(String email);
+
+    @Query("select u.role from User u where u.id = :id")
+    Optional<Role> findRoleById(@Param("id") UUID id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from User u where u.id = :id")
