@@ -31,7 +31,7 @@ Usuário logado (UC02) com access token válido.
 senha atual com um token roubado).
 
 ## Limites de entrada (Lote 3, S10/S18)
-- Nova senha: 8 a 72 caracteres (acima de 72 → `VALIDATION_ERROR`, mensagem pt/en: "senha deve ter no máximo 72 caracteres" / "password must have at most 72 characters"). A senha atual não tem teto, para não bloquear contas antigas.
+- Nova senha: mínimo de 8 caracteres e máximo de 72 bytes UTF-8 (acima → `VALIDATION_ERROR`, mensagem pt/en: "a senha pode ter no máximo 72 bytes; acentos contam mais de um" / "the password can have at most 72 bytes; accented characters count as more than one"). A senha atual não tem teto, para não bloquear contas antigas.
 
 ## Referências
 - ADR-0001 (autenticação JWT)

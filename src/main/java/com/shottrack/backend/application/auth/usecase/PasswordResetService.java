@@ -8,6 +8,7 @@ import com.shottrack.backend.application.auth.model.PasswordResetToken;
 import com.shottrack.backend.application.user.gateway.UserGateway;
 import com.shottrack.backend.application.user.model.User;
 import com.shottrack.backend.common.exception.BusinessException;
+import com.shottrack.backend.common.validation.PasswordBytes;
 import com.shottrack.backend.common.security.TokenHasher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -83,7 +84,7 @@ public class PasswordResetService {
         User user = userGateway.findById(token.getUserId())
                 .orElseThrow(() -> new BusinessException("PASSWORD_RESET_TOKEN_INVALID", HttpStatus.BAD_REQUEST));
 
-        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.setPasswordHash(PasswordBytes.encode(passwordEncoder, request.newPassword()));
         userGateway.save(user);
 
         token.markUsed(Instant.now());

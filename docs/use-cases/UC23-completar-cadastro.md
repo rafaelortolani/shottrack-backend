@@ -41,7 +41,7 @@ Existe um cadastro pendente com token válido (gerado pelo UC01).
 `POST /api/users/registration/completion`: 10 tentativas / hora por IP → `429 TOO_MANY_REQUESTS`.
 
 ## Limites de entrada (Lote 3, S10/S18)
-- Nome: até 100 caracteres; senha nova/de cadastro: 8 a 72 caracteres (acima de 72 → `VALIDATION_ERROR` com a mensagem "senha deve ter no máximo 72 caracteres" / "password must have at most 72 characters").
+- Nome: até 100 caracteres; senha nova/de cadastro (o encode nunca lança por tamanho: `PasswordBytes` devolve `VALIDATION_ERROR` mesmo sem o validador do DTO; senha recusada não consome o token): mínimo de 8 caracteres e máximo de 72 bytes UTF-8 (acima → `VALIDATION_ERROR` com a mensagem "a senha pode ter no máximo 72 bytes; acentos contam mais de um" / "the password can have at most 72 bytes; accented characters count as more than one").
 - Token: até 255; e-mail (UC01): até 254. Acima do limite → `VALIDATION_ERROR` (400).
 
 ## Referências

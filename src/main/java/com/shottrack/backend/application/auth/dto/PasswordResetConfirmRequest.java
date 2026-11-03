@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.auth.dto;
 
+import com.shottrack.backend.common.validation.MaxUtf8Bytes;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -10,7 +11,7 @@ public record PasswordResetConfirmRequest(
 
         @NotBlank(message = "nova senha é obrigatória")
         @Size(min = 8, message = "senha deve ter ao menos 8 caracteres")
-        @Size(max = 72, message = "{VALIDATION_PASSWORD_TOO_LONG}")
+        @MaxUtf8Bytes(72)
         String newPassword
 ) {
 }
