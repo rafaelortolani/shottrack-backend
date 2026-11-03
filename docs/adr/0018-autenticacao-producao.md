@@ -60,7 +60,7 @@ cadastro e pedidos de e-mail.
 - O corpo de qualquer requisição tem teto de 64 KB (`app.request.max-body-bytes`): acima disso, `413 PAYLOAD_TOO_LARGE`
   (recusado antes do Spring Security quando há `Content-Length`; sem ele, o stream interrompe a leitura ao passar do teto).
 - Todo texto de entrada tem `@Size(max=…)` coerente com a coluna (nome 100, e-mail 254, apelido 100, observações 2000 etc.;
-  a lista fica nos UCs). Senhas novas: 8 a 72 caracteres (limite do BCrypt).
+  a lista fica nos UCs). Senhas novas: mínimo de 8 caracteres e máximo de 72 **bytes UTF-8** (limite do BCrypt, que recusa mais que isso; letra acentuada ocupa 2 bytes e emoji 4 — `@MaxUtf8Bytes`). Todo `encode()` passa por `PasswordBytes.encode`, que devolve `VALIDATION_ERROR` em vez de deixar o BCrypt lançar (defesa em profundidade).
 - Número vindo como texto (valor de resultado) só entra como número simples (`SafeDecimal`: sem notação científica, ≤ 32
   caracteres, ≤ 18 dígitos, ≤ 6 casas); o que estiver fora disso é ignorado pelos cálculos.
 

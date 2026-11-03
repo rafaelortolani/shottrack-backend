@@ -21,6 +21,7 @@ autenticado.
 - [x] Teste cobrindo edição de um único campo, sem afetar os demais
 - [x] Um teste para CADA fluxo alternativo listado acima
 - [x] Teste alterando somente `club`, sem afetar os demais campos
+- [x] Isolamento entre atletas (`AthleteIsolationTest`, Q05): editar o local de outro atleta → `TRAINING_LOCATION_NOT_FOUND` (404), idêntico ao de um id inexistente; o local de A não muda
 
 ## Limites de entrada (Lote 3, S10/S18)
 - Nome: até 150 caracteres; cidade: até 100; estado: até 50 (iguais às colunas). Acima → `VALIDATION_ERROR` (400).

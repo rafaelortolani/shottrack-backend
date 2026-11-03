@@ -66,6 +66,7 @@ lista vem vazia (e `previousPoints` também).
 - [x] Teste com período anterior vazio (`previousPoints` = [])
 - [x] Teste das mesmas regras no período anterior (`0` válido, dia sem valor sem ponto)
 - [x] Teste de que a resposta sem o parâmetro (ou com `false`) continua inalterada
+- [x] Isolamento entre atletas (`AthleteIsolationTest`, Q05): modalidade ou tipo de resultado de outro atleta → `MODALITY_NOT_PRACTICED` / `RESULT_TYPE_NOT_CONFIGURED_FOR_TRAINING` (404), idêntico ao de um id inexistente; os valores de A nunca entram na evolução de B
 
 ## Referências
 - ADR-0001 (autenticação JWT)

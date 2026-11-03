@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * S10/S18: cada texto de entrada tem um limite (consistente com a coluna) — no limite aceita, um acima recusa
- * com VALIDATION_ERROR — e as senhas novas ficam entre 8 e 72 caracteres.
+ * com VALIDATION_ERROR — e as senhas novas ficam entre 8 caracteres e 72 bytes UTF-8.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -140,7 +140,7 @@ class InputLimitsTest {
         send(HttpMethod.POST, "/api/users/registration/completion", null,
                 map("token", registrationToken, "name", "Atleta", "password", str(73), "acceptedTerms", true))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.message").value("password: senha deve ter no máximo 72 caracteres"));
+                .andExpect(jsonPath("$.error.message").value("password: a senha pode ter no máximo 72 bytes; acentos contam mais de um"));
 
         mockMvc.perform(request(HttpMethod.POST, "/api/users/registration/completion")
                         .header("Accept-Language", "en")
@@ -148,7 +148,43 @@ class InputLimitsTest {
                         .content(objectMapper.writeValueAsString(
                                 map("token", registrationToken, "name", "Atleta", "password", str(73), "acceptedTerms", true))))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.message").value("password: password must have at most 72 characters"));
+                .andExpect(jsonPath("$.error.message").value("password: the password can have at most 72 bytes; accented characters count as more than one"));
+    }
+
+    @Test
+    void shouldMeasureThePasswordCeilingInUtf8BytesOnRegistrationCompletion() throws Exception {
+        // N2: o limite do BCrypt é em BYTES; 37 "ç" são 37 caracteres mas 74 bytes (antes: 500)
+        assertRejected(complete(pendingToken("limite.bytes.a@shottrack.com"), "Atleta", "ç".repeat(37)));
+        assertRejected(complete(pendingToken("limite.bytes.b@shottrack.com"), "Atleta", "ç".repeat(80)));
+        assertRejected(complete(pendingToken("limite.bytes.c@shottrack.com"), "Atleta", "\uD83D\uDD2B".repeat(19))); // 76 bytes
+
+        complete(pendingToken("limite.bytes.d@shottrack.com"), "Atleta", "a".repeat(72)).andExpect(status().isCreated());
+        // exatamente 72 bytes: cadastra e depois entra com a mesma senha
+        String accented36 = "ç".repeat(36);
+        complete(pendingToken("limite.bytes.e@shottrack.com"), "Atleta", accented36).andExpect(status().isCreated());
+        send(HttpMethod.POST, "/api/auth/login", null, map("email", "limite.bytes.e@shottrack.com", "password", accented36))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldMeasureThePasswordCeilingInUtf8BytesOnPasswordChange() throws Exception {
+        assertRejected(send(HttpMethod.PATCH, "/api/users/me/password", token, map("currentPassword", PASSWORD, "newPassword", "ç".repeat(37))));
+        assertRejected(send(HttpMethod.PATCH, "/api/users/me/password", token, map("currentPassword", PASSWORD, "newPassword", "ç".repeat(80))));
+
+        send(HttpMethod.PATCH, "/api/users/me/password", token, map("currentPassword", PASSWORD, "newPassword", "a".repeat(72))).andExpect(status().isOk());
+        send(HttpMethod.PATCH, "/api/users/me/password", token, map("currentPassword", "a".repeat(72), "newPassword", "ç".repeat(36))).andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldMeasureThePasswordCeilingInUtf8BytesOnPasswordResetConfirmation() throws Exception {
+        assertRejected(send(HttpMethod.POST, "/api/auth/password-reset/confirm", null, map("token", "inexistente", "newPassword", "ç".repeat(37))));
+        assertRejected(send(HttpMethod.POST, "/api/auth/password-reset/confirm", null, map("token", "inexistente", "newPassword", "ç".repeat(80))));
+
+        // dentro do limite a senha passa na validação e cai no token inexistente (não em VALIDATION_ERROR)
+        for (String ok : new String[]{"a".repeat(72), "ç".repeat(36)}) {
+            send(HttpMethod.POST, "/api/auth/password-reset/confirm", null, map("token", "inexistente", "newPassword", ok))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("PASSWORD_RESET_TOKEN_INVALID"));
+        }
     }
 
     @Test

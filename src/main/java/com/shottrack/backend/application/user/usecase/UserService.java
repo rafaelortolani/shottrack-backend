@@ -17,6 +17,7 @@ import com.shottrack.backend.application.user.model.ExperienceLevel;
 import com.shottrack.backend.application.user.model.PendingRegistration;
 import com.shottrack.backend.application.user.model.User;
 import com.shottrack.backend.common.exception.BusinessException;
+import com.shottrack.backend.common.validation.PasswordBytes;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -112,10 +113,12 @@ public class UserService {
             throw new BusinessException("EMAIL_ALREADY_REGISTERED", HttpStatus.CONFLICT);
         }
 
+        // antes de consumir o token: senha recusada não pode gastar o link de cadastro
+        String passwordHash = PasswordBytes.encode(passwordEncoder, request.password());
+
         pendingRegistration.markUsed();
         pendingRegistrationGateway.save(pendingRegistration);
 
-        String passwordHash = passwordEncoder.encode(request.password());
         User user = User.builder()
                 .name(request.name())
                 .email(pendingRegistration.getEmail())
@@ -228,11 +231,7 @@ public class UserService {
         message.setTo(to);
         message.setSubject(messageSource.getMessage(messageKey + "_SUBJECT", null, locale));
         message.setText(messageSource.getMessage(messageKey + "_BODY", null, locale));
-        try {
-            mailSender.send(message);
-        } catch (MailException e) {
-            log.error("Falha ao enviar aviso de conta ({})", e.getClass().getSimpleName());
-        }
+        sendQuietly(message, "aviso de conta");
     }
 
     /**
@@ -251,7 +250,7 @@ public class UserService {
             throw new BusinessException("PASSWORD_UNCHANGED", HttpStatus.BAD_REQUEST);
         }
 
-        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.setPasswordHash(PasswordBytes.encode(passwordEncoder, request.newPassword()));
         userGateway.save(user);
 
         refreshTokenGateway.revokeAllByUserId(userId);
@@ -272,7 +271,7 @@ public class UserService {
         message.setTo(to);
         message.setSubject("Confirme seu novo email - ShotTrack");
         message.setText("Seu código de verificação é " + code + ". Ele expira em 15 minutos.");
-        mailSender.send(message);
+        sendQuietly(message, "código de verificação");
     }
 
     private String generateRegistrationToken() {
@@ -287,6 +286,19 @@ public class UserService {
         message.setTo(to);
         message.setSubject("Confirme seu cadastro - ShotTrack");
         message.setText("Clique no link para completar seu cadastro (expira em 24 horas):\n\n" + link);
-        mailSender.send(message);
+        sendQuietly(message, "confirmação de cadastro");
+    }
+
+    /**
+     * N1 (S05): falha de SMTP não pode mudar a resposta — o caminho do e-mail livre falhava com 500 enquanto o do
+     * e-mail já cadastrado (aviso, que já engolia o erro) respondia 202, e isso revelava quem tem conta. Loga só o
+     * tipo da exceção: a mensagem do SMTP costuma trazer o destinatário (ADR-0019). Quem não recebeu pede de novo.
+     */
+    private void sendQuietly(SimpleMailMessage message, String purpose) {
+        try {
+            mailSender.send(message);
+        } catch (MailException e) {
+            log.error("Falha ao enviar e-mail de {} ({})", purpose, e.getClass().getSimpleName());
+        }
     }
 }

@@ -40,6 +40,7 @@ catálogo (UC11/ADR-0005).
 - [x] Teste cobrindo listar (com itens e lista vazia)
 - [x] Um teste para CADA fluxo alternativo listado acima
 - [x] Teste cobrindo 2d (`MODALITY_IN_USE`) e remoção permitida quando só
+- [x] Isolamento entre atletas (`AthleteIsolationTest`, Q05): listar e remover: o atleta B não vê nem remove a modalidade praticada por A (`MODALITY_NOT_ASSOCIATED`, 404) e a de A segue intacta
   outras modalidades foram usadas em treino
 - [x] Teste cobrindo remover e readicionar a mesma modalidade, com a
   sugestão padrão reaplicada do zero

@@ -17,6 +17,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,6 +35,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -139,6 +141,32 @@ class AccountEnumerationTest {
 
         assertThat(pendingRegistrationRepository.findAllByEmailAndUsedFalse("email.novo@shottrack.com")).hasSize(1);
         assertThat(sentMails().get(0).getText()).contains("/cadastro/completar?token=");
+    }
+
+    // ---- N1: com o SMTP fora do ar a resposta continua igual (e não vira 500 só para e-mail livre) ----
+
+    @Test
+    void shouldAnswerTheSameForExistingAndNewEmailsWhileTheSmtpServerIsDown() throws Exception {
+        doThrow(new MailSendException("smtp fora do ar: destinatario@shottrack.com")).when(mailSender).send(any(SimpleMailMessage.class));
+
+        String existing = body(requestRegistration(OWNER, null).andExpect(status().isAccepted()));
+        String brandNew = body(requestRegistration("email.novo.smtp@shottrack.com", null).andExpect(status().isAccepted()));
+
+        assertThat(existing).isEqualTo(brandNew).isEqualTo("{\"data\":null,\"error\":null}");
+        // o pedido do e-mail livre ficou registrado: o visitante pede de novo e recebe o link quando o SMTP voltar
+        assertThat(pendingRegistrationRepository.findAllByEmailAndUsedFalse("email.novo.smtp@shottrack.com")).hasSize(1);
+    }
+
+    @Test
+    void shouldAnswerTheSameOnEmailChangeWhileTheSmtpServerIsDown() throws Exception {
+        String taken = "outra.conta.smtp@shottrack.com";
+        TestUsers.register(mockMvc, objectMapper, pendingRegistrationRepository, "Outra", taken, PASSWORD);
+        doThrow(new MailSendException("smtp fora do ar")).when(mailSender).send(any(SimpleMailMessage.class));
+
+        String forTaken = body(changeEmail(taken).andExpect(status().isAccepted()));
+        String forFree = body(changeEmail("email.livre.smtp@shottrack.com").andExpect(status().isAccepted()));
+
+        assertThat(forTaken).isEqualTo(forFree).isEqualTo("{\"data\":null,\"error\":null}");
     }
 
     // ---- S05 (b): login com tempo igualado ----

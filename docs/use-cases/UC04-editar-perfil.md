@@ -42,6 +42,7 @@ Usuário logado (UC02) com access token válido.
 - 3a. Token ausente ou inválido → erro `UNAUTHORIZED`
 - 4a. Código incorreto → erro `INVALID_VERIFICATION_CODE`
 - 4b. Código expirado → erro `VERIFICATION_CODE_EXPIRED`, atleta pode pedir reenvio
+- 3b. Falha ao enviar o código ou o aviso (SMTP fora do ar) → mesma `202` (N1/S05); o atleta pede o reenvio.
 - 5a. O novo email foi ocupado entre o pedido e a confirmação (inclusive corrida contra a
   restrição única do banco) → `EMAIL_ALREADY_REGISTERED` (409), nada muda e as sessões continuam
 
