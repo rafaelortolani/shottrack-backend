@@ -2,7 +2,7 @@
 # Produção não usa este arquivo — ver ADR-0018 (perfil prod, variáveis obrigatórias).
 services:
   mailpit:
-    image: axllent/mailpit:v1.31.0
+    image: axllent/mailpit:v1.33.0
     ports:
       - "127.0.0.1:1025:1025"   # SMTP - a aplicação envia pra cá
       - "127.0.0.1:8025:8025"   # interface web - veja os emails "enviados" aqui
