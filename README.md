@@ -82,6 +82,19 @@ defina `TEST_DB_URL` e `TEST_RABBIT_VHOST` — a trava continua valendo. Para ze
 `docker compose exec postgres sh -c "PGUSER=shottrack psql -d postgres -c 'DROP DATABASE shottrack_unit_test'"` e rode o
 script do passo 2 de novo.
 
+## Verificação de vulnerabilidades (CVEs)
+
+- **Dependabot** (`.github/dependabot.yml`): abre PRs semanais com atualizações do Maven e das imagens do `docker-compose`
+  (inclusive as de segurança), com as de patch/minor do Spring agrupadas em um PR só.
+- **OWASP Dependency-Check**, num profile fora do build normal. Peça uma chave gratuita da NVD em
+  https://nvd.nist.gov/developers/request-an-api-key e passe-a só pela variável de ambiente (nunca no repositório):
+  ```bash
+  export NVD_API_KEY=<sua chave>
+  ./mvnw -Pdependency-check verify -DskipTests
+  ```
+  Sem a chave, o download da base da NVD fica muito lento e costuma falhar por limite de requisições. O build falha se
+  achar CVE com CVSS >= 7; o relatório fica em `target/dependency-check-report.html` (e `.json`).
+
 ## Endpoints disponíveis
 
 | Método | Rota | Descrição | Use case |
