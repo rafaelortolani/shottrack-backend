@@ -30,6 +30,7 @@ ao atleta autenticado.
 - [x] Teste cobrindo associar o mesmo acessório a uma segunda arma (N:N)
 - [x] Teste cobrindo desassociar sem afetar outras associações
 - [x] Um teste para CADA fluxo alternativo listado acima
+- [x] Isolamento entre atletas (`AthleteIsolationTest`, Q05): associar e desassociar com acessório OU arma de outro atleta → `ACCESSORY_NOT_FOUND` / `WEAPON_NOT_FOUND` (404), idêntico ao de um id inexistente; nada é associado/removido
 
 ## Referências
 - ADR-0001 (autenticação JWT)

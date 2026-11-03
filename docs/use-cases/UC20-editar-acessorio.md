@@ -22,6 +22,7 @@ atleta autenticado. Se tipoId enviado, existe no catálogo (UC28).
 ## Definição de pronto
 - [x] Teste cobrindo o fluxo principal
 - [x] Um teste para CADA fluxo alternativo listado acima
+- [x] Isolamento entre atletas (`AthleteIsolationTest`, Q05): editar o acessório de outro atleta → `ACCESSORY_NOT_FOUND` (404), idêntico ao de um id inexistente; o acessório de A não muda
 
 ## Limites de entrada (Lote 3, S10/S18)
 - Nome: até 100 caracteres; observações: até 2000. Acima → `VALIDATION_ERROR` (400).

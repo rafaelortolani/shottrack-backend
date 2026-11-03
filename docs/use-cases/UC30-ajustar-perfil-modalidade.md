@@ -36,6 +36,7 @@ modalidades praticadas pelo atleta (UC12).
 - [x] Teste cobrindo adicionar um tipo
 - [x] Teste cobrindo remover um tipo sem afetar os demais
 - [x] Um teste para CADA fluxo alternativo listado acima
+- [x] Isolamento entre atletas (`AthleteIsolationTest`, Q05): listar/adicionar/remover tipo numa modalidade que o atleta não pratica → `MODALITY_NOT_PRACTICED` (404); a configuração de A é independente da de B, mesmo na mesma modalidade
 
 ## Referências
 - ADR-0001 (autenticação JWT)
