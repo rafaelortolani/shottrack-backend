@@ -19,7 +19,7 @@ services:
       - shottrack_pgdata:/var/lib/postgresql/data
 
   rabbitmq:
-    image: rabbitmq:3.9.10-management
+    image: rabbitmq:4.4.0-management
     ports:
       - "127.0.0.1:5672:5672"    # protocolo AMQP, usado pela aplicação
       - "127.0.0.1:15672:15672"  # painel de administração web
