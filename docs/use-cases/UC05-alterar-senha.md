@@ -30,6 +30,9 @@ Usuário logado (UC02) com access token válido.
 `PATCH /api/users/me/password`: 5 tentativas / 15 min por usuário → `429 TOO_MANY_REQUESTS` (barra adivinhar a
 senha atual com um token roubado).
 
+## Limites de entrada (Lote 3, S10/S18)
+- Nova senha: 8 a 72 caracteres (acima de 72 → `VALIDATION_ERROR`, mensagem pt/en: "senha deve ter no máximo 72 caracteres" / "password must have at most 72 characters"). A senha atual não tem teto, para não bloquear contas antigas.
+
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0018 (revogação das sessões ao trocar a senha)

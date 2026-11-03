@@ -69,6 +69,23 @@ modalidade ou de um treino.
   fallback do UC42 — só o teste de publicação/consumo de evento em si
   precisa da fila.
 
+## Operação da DLQ (Lote 4, S17)
+- `dashboard.recalculation.dlq` tem `x-message-ttl` (`app.rabbit.dlq-ttl-days`,
+  padrão 7 dias): a mensagem que ninguém tratou em 7 dias é descartada pelo
+  próprio RabbitMQ.
+- O recoverer republica só a classe da exceção e o stack trace (sem mensagens,
+  que podem trazer e-mail — ADR-0019). O corpo da mensagem é só o id do atleta.
+- **Descartar mensagens de um usuário excluído** (UC52): o recálculo dele não tem
+  mais o que recalcular e vira erro de novo; basta deixar expirar (TTL). Pra
+  limpar antes, no painel do RabbitMQ (Queues → `dashboard.recalculation.dlq` →
+  Get messages / Purge) ou `rabbitmqctl purge_queue dashboard.recalculation.dlq`
+  — a DLQ só tem falhas já esgotadas, então esvaziá-la não perde trabalho pendente.
+- **Atenção no deploy:** o RabbitMQ não deixa mudar argumento de fila existente
+  (`PRECONDITION_FAILED - inequivalent arg 'x-message-ttl'`). Em ambiente onde a
+  DLQ já existe sem TTL, apague-a uma vez antes de subir a versão nova (confira
+  antes se há mensagens que queira guardar):
+  `rabbitmqctl delete_queue dashboard.recalculation.dlq` — o backend recria com o TTL.
+
 ## Referências
 - UC42 (consultar dashboard — revisado)
 - ADR-0013 (Série — mesma lógica de cálculo reaproveitada)

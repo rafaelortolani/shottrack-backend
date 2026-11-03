@@ -56,15 +56,19 @@ class UserRegistrationTest {
     }
 
     @Test
-    void shouldRejectEmailWithActiveAccount() throws Exception {
+    void shouldAnswerNeutrallyForEmailWithActiveAccountWithoutCreatingAPendingRegistration() throws Exception {
+        // S05: a resposta é a mesma de um e-mail novo (202); os detalhes do aviso ao dono estão em AccountEnumerationTest
         String email = "atleta.ativo@shottrack.com";
         completeRegistration(email, "Atleta Ativo", "senha12345");
 
         mockMvc.perform(post("/api/users/registration")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new RegistrationRequest(email))))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("EMAIL_ALREADY_REGISTERED"));
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.data").doesNotExist())
+                .andExpect(jsonPath("$.error").doesNotExist());
+
+        assertThat(pendingRegistrationRepository.findAllByEmailAndUsedFalse(email)).isEmpty();
     }
 
     @Test

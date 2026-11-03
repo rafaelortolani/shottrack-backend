@@ -33,7 +33,9 @@ Usuário logado (UC02) com access token válido.
 - 1b. Nível de experiência vazio ou fora dos valores permitidos → erro de validação
 - 1c. Token ausente ou inválido → erro `UNAUTHORIZED`
 - 1d. `role` enviado no corpo → ignorado; o papel só muda direto no banco (ADR-0021)
-- 2a. Novo email já cadastrado por outra conta → erro `EMAIL_ALREADY_REGISTERED`
+- 2a. Novo email já cadastrado por outra conta → **resposta neutra** (S05): a mesma `202` de um e-mail livre, sem
+  gerar nem enviar código ao endereço da outra conta (o conflito só aparece na confirmação, 5a, pra quem provou
+  ser dono do endereço). O e-mail atual continua sendo avisado do pedido. O novo e-mail é normalizado (minúsculas, S15).
 - 2b. `currentPassword` ausente/em branco → erro de validação (`VALIDATION_ERROR`)
 - 2c. `currentPassword` incorreta → `INVALID_CURRENT_PASSWORD` (401); a senha é conferida
   antes de revelar se o email já existe e nada é gravado nem enviado
@@ -58,6 +60,9 @@ Usuário logado (UC02) com access token válido.
 ## Limite de tentativas (ADR-0018)
 `POST /api/users/me/email`: 5 pedidos / hora por usuário; `POST /api/users/me/email/confirmation`: 10 tentativas /
 15 min por usuário → `429 TOO_MANY_REQUESTS` com `Retry-After`.
+
+## Limites de entrada (Lote 3, S10/S18)
+- Nome: até 100 caracteres; e-mail novo: até 254; código de verificação: até 20. Acima → `VALIDATION_ERROR` (400).
 
 ## Referências
 - ADR-0001 (autenticação JWT)

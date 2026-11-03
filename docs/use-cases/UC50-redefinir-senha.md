@@ -31,5 +31,8 @@ Atleta não autenticado, com o link recebido por e-mail (UC49).
 ## Limite de tentativas (ADR-0018)
 `POST /api/auth/password-reset/confirm`: 10 tentativas / 15 min por IP → `429 TOO_MANY_REQUESTS`.
 
+## Limites de entrada (Lote 3, S10/S18)
+- Nova senha: 8 a 72 caracteres (mesma regra do UC05); token: até 255. Acima → `VALIDATION_ERROR` (400).
+
 ## Referências
 - ADR-0018, ADR-0001

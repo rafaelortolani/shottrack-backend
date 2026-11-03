@@ -40,6 +40,10 @@ Existe um cadastro pendente com token válido (gerado pelo UC01).
 ## Limite de tentativas (ADR-0018)
 `POST /api/users/registration/completion`: 10 tentativas / hora por IP → `429 TOO_MANY_REQUESTS`.
 
+## Limites de entrada (Lote 3, S10/S18)
+- Nome: até 100 caracteres; senha nova/de cadastro: 8 a 72 caracteres (acima de 72 → `VALIDATION_ERROR` com a mensagem "senha deve ter no máximo 72 caracteres" / "password must have at most 72 characters").
+- Token: até 255; e-mail (UC01): até 254. Acima do limite → `VALIDATION_ERROR` (400).
+
 ## Referências
 - ADR-0009 (cadastro em duas etapas via link)
 - ADR-0019 (aceite de termos)

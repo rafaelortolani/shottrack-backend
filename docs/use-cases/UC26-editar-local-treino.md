@@ -22,6 +22,9 @@ autenticado.
 - [x] Um teste para CADA fluxo alternativo listado acima
 - [x] Teste alterando somente `club`, sem afetar os demais campos
 
+## Limites de entrada (Lote 3, S10/S18)
+- Nome: até 150 caracteres; cidade: até 100; estado: até 50 (iguais às colunas). Acima → `VALIDATION_ERROR` (400).
+
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0010 (local de treino livre)

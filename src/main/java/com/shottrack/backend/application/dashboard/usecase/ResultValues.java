@@ -1,6 +1,7 @@
 package com.shottrack.backend.application.dashboard.usecase;
 
 import com.shottrack.backend.application.modality.model.ResultOrientation;
+import com.shottrack.backend.common.validation.SafeDecimal;
 
 import java.math.BigDecimal;
 import java.util.Collection;
@@ -19,17 +20,12 @@ final class ResultValues {
 
     /**
      * ADR-0013: valor de resultado é texto — não numérico é ignorado
-     * silenciosamente nos cálculos (UC42/UC46/UC48, observação).
+     * silenciosamente nos cálculos (UC42/UC46/UC48, observação). S04: também
+     * é ignorado o que a SafeDecimal recusa (notação científica, tamanho,
+     * precisão/escala fora da faixa) — inclusive valores antigos já gravados.
      */
     static Optional<BigDecimal> parseNumeric(String value) {
-        if (value == null) {
-            return Optional.empty();
-        }
-        try {
-            return Optional.of(new BigDecimal(value));
-        } catch (NumberFormatException e) {
-            return Optional.empty();
-        }
+        return SafeDecimal.parse(value);
     }
 
     /**

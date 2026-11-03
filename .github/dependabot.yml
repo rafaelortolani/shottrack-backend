@@ -1,0 +1,20 @@
+# S03: verificação contínua de dependências. O Dependabot abre PRs com atualizações (e de segurança) do Maven e
+# das imagens do docker-compose. Nada aqui contém credencial.
+version: 2
+updates:
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      # um PR só por semana para as atualizações de patch/minor do que o Spring Boot gerencia
+      spring-boot:
+        patterns:
+          - "org.springframework.boot*"
+          - "org.springframework*"
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"

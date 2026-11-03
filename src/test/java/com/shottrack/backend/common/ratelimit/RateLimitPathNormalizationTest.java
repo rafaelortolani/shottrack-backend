@@ -83,14 +83,14 @@ class RateLimitPathNormalizationTest {
     }
 
     @Test
-    void shouldLimitTrailingSlashAsTheSameRule() throws Exception {
-        login("/api/auth/login/", "barrafinal@shottrack.com", "10.20.0.4")
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST_PATH"));
-        login("/api/auth/login/", "barrafinal@shottrack.com", "10.20.0.4").andExpect(status().isBadRequest());
-        login("/api/auth/login", "barrafinal@shottrack.com", "10.20.0.4").andExpect(status().isUnauthorized());
-
-        login("/api/auth/login/", "barrafinal@shottrack.com", "10.20.0.4").andExpect(status().isTooManyRequests());
+    void shouldNeverLetTrailingSlashReachTheLogin() throws Exception {
+        // S23: só as rotas exatas são públicas — com barra final o Spring Security responde 401 antes do login
+        // (e do filtro); nunca INVALID_CREDENTIALS, que seria o login processado fora do bucket
+        for (int i = 0; i < 5; i++) {
+            login("/api/auth/login/", "barrafinal@shottrack.com", "10.20.0.4")
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+        }
     }
 
     @Test

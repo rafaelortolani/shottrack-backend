@@ -7,6 +7,7 @@ import com.shottrack.backend.application.auth.gateway.RefreshTokenGateway;
 import com.shottrack.backend.application.auth.model.RefreshToken;
 import com.shottrack.backend.common.exception.BusinessException;
 import com.shottrack.backend.common.security.JwtTokenProvider;
+import com.shottrack.backend.common.security.TokenHasher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,7 +30,7 @@ public class RefreshTokenService {
      * todas as sessões (isso é só do refresh, onde o reuso indica roubo).
      */
     public void logout(LogoutRequest request) {
-        refreshTokenGateway.findByToken(request.refreshToken())
+        refreshTokenGateway.findByTokenHash(TokenHasher.sha256Hex(request.refreshToken()))
                 .filter(stored -> !stored.isRevoked())
                 .ifPresent(stored -> {
                     stored.revoke();
@@ -38,7 +39,7 @@ public class RefreshTokenService {
     }
 
     public TokenResponse refresh(RefreshRequest request) {
-        RefreshToken stored = refreshTokenGateway.findByToken(request.refreshToken())
+        RefreshToken stored = refreshTokenGateway.findByTokenHash(TokenHasher.sha256Hex(request.refreshToken()))
                 .orElseThrow(() -> new BusinessException("INVALID_REFRESH_TOKEN", HttpStatus.UNAUTHORIZED));
 
         if (stored.isRevoked()) {
@@ -50,17 +51,23 @@ public class RefreshTokenService {
             throw new BusinessException("INVALID_REFRESH_TOKEN", HttpStatus.UNAUTHORIZED);
         }
 
-        stored.revoke();
-        refreshTokenGateway.save(stored);
+        // S20: a revogação é um UPDATE condicional (WHERE revoked = false). Duas chamadas simultâneas com o
+        // mesmo token passam pelas checagens acima, mas só uma muda a linha; a que perde é reuso do token
+        // (ADR-0001) e derruba as sessões do usuário.
+        if (!refreshTokenGateway.revokeIfActive(stored.getId())) {
+            refreshTokenGateway.revokeAllByUserId(stored.getUserId());
+            throw new BusinessException("INVALID_REFRESH_TOKEN", HttpStatus.UNAUTHORIZED);
+        }
 
         String accessToken = jwtTokenProvider.generateAccessToken(stored.getUserId());
+        String newRefreshTokenValue = jwtTokenProvider.generateRefreshTokenValue();
         RefreshToken newRefreshToken = RefreshToken.builder()
-                .token(jwtTokenProvider.generateRefreshTokenValue())
+                .tokenHash(TokenHasher.sha256Hex(newRefreshTokenValue))
                 .userId(stored.getUserId())
                 .expiresAt(jwtTokenProvider.refreshTokenExpiresAt())
                 .build();
         refreshTokenGateway.save(newRefreshToken);
 
-        return new TokenResponse(accessToken, newRefreshToken.getToken());
+        return new TokenResponse(accessToken, newRefreshTokenValue);
     }
 }

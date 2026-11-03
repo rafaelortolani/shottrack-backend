@@ -20,8 +20,9 @@ public class RefreshToken extends AbstractBaseEntity {
     @GeneratedValue
     private UUID id;
 
-    @Column(nullable = false, unique = true)
-    private final String token;
+    /** S06: SHA-256 (hex) do token entregue ao cliente — o valor em si nunca é gravado. */
+    @Column(name = "token_hash", nullable = false, unique = true)
+    private final String tokenHash;
 
     @Column(name = "user_id", nullable = false)
     private final UUID userId;
@@ -33,8 +34,8 @@ public class RefreshToken extends AbstractBaseEntity {
     private boolean revoked = false;
 
     @Builder
-    private RefreshToken(String token, UUID userId, Instant expiresAt) {
-        this.token = token;
+    private RefreshToken(String tokenHash, UUID userId, Instant expiresAt) {
+        this.tokenHash = tokenHash;
         this.userId = userId;
         this.expiresAt = expiresAt;
     }

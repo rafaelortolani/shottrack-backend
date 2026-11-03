@@ -26,6 +26,10 @@ Usuário logado (UC02) com access token válido. Série pertence ao atleta
   faltava (ex: adicionar a arma depois)
 - [x] Um teste para CADA fluxo alternativo listado acima
 
+## Limites de entrada (Lote 3, S10/S18)
+- Alvo: até 100 caracteres; observações: até 2000.
+- Distância: de 0 a 100000 metros, até 6 dígitos inteiros e 2 decimais; notação científica com expoente gigante é recusada. Fora da faixa → `VALIDATION_ERROR` (400).
+
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0013 (Série — edição parcial é como "completar depois" funciona)

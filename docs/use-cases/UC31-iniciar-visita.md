@@ -54,6 +54,9 @@ dispara o recálculo do dashboard (ADR-0015).
 - [x] Teste de `startedAt` futuro (1e)
 - [x] Teste confirmando que a visita retroativa entra no dashboard/habitualidade na data informada
 
+## Limites de entrada (Lote 3, S10/S18)
+- Observações: até 2000 caracteres. Acima → `VALIDATION_ERROR` (400).
+
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0012 (Visita e Treino)

@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.auth;
 
+import com.shottrack.backend.common.security.TokenHasher;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.auth.dto.LoginRequest;
 import com.shottrack.backend.application.auth.dto.LogoutRequest;
@@ -114,7 +115,7 @@ class LogoutTest {
     void shouldSucceedForExpiredToken() throws Exception {
         UUID userId = userRepository.findByEmail(EMAIL).orElseThrow().getId();
         refreshTokenRepository.save(RefreshToken.builder()
-                .token("refresh-expirado")
+                .tokenHash(TokenHasher.sha256Hex("refresh-expirado"))
                 .userId(userId)
                 .expiresAt(Instant.now().minus(Duration.ofDays(1)))
                 .build());

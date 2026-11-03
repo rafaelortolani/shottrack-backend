@@ -1,0 +1,45 @@
+# S07 — perfil de produção (SPRING_PROFILES_ACTIVE=prod). Em dev nada muda: este arquivo só vale com o perfil.
+# Nenhuma credencial tem valor padrão: faltou variável → a aplicação NÃO sobe (placeholder sem resolver).
+# Variáveis obrigatórias: DB_URL, DB_USERNAME, DB_PASSWORD, RABBITMQ_HOST, RABBITMQ_USERNAME, RABBITMQ_PASSWORD,
+# SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, JWT_SECRET (application.yml), FRONTEND_URL.
+# Opcionais: RABBITMQ_PORT (5672), RABBITMQ_VHOST (/), SENTRY_DSN (vazio = Sentry desligado).
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+    virtual-host: ${RABBITMQ_VHOST:/}
+  mail:
+    host: ${SMTP_HOST}
+    port: ${SMTP_PORT}
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+
+# Swagger/OpenAPI não existem em produção (as rotas respondem 404).
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# ADR-0017: só /actuator/health (já é o padrão do application.yml — repetido para o perfil não depender disso).
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+app:
+  frontend-url: ${FRONTEND_URL}

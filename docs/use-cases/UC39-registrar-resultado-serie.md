@@ -52,6 +52,14 @@ modalidade do treino daquela série.
 - [x] Teste cobrindo rejeição quando acertos+erros ultrapassa
   quantidadeDisparos já informada manualmente
 
+## Limites de entrada (Lote 3, S10/S18)
+- Texto do valor: até 500 caracteres (o limite vale para "Anotação livre"; o `VALIDATION_ERROR` é do DTO).
+- Valor **numérico** (todos os tipos exceto "Exercício concluído" e "Anotação livre"): só número simples — sem notação científica
+  (`1E+99999999`, `1e3`), no máximo 32 caracteres, até 18 dígitos de precisão e 6 casas decimais. Fora disso →
+  `RESULT_VALUE_FORMAT_INVALID` (400). Motivo: contas com expoente gigante travavam o servidor (S04).
+- "Acertos" e "Erros": inteiro de 0 a 1.000.000 (a soma precisa caber na contagem de disparos).
+- Valores antigos já gravados fora dessa faixa são **ignorados** pelos cálculos (dashboard, recordes, evolução, comparação de armas).
+
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0013 (Série — resultados com 3 estados)

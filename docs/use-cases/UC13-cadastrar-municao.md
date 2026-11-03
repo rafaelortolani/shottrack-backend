@@ -29,6 +29,10 @@ e calibreId existem nos respectivos catálogos.
 - [x] Teste cobrindo cadastro completo (todos os campos)
 - [x] Um teste para CADA fluxo alternativo listado acima
 
+## Limites de entrada (Lote 3, S10/S18)
+- Apelido: até 100; tipo de projétil: até 50; lote: até 50; observações: até 2000 caracteres.
+- Peso do projétil e carga de pólvora: ≥ 0, até 4 dígitos inteiros e 2 decimais (coluna `NUMERIC(6,2)`). Notação científica com expoente gigante é recusada. Acima/fora → `VALIDATION_ERROR` (400).
+
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0007 (munição — catálogo híbrido com cadastro parcial)

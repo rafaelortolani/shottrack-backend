@@ -14,6 +14,7 @@ import com.shottrack.backend.application.visit.gateway.TrainingGateway;
 import com.shottrack.backend.application.visit.model.Training;
 import com.shottrack.backend.application.visit.usecase.TrainingService;
 import com.shottrack.backend.common.exception.BusinessException;
+import com.shottrack.backend.common.validation.SafeDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
@@ -40,6 +41,9 @@ public class SeriesResultService {
      * mantidos em consistência com Series.shotCount.
      */
     private static final Set<String> SHOT_RELATED_RESULT_TYPE_NAMES = Set.of("Acertos", "Erros");
+
+    /** S04: teto de Acertos/Erros por série (garante que a soma cabe num int). */
+    private static final BigDecimal MAX_SHOT_RELATED_VALUE = BigDecimal.valueOf(1_000_000);
 
     private final SeriesResultGateway seriesResultGateway;
     private final SeriesGateway seriesGateway;
@@ -148,7 +152,7 @@ public class SeriesResultService {
     }
 
     private BigDecimal contributionFromValue(ResultType resultType, String value) {
-        return SHOT_RELATED_RESULT_TYPE_NAMES.contains(resultType.getName()) ? new BigDecimal(value) : BigDecimal.ZERO;
+        return SHOT_RELATED_RESULT_TYPE_NAMES.contains(resultType.getName()) ? shotCountOrZero(value) : BigDecimal.ZERO;
     }
 
     private BigDecimal shotRelatedContributionExcluding(UUID seriesId, String excludingTypeName) {
@@ -162,7 +166,18 @@ public class SeriesResultService {
         return resultTypeGateway.findByName(typeName)
                 .flatMap(type -> seriesResultGateway.findBySeriesIdAndResultTypeId(seriesId, type.getId()))
                 .filter(result -> !result.isNotApplicable())
-                .map(result -> new BigDecimal(result.getValue()))
+                .map(result -> shotCountOrZero(result.getValue()))
+                .orElse(BigDecimal.ZERO);
+    }
+
+    /**
+     * S04: contribuição de Acertos/Erros para a contagem de disparos. Valor fora da faixa segura (só pode
+     * existir como dado antigo — o cadastro já recusa) conta como 0, para nunca estourar o int do total.
+     */
+    private BigDecimal shotCountOrZero(String value) {
+        return SafeDecimal.parse(value)
+                .filter(parsed -> parsed.signum() >= 0 && parsed.compareTo(MAX_SHOT_RELATED_VALUE) <= 0)
+                .filter(parsed -> parsed.stripTrailingZeros().scale() <= 0)
                 .orElse(BigDecimal.ZERO);
     }
 
@@ -214,23 +229,18 @@ public class SeriesResultService {
                 // texto livre — qualquer valor não vazio é aceito
             }
             case "Acertos", "Erros" -> {
-                // ADR-0014: contam disparos da série — precisam ser inteiro não-negativo
-                try {
-                    BigDecimal parsed = new BigDecimal(value);
-                    if (parsed.signum() < 0 || parsed.remainder(BigDecimal.ONE).signum() != 0) {
-                        throw new BusinessException("RESULT_VALUE_FORMAT_INVALID", HttpStatus.BAD_REQUEST);
-                    }
-                } catch (NumberFormatException e) {
+                // ADR-0014: contam disparos da série — precisam ser inteiro não-negativo (até 1.000.000,
+                // S04: sem isso o total estoura o int da contagem). A SafeDecimal recusa notação científica
+                // e tamanhos absurdos ANTES de qualquer conta.
+                BigDecimal parsed = SafeDecimal.parse(value)
+                        .orElseThrow(() -> new BusinessException("RESULT_VALUE_FORMAT_INVALID", HttpStatus.BAD_REQUEST));
+                if (parsed.signum() < 0 || parsed.stripTrailingZeros().scale() > 0
+                        || parsed.compareTo(MAX_SHOT_RELATED_VALUE) > 0) {
                     throw new BusinessException("RESULT_VALUE_FORMAT_INVALID", HttpStatus.BAD_REQUEST);
                 }
             }
-            default -> {
-                try {
-                    new BigDecimal(value);
-                } catch (NumberFormatException e) {
-                    throw new BusinessException("RESULT_VALUE_FORMAT_INVALID", HttpStatus.BAD_REQUEST);
-                }
-            }
+            default -> SafeDecimal.parse(value)
+                    .orElseThrow(() -> new BusinessException("RESULT_VALUE_FORMAT_INVALID", HttpStatus.BAD_REQUEST));
         }
     }
 

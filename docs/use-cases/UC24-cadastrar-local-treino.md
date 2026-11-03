@@ -25,6 +25,9 @@ Usuário logado (UC02) com access token válido.
 - [x] Teste cadastrando local com `club = true` e conferindo na resposta
 - [x] Teste cadastrando sem informar `club` (assume `false`)
 
+## Limites de entrada (Lote 3, S10/S18)
+- Nome: até 150 caracteres; cidade: até 100; estado: até 50 (iguais às colunas). Acima → `VALIDATION_ERROR` (400).
+
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0010 (local de treino livre, estrutura pronta pra clubes futuros)
