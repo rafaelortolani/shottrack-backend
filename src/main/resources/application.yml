@@ -64,6 +64,12 @@ server:
       force: true
 
 app:
+  request:
+    # S10: teto do corpo das requisições (bytes). Acima disso: 413 PAYLOAD_TOO_LARGE.
+    max-body-bytes: 65536
+  rabbit:
+    # S17: TTL (dias) das mensagens da dead-letter queue do recálculo do dashboard (ADR-0015).
+    dlq-ttl-days: 7
   # usado pra montar o link de confirmação de cadastro (UC01/ADR-0009)
   # enviado por email — porta padrão do Next.js (shottrack-frontend) em dev.
   frontend-url: http://localhost:3000

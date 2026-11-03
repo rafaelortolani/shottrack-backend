@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -114,7 +115,7 @@ class EditProfileTest {
     }
 
     @Test
-    void shouldRejectChangeToAlreadyRegisteredEmail() throws Exception {
+    void shouldAnswerNeutrallyWhenChangingToAlreadyRegisteredEmailWithoutSendingACode() throws Exception {
         String emailExistente = "outro.atleta@shottrack.com";
         TestUsers.register(mockMvc, objectMapper, pendingRegistrationRepository, "Outro Atleta", emailExistente, PASSWORD);
 
@@ -122,8 +123,10 @@ class EditProfileTest {
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new ChangeEmailRequest(emailExistente, PASSWORD))))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("EMAIL_ALREADY_REGISTERED"));
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.error").doesNotExist());
+        // S05: mesma resposta de um e-mail livre, mas nenhum código é gerado para o endereço de outra conta
+        assertThat(emailVerificationCodeRepository.findAll()).noneMatch(code -> emailExistente.equals(code.getNewEmail()));
     }
 
     @Test

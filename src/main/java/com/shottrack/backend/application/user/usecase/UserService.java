@@ -65,10 +65,13 @@ public class UserService {
      * Etapa 1 do cadastro (UC01/ADR-0009) — só o email, sem provar posse ainda.
      * Reenvio (mesmo email antes de completar) invalida o token anterior e
      * envia um novo, sem endpoint separado.
+     * S05: a resposta é a mesma exista a conta ou não. Se existir, o dono recebe um aviso de que alguém tentou
+     * cadastrar o e-mail dele (sem link de cadastro) e nenhum cadastro pendente é criado.
      */
     public void requestRegistration(RegistrationRequest request) {
         if (userGateway.existsByEmail(request.email())) {
-            throw new BusinessException("EMAIL_ALREADY_REGISTERED", HttpStatus.CONFLICT);
+            sendAccountNotice(request.email(), "REGISTRATION_ATTEMPT_NOTICE");
+            return;
         }
 
         pendingRegistrationGateway.invalidatePendingByEmail(request.email());
@@ -149,8 +152,11 @@ public class UserService {
             throw new BusinessException("INVALID_CURRENT_PASSWORD", HttpStatus.UNAUTHORIZED);
         }
 
+        // S05: e-mail de outra conta → mesma resposta neutra, sem código e sem revelar o conflito. Quem de fato
+        // é dono do endereço só confirma (e só descobre um conflito) depois de receber o código.
         if (userGateway.existsByEmail(request.email())) {
-            throw new BusinessException("EMAIL_ALREADY_REGISTERED", HttpStatus.CONFLICT);
+            sendAccountNotice(user.getEmail(), "EMAIL_CHANGE_REQUESTED_NOTICE");
+            return;
         }
 
         emailVerificationCodeGateway.invalidatePendingByUserId(userId);
@@ -166,7 +172,7 @@ public class UserService {
 
         sendVerificationCodeEmail(request.email(), code);
         // S02: o dono avisado no e-mail ANTIGO (sem o código) pode reagir a um pedido que não fez.
-        sendEmailChangeNotice(user.getEmail(), "EMAIL_CHANGE_REQUESTED_NOTICE");
+        sendAccountNotice(user.getEmail(), "EMAIL_CHANGE_REQUESTED_NOTICE");
     }
 
     /**
@@ -197,7 +203,7 @@ public class UserService {
         User saved = saveRevalidatingEmail(user);
 
         refreshTokenGateway.revokeAllByUserId(userId);
-        sendEmailChangeNotice(oldEmail, "EMAIL_CHANGED_NOTICE");
+        sendAccountNotice(oldEmail, "EMAIL_CHANGED_NOTICE");
         return userMapper.toResponse(saved);
     }
 
@@ -211,10 +217,11 @@ public class UserService {
     }
 
     /**
-     * Aviso ao e-mail antigo (pt/en pelo Accept-Language). Nunca leva o código. Falha de envio não
-     * desfaz a troca: só é logada, sem o endereço.
+     * Aviso ao dono de um e-mail (pt/en pelo Accept-Language): o antigo, na troca de e-mail, ou o de uma conta
+     * existente, na tentativa de cadastro. Nunca leva código nem link. Falha de envio não desfaz nada: só é
+     * logada, sem o endereço.
      */
-    private void sendEmailChangeNotice(String to, String messageKey) {
+    private void sendAccountNotice(String to, String messageKey) {
         var locale = LocaleContextHolder.getLocale();
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(VERIFICATION_EMAIL_FROM);
@@ -224,7 +231,7 @@ public class UserService {
         try {
             mailSender.send(message);
         } catch (MailException e) {
-            log.error("Falha ao enviar aviso de troca de e-mail ({})", e.getClass().getSimpleName());
+            log.error("Falha ao enviar aviso de conta ({})", e.getClass().getSimpleName());
         }
     }
 

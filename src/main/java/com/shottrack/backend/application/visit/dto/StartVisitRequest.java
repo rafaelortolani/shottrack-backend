@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.visit.dto;
 
+import jakarta.validation.constraints.Size;
 import com.shottrack.backend.application.visit.model.CompetitionScope;
 import com.shottrack.backend.application.visit.model.VisitType;
 import jakarta.validation.constraints.NotNull;
@@ -15,6 +16,7 @@ public record StartVisitRequest(
         @NotNull(message = "local de treino é obrigatório")
         UUID trainingLocationId,
 
+        @Size(max = 2000, message = "observações deve ter no máximo 2000 caracteres")
         String observations,
 
         VisitType visitType,

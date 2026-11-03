@@ -9,7 +9,10 @@ Autenticação stateless via JWT.
 - Access token: expira em 1 hora, carrega o `id` do usuário (claim `sub`).
 - Refresh token: expira em 7 dias, usado só pra gerar novo access token —
   nunca autentica um endpoint de negócio diretamente.
-- Refresh token é persistido no banco (tabela própria), permitindo revogação.
+- Refresh token é persistido no banco (tabela própria), permitindo revogação — **só como hash SHA-256**
+  (Lote 6, S06; a V55 apagou os tokens em texto puro e todos relogaram). A rotação é atômica (S20): a revogação
+  é um UPDATE condicional (`WHERE revoked = false`) e só quem altera a linha segue; a chamada concorrente que
+  perde é tratada como reuso e derruba as sessões.
 - **Rotação a cada uso**: toda vez que um refresh token é trocado por um novo
   access token, o refresh token antigo é invalidado e um novo é emitido junto.
   Um refresh token já usado que aparece de novo é tratado como sinal de roubo —

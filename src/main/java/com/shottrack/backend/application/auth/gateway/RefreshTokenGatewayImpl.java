@@ -22,8 +22,13 @@ class RefreshTokenGatewayImpl implements RefreshTokenGateway {
     }
 
     @Override
-    public Optional<RefreshToken> findByToken(String token) {
-        return refreshTokenRepository.findByToken(token);
+    public Optional<RefreshToken> findByTokenHash(String tokenHash) {
+        return refreshTokenRepository.findByTokenHash(tokenHash);
+    }
+
+    @Override
+    public boolean revokeIfActive(UUID id) {
+        return refreshTokenRepository.revokeIfActive(id) == 1;
     }
 
     @Override

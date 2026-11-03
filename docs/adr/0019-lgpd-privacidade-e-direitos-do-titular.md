@@ -52,6 +52,27 @@ treinos, séries e resultados.
 - **Minimização:** não coletar CPF, endereço, telefone ou nº de série/registro
   de arma.
 
+- **Mesma máscara em todos os destinos de log (Lote 4, S09):** o console aplica a
+  mesma máscara de e-mail e JWT do arquivo JSON (`logback-spring.xml`), inclusive no
+  stack trace — mensagens de exceção de terceiros (ex: `Key (email)=(...)` do Postgres)
+  não saem em claro.
+- **DLQ sem dado pessoal (Lote 4, S17):** o recoverer da fila de recálculo
+  (ADR-0015) só leva a classe da exceção e o stack trace pra DLQ — nunca a
+  mensagem da exceção nem das causas. As mensagens da DLQ expiram sozinhas
+  (`app.rabbit.dlq-ttl-days`, padrão 7), então as de um usuário excluído somem
+  no máximo nesse prazo; pra descartar antes, ver o ADR-0015.
+
+### 5. Pendências de infraestrutura antes de produção (Lote 5 da auditoria)
+Nada abaixo é código do backend; precisa estar resolvido (ou aceito conscientemente) antes de dados reais:
+- **Backup, retenção e expurgo:** definir política de backup do Postgres (frequência, onde, por quanto tempo) e
+  como a exclusão de conta (UC52) chega aos backups — o dado apagado continua nos backups até eles expirarem;
+  documentar esse prazo na Política de Privacidade ou criptografar/rotacionar de modo que a retenção seja curta.
+- **Criptografia em repouso:** disco/volume do Postgres, dos backups e do RabbitMQ (a DLQ guarda o id do atleta).
+- **TLS e HSTS:** terminar TLS no proxy (backend e frontend), `Strict-Transport-Security`, e SMTP com STARTTLS
+  (o perfil `prod` já exige); Postgres e RabbitMQ só em rede privada.
+- **Rotação do `JWT_SECRET`:** hoje trocar a chave invalida todos os access tokens e não há suporte a duas chaves
+  ao mesmo tempo; definir a rotina (janela de manutenção ou suporte a chave anterior) e quem guarda o segredo.
+
 ## Alternativas consideradas
 - Carência de 7 dias para desfazer a exclusão → rejeitado por ora: mais
   complexidade (estado "em exclusão", job, e-mail de reversão) sem demanda real.

@@ -34,6 +34,9 @@ apenas modelo/calibre; apelido só existe a partir da edição (UC10).
 - [x] Teste garantindo que o tipo/marca salvos batem com os do modelo
   escolhido, mesmo sem o cliente enviar esses campos
 
+## Limites de entrada (Lote 3, S10/S18)
+- O cadastro de arma só recebe modelo e calibre (ids); o apelido é editado no UC10 (até 100 caracteres).
+
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0003 (não armazenar número de registro da arma)

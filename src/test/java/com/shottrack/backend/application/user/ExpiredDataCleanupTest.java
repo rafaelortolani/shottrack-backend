@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.user;
 
+import com.shottrack.backend.common.security.TokenHasher;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.auth.gateway.repository.PasswordResetTokenRepository;
 import com.shottrack.backend.application.auth.gateway.repository.RefreshTokenRepository;
@@ -119,7 +120,7 @@ class ExpiredDataCleanupTest {
         assertThat(refreshTokenRepository.findById(recentRefresh.getId())).isPresent();
         assertThat(refreshTokenRepository.findById(validRefresh.getId())).isPresent();
         // o refresh token da sessão ativa do login continua valendo
-        assertThat(refreshTokenRepository.findByToken(athlete.refreshToken())).isPresent();
+        assertThat(refreshTokenRepository.findByTokenHash(TokenHasher.sha256Hex(athlete.refreshToken()))).isPresent();
 
         assertThat(emailVerificationCodeRepository.findById(oldCode.getId())).isEmpty();
         assertThat(emailVerificationCodeRepository.findById(recentCode.getId())).isPresent();
@@ -165,7 +166,7 @@ class ExpiredDataCleanupTest {
     }
 
     private static RefreshToken refresh(UUID userId, String token, Duration expiredAgo) {
-        return RefreshToken.builder().token(token + UUID.randomUUID()).userId(userId)
+        return RefreshToken.builder().tokenHash(TokenHasher.sha256Hex(token + UUID.randomUUID())).userId(userId)
                 .expiresAt(Instant.now().minus(expiredAgo)).build();
     }
 

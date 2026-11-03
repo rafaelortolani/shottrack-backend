@@ -31,6 +31,9 @@ modelo (ADR-0004, Revisão 2).
   arma passa a refletir o tipo/marca do novo modelo)
 - [x] Um teste para CADA fluxo alternativo listado acima
 
+## Limites de entrada (Lote 3, S10/S18)
+- Apelido: até 100 caracteres (coluna `VARCHAR(100)`). Acima → `VALIDATION_ERROR` (400).
+
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0003 (não armazenar número de registro da arma)

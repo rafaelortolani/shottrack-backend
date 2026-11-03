@@ -1,6 +1,7 @@
 package com.shottrack.backend.common.exception;
 
 import com.shottrack.backend.common.web.ApiResponse;
+import com.shottrack.backend.common.web.RequestBodyTooLargeException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -9,10 +10,14 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -55,9 +60,60 @@ public class ApiExceptionHandler {
      * no Sentry).
      */
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
-    public ResponseEntity<ApiResponse<Object>> handleUnreadableInput() {
+    public ResponseEntity<ApiResponse<Object>> handleUnreadableInput(Exception ex) {
+        // S10: corpo sem Content-Length que passou do teto — o stream do filtro interrompeu a leitura
+        for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+            if (cause instanceof RequestBodyTooLargeException) {
+                String message = messageSource.getMessage("PAYLOAD_TOO_LARGE", null, LocaleContextHolder.getLocale());
+                return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                        .body(ApiResponse.error("PAYLOAD_TOO_LARGE", message));
+            }
+        }
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error("VALIDATION_ERROR", "Dados inválidos"));
+    }
+
+    /**
+     * S08: erro de quem chama (parâmetro obrigatório ausente), não nosso — 400 sem log ERROR
+     * (que viraria evento no Sentry). O nome do parâmetro é fixo no código, não ecoa dado do usuário.
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiResponse<Object>> handleMissingParameter(MissingServletRequestParameterException ex) {
+        log.debug("Parâmetro obrigatório ausente: {}", ex.getParameterName());
+        return clientError(HttpStatus.BAD_REQUEST, "MISSING_PARAMETER");
+    }
+
+    /** S08: método HTTP errado numa rota que existe — 405 com o cabeçalho Allow. */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        log.debug("Método não suportado: {}", ex.getMethod());
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED);
+        if (ex.getSupportedHttpMethods() != null) {
+            response.allow(ex.getSupportedHttpMethods().toArray(new org.springframework.http.HttpMethod[0]));
+        }
+        return response.body(error("METHOD_NOT_ALLOWED"));
+    }
+
+    /** S08: Content-Type que a rota não aceita (ex: text/plain) — 415. */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex) {
+        log.debug("Content-Type não suportado: {}", ex.getContentType());
+        return clientError(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_MEDIA_TYPE");
+    }
+
+    /** S08: rota inexistente — 404, não 500. */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Object>> handleNoResource(NoResourceFoundException ex) {
+        log.debug("Rota inexistente: {}", ex.getResourcePath());
+        return clientError(HttpStatus.NOT_FOUND, "ENDPOINT_NOT_FOUND");
+    }
+
+    private ResponseEntity<ApiResponse<Object>> clientError(HttpStatus status, String code) {
+        return ResponseEntity.status(status).body(error(code));
+    }
+
+    private ApiResponse<Object> error(String code) {
+        return ApiResponse.error(code, messageSource.getMessage(code, null, LocaleContextHolder.getLocale()));
     }
 
     /**

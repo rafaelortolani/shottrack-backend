@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.accessory.dto;
 
+import jakarta.validation.constraints.Size;
 import java.util.UUID;
 
 /**
@@ -10,8 +11,10 @@ import java.util.UUID;
  * no usecase.
  */
 public record AccessoryUpdateRequest(
+        @Size(max = 100, message = "nome deve ter no máximo 100 caracteres")
         String name,
         UUID typeId,
+        @Size(max = 2000, message = "observações deve ter no máximo 2000 caracteres")
         String notes
 ) {
 }

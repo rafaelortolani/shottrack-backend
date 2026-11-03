@@ -53,6 +53,13 @@ Observabilidade planejada em duas ondas.
 - Onda 2 fica registrada como pendência explícita — revisitar quando o
   volume de uso (ou um incidente real na fila) justificar.
 
+**Erro do cliente não é erro nosso (Lote 4, S08):** o `ApiExceptionHandler`
+responde 404 (rota inexistente), 405 (método errado, com `Allow`), 415
+(Content-Type inválido) e 400 (JSON ilegível, parâmetro ausente) no envelope
+`{"error":{"code","message"}}`, em pt/en, sem log ERROR — só DEBUG. Como o log
+ERROR é o que vira evento no Sentry, qualquer bot varrendo rotas deixaria de
+poluir o painel. Só exceção realmente inesperada continua em 500 + ERROR.
+
 ## Referências
 - ADR-0015 (dashboard pré-calculado via fila — motivo principal do alerta
   de profundidade de fila na Onda 2)

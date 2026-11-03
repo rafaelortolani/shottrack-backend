@@ -23,6 +23,9 @@ atleta autenticado. Se tipoId enviado, existe no catálogo (UC28).
 - [x] Teste cobrindo o fluxo principal
 - [x] Um teste para CADA fluxo alternativo listado acima
 
+## Limites de entrada (Lote 3, S10/S18)
+- Nome: até 100 caracteres; observações: até 2000. Acima → `VALIDATION_ERROR` (400).
+
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0008 (acessório — tipo como catálogo fechado, revisão)

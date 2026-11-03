@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.auth;
 
+import com.shottrack.backend.common.security.TokenHasher;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.auth.dto.LoginRequest;
 import com.shottrack.backend.application.auth.dto.RefreshRequest;
@@ -94,10 +95,10 @@ class RefreshTokenTest {
         String secondToken = refresh(firstToken);
 
         assertThat(secondToken).isNotEqualTo(firstToken);
-        assertThat(refreshTokenRepository.findByToken(firstToken))
+        assertThat(refreshTokenRepository.findByTokenHash(TokenHasher.sha256Hex(firstToken)))
                 .as("token antigo precisa ficar marcado como usado/revogado após a rotação")
                 .hasValueSatisfying(saved -> assertThat(saved.isRevoked()).isTrue());
-        assertThat(refreshTokenRepository.findByToken(secondToken))
+        assertThat(refreshTokenRepository.findByTokenHash(TokenHasher.sha256Hex(secondToken)))
                 .hasValueSatisfying(saved -> assertThat(saved.isRevoked()).isFalse());
     }
 
@@ -113,7 +114,7 @@ class RefreshTokenTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("INVALID_REFRESH_TOKEN"));
 
-        assertThat(refreshTokenRepository.findByToken(secondToken))
+        assertThat(refreshTokenRepository.findByTokenHash(TokenHasher.sha256Hex(secondToken)))
                 .as("todos os tokens do usuário devem ser revogados quando um reuso é detectado")
                 .hasValueSatisfying(saved -> assertThat(saved.isRevoked()).isTrue());
 
@@ -137,7 +138,7 @@ class RefreshTokenTest {
     @Test
     void shouldRejectExpiredRefreshToken() throws Exception {
         RefreshToken expired = RefreshToken.builder()
-                .token("token-expirado-123")
+                .tokenHash(TokenHasher.sha256Hex("token-expirado-123"))
                 .userId(userId)
                 .expiresAt(Instant.now().minusSeconds(60))
                 .build();

@@ -10,7 +10,10 @@ public interface RefreshTokenGateway {
 
     RefreshToken save(RefreshToken refreshToken);
 
-    Optional<RefreshToken> findByToken(String token);
+    Optional<RefreshToken> findByTokenHash(String tokenHash);
+
+    /** S20: revogação atômica — true só pra quem de fato revogou o token. */
+    boolean revokeIfActive(UUID id);
 
     void revokeAllByUserId(UUID userId);
 

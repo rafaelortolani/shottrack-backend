@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.auth;
 
+import com.shottrack.backend.common.security.TokenHasher;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shottrack.backend.application.auth.gateway.repository.RefreshTokenRepository;
@@ -63,7 +64,10 @@ class LoginTest {
 
         assertThat(refreshTokenRepository.findAll())
                 .as("refresh token retornado precisa estar persistido, pra permitir revogação futura (ADR-0001)")
-                .anyMatch(saved -> saved.getToken().equals(refreshToken));
+                .anyMatch(saved -> saved.getTokenHash().equals(TokenHasher.sha256Hex(refreshToken)));
+        assertThat(refreshTokenRepository.findAll())
+                .as("S06: o valor entregue ao cliente nunca é gravado, só o hash")
+                .noneMatch(saved -> saved.getTokenHash().equals(refreshToken));
     }
 
     @Test

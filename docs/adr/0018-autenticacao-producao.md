@@ -56,6 +56,40 @@ cadastro e pedidos de e-mail.
   (Redis ou o banco) — não implementado agora.
 - Testes usam limites configuráveis baixos.
 
+### 4. Limites de entrada (abuso — Lote 3 da auditoria)
+- O corpo de qualquer requisição tem teto de 64 KB (`app.request.max-body-bytes`): acima disso, `413 PAYLOAD_TOO_LARGE`
+  (recusado antes do Spring Security quando há `Content-Length`; sem ele, o stream interrompe a leitura ao passar do teto).
+- Todo texto de entrada tem `@Size(max=…)` coerente com a coluna (nome 100, e-mail 254, apelido 100, observações 2000 etc.;
+  a lista fica nos UCs). Senhas novas: 8 a 72 caracteres (limite do BCrypt).
+- Número vindo como texto (valor de resultado) só entra como número simples (`SafeDecimal`: sem notação científica, ≤ 32
+  caracteres, ≤ 18 dígitos, ≤ 6 casas); o que estiver fora disso é ignorado pelos cálculos.
+
+### 5. Perfil de produção e rotas públicas (Lote 5 da auditoria)
+- `application-prod.yml` (`SPRING_PROFILES_ACTIVE=prod`): Swagger/OpenAPI desligados (as rotas dão 404),
+  actuator só com `health` (sem detalhes) e **nenhuma credencial com valor padrão** — `DB_URL`, `DB_USERNAME`,
+  `DB_PASSWORD`, `RABBITMQ_HOST`, `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`, `SMTP_HOST`, `SMTP_PORT`,
+  `SMTP_USERNAME`, `SMTP_PASSWORD`, `FRONTEND_URL` e `JWT_SECRET` são obrigatórios: faltando uma, a aplicação
+  não sobe. Opcionais: `RABBITMQ_PORT` (5672), `RABBITMQ_VHOST` (`/`), `SENTRY_DSN`. SMTP exige STARTTLS.
+  O console de log usa a mesma máscara de e-mail/JWT do arquivo em todos os perfis (ADR-0019).
+- `SecurityConfig` lista as rotas públicas de `/api/auth` uma a uma (login, refresh, logout,
+  password-reset/request, password-reset/confirm) em vez de `/api/auth/**`: rota nova nasce protegida, e uma rota
+  inexistente sob `/api/auth` sem token responde 401 (com token, 404).
+- `docker-compose.yml` é só de desenvolvimento: portas em `127.0.0.1`, imagens com versão fixa
+  (`postgres:16.15`, `rabbitmq:3.9.10-management`, `axllent/mailpit:v1.31.0`) e credenciais `shottrack` padrão.
+
+### 6. Identidade e sessão (Lote 6 da auditoria)
+- **E-mail único sem diferenciar caixa (S15):** o e-mail entra sem espaços nas pontas e em minúsculas (cadastro,
+  login, troca de e-mail, redefinição — `EmailNormalizer`) e há índice único em `lower(email)` (V54). A V54 **aborta**
+  se houver e-mails duplicados por caixa e passa os existentes para minúsculas; checagem prévia em
+  `docs/seguranca/checar-emails-duplicados.sql`.
+- **Conta não descobrível (S05):** o cadastro responde `202` igual exista a conta ou não (se existir, o dono recebe
+  "alguém tentou cadastrar seu e-mail", sem link); a troca de e-mail para um endereço de outra conta também responde
+  igual e não gera código; o login com e-mail inexistente faz uma comparação BCrypt com hash falso. O
+  `EMAIL_ALREADY_REGISTERED` só sobrevive onde quem chama já provou ser dono do endereço (concluir o cadastro e
+  confirmar o código da troca). Os limites por e-mail (seção 3) seguem valendo.
+- **Refresh token como hash (S06) e rotação atômica (S20):** ver ADR-0001. A V55 apagou os tokens em texto puro: **todas
+  as sessões caíram** no deploy.
+
 ## Alternativas consideradas
 - Redis para o rate limit já agora → adiado: com uma VM só, memória basta;
   migra quando houver mais de uma instância.

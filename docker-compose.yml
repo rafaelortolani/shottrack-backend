@@ -1,26 +1,28 @@
+# SÓ DESENVOLVIMENTO (S21): portas publicadas apenas em 127.0.0.1 e credenciais padrão `shottrack`.
+# Produção não usa este arquivo — ver ADR-0018 (perfil prod, variáveis obrigatórias).
 services:
   mailpit:
-    image: axllent/mailpit
+    image: axllent/mailpit:v1.31.0
     ports:
-      - "1025:1025"   # SMTP - a aplicação envia pra cá
-      - "8025:8025"   # interface web - veja os emails "enviados" aqui
+      - "127.0.0.1:1025:1025"   # SMTP - a aplicação envia pra cá
+      - "127.0.0.1:8025:8025"   # interface web - veja os emails "enviados" aqui
 
   postgres:
-    image: postgres:16
+    image: postgres:16.15
     environment:
       POSTGRES_DB: shottrack
       POSTGRES_USER: shottrack
       POSTGRES_PASSWORD: shottrack
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - shottrack_pgdata:/var/lib/postgresql/data
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3.9.10-management
     ports:
-      - "5672:5672"    # protocolo AMQP, usado pela aplicação
-      - "15672:15672"  # painel de administração web
+      - "127.0.0.1:5672:5672"    # protocolo AMQP, usado pela aplicação
+      - "127.0.0.1:15672:15672"  # painel de administração web
     environment:
       RABBITMQ_DEFAULT_USER: shottrack
       RABBITMQ_DEFAULT_PASS: shottrack

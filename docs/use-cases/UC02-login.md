@@ -25,6 +25,11 @@ Usuário já possui cadastro (email + senha) no sistema.
 4. Sistema retorna os dois tokens novos
 
 ## Fluxos alternativos (refresh)
+- Os refresh tokens são guardados só como hash SHA-256 (S06): o valor entregue ao cliente nunca é gravado e a
+  busca é pelo hash. A rotação é atômica (S20): a revogação é um `UPDATE ... WHERE revoked = false`; de duas
+  chamadas simultâneas com o mesmo token só uma vence e a outra é tratada como reuso (2b).
+- Login com e-mail inexistente executa uma comparação BCrypt com hash falso (S05), igualando o tempo da resposta
+  ao de "senha errada"; o e-mail é normalizado (minúsculas, S15).
 - 2a. Refresh token não encontrado ou expirado → erro genérico
   "refresh token inválido"
 - 2b. Refresh token já foi usado antes (reuso) → tratado como sinal de roubo:
@@ -36,6 +41,10 @@ Usuário já possui cadastro (email + senha) no sistema.
   com `Retry-After`. Renovação de sessão (`POST /api/auth/refresh`): 30 / 15 min por IP.
 - Variações do caminho (`/api/auth/log%69n`, barra final) contam no mesmo limite e respondem
   `400 INVALID_REQUEST_PATH`.
+
+## Limites de entrada (Lote 3, S10/S18)
+- E-mail: até 254 caracteres; `refreshToken`: até 255. Acima → `VALIDATION_ERROR` (400).
+- Corpo da requisição de qualquer rota: até 64 KB → `413 PAYLOAD_TOO_LARGE` (`app.request.max-body-bytes`).
 
 ## Referências
 - ADR-0001 (autenticação JWT)
