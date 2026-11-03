@@ -8,7 +8,7 @@ services:
       - "127.0.0.1:8025:8025"   # interface web - veja os emails "enviados" aqui
 
   postgres:
-    image: postgres:16.15
+    image: postgres:18.4
     environment:
       POSTGRES_DB: shottrack
       POSTGRES_USER: shottrack
