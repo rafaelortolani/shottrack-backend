@@ -34,6 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "RABBITMQ_VHOST=shottrack_unit_test",
         "SMTP_HOST=localhost", "SMTP_PORT=1025", "SMTP_USERNAME=smtp", "SMTP_PASSWORD=smtp",
         "FRONTEND_URL=https://app.exemplo.com",
+        // ADR-0026: em prod o diretório das fotos precisa existir (criado no inicializador estático abaixo)
+        "APP_STORAGE_LOCAL_DIR=${java.io.tmpdir}/shottrack-uploads-prod-test",
         // o Mailpit local não fala STARTTLS; só o handshake do health do mail dependeria disso
         "spring.mail.properties.mail.smtp.starttls.enable=false",
         "spring.mail.properties.mail.smtp.starttls.required=false"
@@ -41,7 +43,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ProdProfileTest {
 
     private static final String[] REQUIRED = {"DB_URL", "DB_USERNAME", "DB_PASSWORD", "RABBITMQ_HOST", "RABBITMQ_USERNAME",
-            "RABBITMQ_PASSWORD", "SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "FRONTEND_URL"};
+            "RABBITMQ_PASSWORD", "SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "FRONTEND_URL", "APP_STORAGE_LOCAL_DIR"};
+
+    static {
+        try {
+            java.nio.file.Files.createDirectories(java.nio.file.Path.of(System.getProperty("java.io.tmpdir"), "shottrack-uploads-prod-test"));
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
 
     @Autowired
     private MockMvc mockMvc;
@@ -64,7 +74,7 @@ class ProdProfileTest {
     /** Sem a variável não há valor padrão: o placeholder não resolve e a aplicação falha ao subir. */
     @ParameterizedTest
     @ValueSource(strings = {"DB_URL", "DB_USERNAME", "DB_PASSWORD", "RABBITMQ_HOST", "RABBITMQ_USERNAME", "RABBITMQ_PASSWORD",
-            "SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "FRONTEND_URL"})
+            "SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "FRONTEND_URL", "APP_STORAGE_LOCAL_DIR"})
     void shouldFailWithoutTheRequiredVariable(String missing) throws IOException {
         var environment = prodEnvironmentWithout(missing);
 
@@ -80,6 +90,7 @@ class ProdProfileTest {
             environment.getProperty("spring.mail.username");
             environment.getProperty("spring.mail.password");
             environment.getProperty("app.frontend-url");
+            environment.getProperty("app.storage.local-dir");
         }).isInstanceOf(IllegalArgumentException.class).hasMessageContaining(missing);
     }
 
@@ -88,6 +99,8 @@ class ProdProfileTest {
         var environment = prodEnvironmentWithout(null);
 
         assertThat(environment.getProperty("spring.datasource.url")).isEqualTo("jdbc:postgresql://x/db");
+        assertThat(environment.getProperty("app.storage.local-dir")).isEqualTo("v");
+        assertThat(environment.getProperty("app.storage.require-existing-dir")).isEqualTo("true");
         assertThat(environment.getProperty("springdoc.api-docs.enabled")).isEqualTo("false");
         assertThat(environment.getProperty("springdoc.swagger-ui.enabled")).isEqualTo("false");
         assertThat(environment.getProperty("management.endpoints.web.exposure.include")).isEqualTo("health");

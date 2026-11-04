@@ -100,6 +100,13 @@ java -jar target/backend-0.1.0.jar
 Com `APP_TEST_INSTANCE=true` o app **recusa subir** (`TestInstanceGuard`) se o banco for `shottrack` ou `shottrack_test`
 ou se o vhost do RabbitMQ for o padrão `/`. Sem a variável a trava não age.
 
+## Fotos do alvo (ADR-0026)
+
+As fotos enviadas ficam em disco, atrás de `StoragePort`. Em desenvolvimento o diretório é `./data/uploads` (ignorado pelo
+git); nos testes, um diretório temporário. **Em produção** defina `APP_STORAGE_LOCAL_DIR` (volume dedicado): o diretório
+precisa existir e ser gravável pelo usuário do contêiner — senão a aplicação não sobe. Limites ajustáveis em `app.photos.*`
+(5 por série, 500 por atleta, 10 MB, 40 megapixels). A rotina semanal de arquivos órfãos roda com `app.cleanup.enabled=true`.
+
 ## Verificação de vulnerabilidades (CVEs)
 
 - **Dependabot** (`.github/dependabot.yml`): abre PRs semanais com atualizações do Maven e das imagens do `docker-compose`

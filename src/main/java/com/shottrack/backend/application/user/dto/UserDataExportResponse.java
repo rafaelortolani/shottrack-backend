@@ -83,8 +83,13 @@ public record UserDataExportResponse(
             String target,
             Integer shotCount,
             String notes,
-            List<ResultExport> results
+            List<ResultExport> results,
+            List<PhotoExport> photos
     ) {
+    }
+
+    /** ADR-0026: só metadados da foto do alvo — sem id, sem chave de armazenamento e sem a imagem. */
+    public record PhotoExport(Instant createdAt, int widthPx, int heightPx, long sizeBytes) {
     }
 
     public record ResultExport(String resultType, String value, boolean notApplicable) {

@@ -25,7 +25,8 @@ public record RateLimitProperties(
         @DefaultValue PasswordChange passwordChange,
         @DefaultValue EmailChange emailChange,
         @DefaultValue EmailChangeConfirmation emailChangeConfirmation,
-        @DefaultValue RegistrationCompletion registrationCompletion
+        @DefaultValue RegistrationCompletion registrationCompletion,
+        @DefaultValue PhotoUpload photoUpload
 ) {
 
     /**
@@ -90,6 +91,13 @@ public record RateLimitProperties(
     }
 
     /** ADR-0019 (UC53): exportações de dados por usuário (ou IP, sem usuário) na janela. */
+    /** ADR-0026: uploads de foto do alvo por atleta (ou IP, sem usuário) na janela. */
+    public record PhotoUpload(
+            @DefaultValue("30") int attempts,
+            @DefaultValue("1h") Duration window
+    ) {
+    }
+
     public record DataExport(
             @DefaultValue("3") int attempts,
             @DefaultValue("1h") Duration window

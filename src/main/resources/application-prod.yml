@@ -2,6 +2,7 @@
 # Nenhuma credencial tem valor padrão: faltou variável → a aplicação NÃO sobe (placeholder sem resolver).
 # Variáveis obrigatórias: DB_URL, DB_USERNAME, DB_PASSWORD, RABBITMQ_HOST, RABBITMQ_USERNAME, RABBITMQ_PASSWORD,
 # SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, JWT_SECRET (application.yml), FRONTEND_URL.
+# ADR-0026: APP_STORAGE_LOCAL_DIR (diretório das fotos; precisa existir e ser gravável pelo usuário do contêiner).
 # Opcionais: RABBITMQ_PORT (5672), RABBITMQ_VHOST (/), SENTRY_DSN (vazio = Sentry desligado).
 spring:
   datasource:
@@ -43,3 +44,7 @@ management:
 
 app:
   frontend-url: ${FRONTEND_URL}
+  storage:
+    # ADR-0026: sem default — faltou a variável ou o diretório não existe/não é gravável → a aplicação NÃO sobe.
+    local-dir: ${APP_STORAGE_LOCAL_DIR}
+    require-existing-dir: true

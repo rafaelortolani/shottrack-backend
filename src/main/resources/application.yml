@@ -9,6 +9,11 @@ spring:
   messages:
     basename: messages
     fallback-to-system-locale: false
+  servlet:
+    multipart:
+      # ADR-0026: foto do alvo (UC60). max-request-size com folga para o envelope multipart.
+      max-file-size: 10MB
+      max-request-size: 11MB
   web:
     locale: pt
     locale-resolver: accept-header
@@ -67,6 +72,19 @@ app:
   request:
     # S10: teto do corpo das requisições (bytes). Acima disso: 413 PAYLOAD_TOO_LARGE.
     max-body-bytes: 65536
+    # ADR-0026: só o upload de foto (POST /api/series/{id}/photos) tem teto maior (arquivo de 10 MB + envelope).
+    max-upload-body-bytes: 11534336
+  storage:
+    # ADR-0026: diretório das fotos (dev; ignorado pelo git). Em produção: APP_STORAGE_LOCAL_DIR, volume dedicado.
+    local-dir: ./data/uploads
+  photos:
+    max-per-series: 5
+    max-per-athlete: 500
+    max-bytes: 10485760        # 10 MB
+    max-megapixels: 40         # lido do cabeçalho, antes de decodificar
+    max-concurrent-processing: 2
+    orphan-min-age: 60m        # arquivo mais novo que isso nunca é tratado como órfão
+    orphan-cleanup-cron: "0 30 3 * * SUN"   # semanal, domingo 03:30 UTC (com app.cleanup.enabled=true)
   rabbit:
     # S17: TTL (dias) das mensagens da dead-letter queue do recálculo do dashboard (ADR-0015).
     dlq-ttl-days: 7
@@ -136,4 +154,7 @@ app:
       window: 15m
     registration-completion:    # por IP
       attempts: 10
+      window: 1h
+    photo-upload:               # por atleta (ADR-0026)
+      attempts: 30
       window: 1h

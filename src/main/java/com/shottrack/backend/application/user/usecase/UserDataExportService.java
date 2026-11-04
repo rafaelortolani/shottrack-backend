@@ -23,6 +23,9 @@ import com.shottrack.backend.application.series.gateway.SeriesGateway;
 import com.shottrack.backend.application.series.gateway.SeriesResultGateway;
 import com.shottrack.backend.application.series.model.Series;
 import com.shottrack.backend.application.series.model.SeriesResult;
+import com.shottrack.backend.application.seriesphoto.gateway.SeriesPhotoGateway;
+import com.shottrack.backend.application.seriesphoto.model.SeriesPhoto;
+import com.shottrack.backend.application.user.dto.UserDataExportResponse.PhotoExport;
 import com.shottrack.backend.application.traininglocation.gateway.TrainingLocationGateway;
 import com.shottrack.backend.application.traininglocation.model.TrainingLocation;
 import com.shottrack.backend.application.user.dto.UserDataExportResponse;
@@ -98,6 +101,7 @@ public class UserDataExportService {
     private final TrainingGateway trainingGateway;
     private final SeriesGateway seriesGateway;
     private final SeriesResultGateway seriesResultGateway;
+    private final SeriesPhotoGateway seriesPhotoGateway;
     private final AthleteHabitualityGateway athleteHabitualityGateway;
     private final HabitualityRuleGateway habitualityRuleGateway;
     private final UserDataExportMapper mapper;
@@ -185,6 +189,10 @@ public class UserDataExportService {
         List<Series> series = seriesGateway.findAllByTrainingIdIn(ids(trainings, Training::getId));
         List<SeriesResult> results = seriesResultGateway.findAllBySeriesIdIn(ids(series, Series::getId));
 
+        Map<UUID, List<PhotoExport>> photosBySeriesId = seriesPhotoGateway.findAllBySeriesIdIn(ids(series, Series::getId)).stream()
+                .sorted(Comparator.comparingInt(SeriesPhoto::getPosition))
+                .collect(Collectors.groupingBy(SeriesPhoto::getSeriesId,
+                        Collectors.mapping(mapper::toPhoto, Collectors.toList())));
         Map<UUID, List<ResultExport>> resultsBySeriesId = results.stream()
                 .collect(Collectors.groupingBy(SeriesResult::getSeriesId,
                         Collectors.mapping(result -> mapper.toResult(result, catalogs.resultTypes().get(result.getResultTypeId())),
@@ -195,7 +203,8 @@ public class UserDataExportService {
                         Collectors.mapping(s -> mapper.toSeries(s,
                                         s.getWeaponId() == null ? null : weaponExportById.get(s.getWeaponId()),
                                         s.getAmmunitionId() == null ? null : ammunitionExportById.get(s.getAmmunitionId()),
-                                        resultsBySeriesId.getOrDefault(s.getId(), List.of())),
+                                        resultsBySeriesId.getOrDefault(s.getId(), List.of()),
+                                        photosBySeriesId.getOrDefault(s.getId(), List.of())),
                                 Collectors.toList())));
         Map<UUID, List<TrainingExport>> trainingsByVisitId = trainings.stream()
                 .sorted(Comparator.comparing(Training::getCreatedAt))

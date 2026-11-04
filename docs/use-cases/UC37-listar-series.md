@@ -10,7 +10,9 @@ Usuário logado (UC02) com access token válido. Treino pertence ao atleta.
 1. Atleta solicita a lista de séries de um treino
 2. Sistema retorna todas as séries daquele treino, cada uma com seus
    resultados (os três estados — não preenchido é ausência de registro,
-   então só aparecem os preenchidos/não aplicáveis)
+   então só aparecem os preenchidos/não aplicáveis) e com `photoCount`
+   (quantidade de fotos do alvo da série, ADR-0026; as imagens não vêm na lista,
+   são consultadas pelo UC61)
 
 ## Fluxos alternativos
 - 1a. Token ausente ou inválido → erro `UNAUTHORIZED`
@@ -21,7 +23,10 @@ Usuário logado (UC02) com access token válido. Treino pertence ao atleta.
 - [x] Teste cobrindo listagem com séries e resultados
 - [x] Teste cobrindo lista vazia
 - [x] Um teste para CADA fluxo alternativo listado acima
+- [x] `photoCount` correto (série sem foto = 0; com fotos = quantidade), sem consulta extra por série (sem N+1) (`SeriesPhotoTest`; também vem nas respostas de registrar/editar série)
 
 ## Referências
 - ADR-0001 (autenticação JWT)
 - ADR-0013 (Série)
+- ADR-0026 (fotos do alvo)
+- UC61 (consultar fotos da série)

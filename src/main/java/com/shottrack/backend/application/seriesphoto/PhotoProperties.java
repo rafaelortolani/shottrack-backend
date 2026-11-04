@@ -1,0 +1,18 @@
+package com.shottrack.backend.application.seriesphoto;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
+
+import java.time.Duration;
+
+/** ADR-0026: limites das fotos do alvo (UC60) e da rotina de arquivos órfãos (UC52/ADR-0019). */
+@ConfigurationProperties("app.photos")
+public record PhotoProperties(
+        @DefaultValue("5") int maxPerSeries,
+        @DefaultValue("500") int maxPerAthlete,
+        @DefaultValue("10485760") long maxBytes,
+        @DefaultValue("40") long maxMegapixels,
+        @DefaultValue("2") int maxConcurrentProcessing,
+        @DefaultValue("60m") Duration orphanMinAge
+) {
+}

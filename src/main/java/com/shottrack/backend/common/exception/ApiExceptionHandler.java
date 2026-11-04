@@ -14,6 +14,9 @@ import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -92,6 +95,20 @@ public class ApiExceptionHandler {
             response.allow(ex.getSupportedHttpMethods().toArray(new org.springframework.http.HttpMethod[0]));
         }
         return response.body(error("METHOD_NOT_ALLOWED"));
+    }
+
+    /** ADR-0026: arquivo acima do limite do Spring (multipart.max-file-size / max-request-size) — 413. */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Object>> handleUploadTooLarge(MaxUploadSizeExceededException ex) {
+        log.debug("Upload acima do limite");
+        return clientError(HttpStatus.PAYLOAD_TOO_LARGE, "PHOTO_TOO_LARGE");
+    }
+
+    /** ADR-0026: campo `file` ausente ou corpo multipart malformado — erro de quem chama, 400 sem log ERROR. */
+    @ExceptionHandler({MissingServletRequestPartException.class, MultipartException.class})
+    public ResponseEntity<ApiResponse<Object>> handleBadMultipart(Exception ex) {
+        log.debug("Multipart inválido: {}", ex.getClass().getSimpleName());
+        return clientError(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR");
     }
 
     /** S08: Content-Type que a rota não aceita (ex: text/plain) — 415. */

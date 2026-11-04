@@ -13,3 +13,5 @@ inventario-*.txt
 relatorio-*.txt
 relatorio-*.sh
 docs/seguranca/
+# ADR-0026: fotos enviadas em desenvolvimento
+data/
