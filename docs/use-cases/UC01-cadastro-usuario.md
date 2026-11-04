@@ -25,7 +25,8 @@ Nenhuma.
 
 - 4a. Falha ao enviar o e-mail (SMTP fora do ar) → a resposta continua `202` igual à de qualquer outro caso (N1/S05: senão
   só o e-mail livre daria erro e revelaria quem tem conta); o pedido fica registrado, só o tipo da exceção vai para o log e o
-  visitante pede de novo (dentro do limite de taxa). Vale também para o aviso ao dono da conta.
+  visitante pede de novo (dentro do limite de taxa). Vale também para o aviso ao dono da conta. A falha é logada em
+  WARN (não ERROR, para não virar um evento no Sentry por requisição); `AccountEnumerationTest` cobre o nível e a ausência do e-mail.
 - Diferença de custo que sobra (aceita): o e-mail livre faz duas gravações a mais (invalidar o pendente anterior e gravar o novo)
   que o e-mail já cadastrado não faz. Igualar exigiria gravações falsas; com o envio SMTP síncrono (dezenas a centenas de ms)
   dominando o tempo e o limite de taxa por e-mail/IP, a diferença não foi tratada.

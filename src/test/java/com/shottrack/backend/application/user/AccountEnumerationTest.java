@@ -9,12 +9,15 @@ import com.shottrack.backend.application.user.model.User;
 import com.shottrack.backend.support.TestUsers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.mail.MailSendException;
@@ -50,6 +53,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@ExtendWith(OutputCaptureExtension.class)
 class AccountEnumerationTest {
 
     private static final String PASSWORD = "senha12345";
@@ -167,6 +171,18 @@ class AccountEnumerationTest {
         String forFree = body(changeEmail("email.livre.smtp@shottrack.com").andExpect(status().isAccepted()));
 
         assertThat(forTaken).isEqualTo(forFree).isEqualTo("{\"data\":null,\"error\":null}");
+    }
+
+    @Test
+    void shouldLogSmtpFailureAsWarningWithoutTheAddress(CapturedOutput output) throws Exception {
+        doThrow(new MailSendException("smtp fora do ar: destinatario.log@shottrack.com")).when(mailSender).send(any(SimpleMailMessage.class));
+
+        requestRegistration("email.novo.log@shottrack.com", null).andExpect(status().isAccepted());
+
+        // WARN, não ERROR: cada falha de SMTP seria um evento no Sentry, num volume que quem chama a rota controla
+        assertThat(output.getAll().lines().filter(line -> line.contains("Falha ao enviar e-mail de confirmação de cadastro (MailSendException)")))
+                .isNotEmpty().allMatch(line -> line.contains(" WARN ") && !line.contains(" ERROR "));
+        assertThat(output.getAll()).doesNotContain("email.novo.log@shottrack.com").doesNotContain("destinatario.log@shottrack.com");
     }
 
     // ---- S05 (b): login com tempo igualado ----

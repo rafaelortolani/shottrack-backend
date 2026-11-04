@@ -82,6 +82,24 @@ defina `TEST_DB_URL` e `TEST_RABBIT_VHOST` — a trava continua valendo. Para ze
 `docker compose exec postgres sh -c "PGUSER=shottrack psql -d postgres -c 'DROP DATABASE shottrack_unit_test'"` e rode o
 script do passo 2 de novo.
 
+### Subir uma instância (não a suíte) para testar à mão
+
+`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `RABBITMQ_*`, `SMTP_*` e `FRONTEND_URL` **só valem no perfil `prod`**
+(`application-prod.yml`). No perfil padrão a configuração aponta para o banco de desenvolvimento e essas variáveis são
+ignoradas em silêncio — uma instância "de teste" subida com elas grava no banco de dev. Para uma instância de teste use os
+nomes do Spring e marque-a com `APP_TEST_INSTANCE=true`:
+
+```bash
+APP_TEST_INSTANCE=true SERVER_PORT=8098 \
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/shottrack_unit_test \
+SPRING_RABBITMQ_VIRTUAL_HOST=shottrack_unit_test \
+SPRING_MAIL_PORT=1025 APP_FRONTEND_URL=http://localhost:3000 \
+java -jar target/backend-0.1.0.jar
+```
+
+Com `APP_TEST_INSTANCE=true` o app **recusa subir** (`TestInstanceGuard`) se o banco for `shottrack` ou `shottrack_test`
+ou se o vhost do RabbitMQ for o padrão `/`. Sem a variável a trava não age.
+
 ## Verificação de vulnerabilidades (CVEs)
 
 - **Dependabot** (`.github/dependabot.yml`): abre PRs semanais com atualizações do Maven e das imagens do `docker-compose`
