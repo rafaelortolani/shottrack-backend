@@ -26,6 +26,9 @@ Usuário logado (UC02) com access token válido. Série pertence ao atleta.
 - 1b. Série não encontrada ou de outro atleta → `SERIES_NOT_FOUND`
 - 1c. Foto não encontrada nessa série ou de outro atleta → `PHOTO_NOT_FOUND`
 - 1d. Registro existe mas o arquivo sumiu → `PHOTO_NOT_FOUND` e registro de erro no log (sem dado pessoal)
+- 1e. Todo erro (404, 401…) sai como JSON no envelope padrão, **qualquer que seja o `Accept`** — inclusive `Accept: image/jpeg`,
+  o que o navegador manda para uma tag `img`. Só o sucesso (200) é `image/jpeg`. Erro esperado não gera log ERROR nem stack
+  (`PhotoImageErrorResponseTest`, `PhotoImageErrorOverHttpTest`).
 
 ## Definição de pronto
 - [x] Lista, imagem e miniatura (inclusive série sem fotos → lista vazia)

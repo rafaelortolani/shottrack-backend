@@ -43,7 +43,8 @@ public class ForbiddenAccessDeniedHandler implements AccessDeniedHandler {
         String message = messageSource.getMessage("FORBIDDEN", null, localeResolver.resolveLocale(request));
 
         response.setStatus(HttpStatus.FORBIDDEN.value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE); // sempre JSON, qualquer que seja o Accept
+        response.setCharacterEncoding(java.nio.charset.StandardCharsets.UTF_8.name());
         response.getWriter().write(objectMapper.writeValueAsString(ApiResponse.error("FORBIDDEN", message)));
     }
 }
