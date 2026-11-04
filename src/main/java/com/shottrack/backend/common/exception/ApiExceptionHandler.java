@@ -9,8 +9,11 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -33,14 +36,14 @@ public class ApiExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Object>> handleBusiness(BusinessException ex) {
         String message = messageSource.getMessage(ex.getCode(), null, LocaleContextHolder.getLocale());
-        return ResponseEntity.status(ex.getStatus())
+        return json(ex.getStatus())
                 .body(ApiResponse.error(ex.getCode(), message));
     }
 
     @ExceptionHandler(TooManyRequestsException.class)
     public ResponseEntity<ApiResponse<Object>> handleTooManyRequests(TooManyRequestsException ex) {
         String message = messageSource.getMessage(ex.getCode(), null, LocaleContextHolder.getLocale());
-        return ResponseEntity.status(ex.getStatus())
+        return json(ex.getStatus())
                 .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
                 .body(ApiResponse.error(ex.getCode(), message));
     }
@@ -53,7 +56,7 @@ public class ApiExceptionHandler {
                 // mensagem padrão — pode ser dado pessoal, então não vai pra resposta.
                 .map(f -> f.getField() + ": " + (f.isBindingFailure() ? "valor inválido" : f.getDefaultMessage()))
                 .orElse("Dados inválidos");
-        return ResponseEntity.badRequest()
+        return json(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error("VALIDATION_ERROR", message));
     }
 
@@ -69,11 +72,11 @@ public class ApiExceptionHandler {
         for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
             if (cause instanceof RequestBodyTooLargeException) {
                 String message = messageSource.getMessage("PAYLOAD_TOO_LARGE", null, LocaleContextHolder.getLocale());
-                return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                return json(HttpStatus.PAYLOAD_TOO_LARGE)
                         .body(ApiResponse.error("PAYLOAD_TOO_LARGE", message));
             }
         }
-        return ResponseEntity.badRequest()
+        return json(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error("VALIDATION_ERROR", "Dados inválidos"));
     }
 
@@ -91,7 +94,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ApiResponse<Object>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
         log.debug("Método não suportado: {}", ex.getMethod());
-        ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED);
+        ResponseEntity.BodyBuilder response = json(HttpStatus.METHOD_NOT_ALLOWED);
         if (ex.getSupportedHttpMethods() != null) {
             response.allow(ex.getSupportedHttpMethods().toArray(new org.springframework.http.HttpMethod[0]));
         }
@@ -126,31 +129,51 @@ public class ApiExceptionHandler {
         return clientError(HttpStatus.NOT_FOUND, "ENDPOINT_NOT_FOUND");
     }
 
+    /**
+     * O cliente pediu só um tipo que não é JSON (ex.: `Accept: image/jpeg` numa rota de imagem) e a rota respondeu com erro:
+     * sem 406 próprio aqui, a resposta de erro nem seria escrita. Sempre 406 com o envelope JSON padrão, sem log ERROR.
+     */
+    @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+    public ResponseEntity<ApiResponse<Object>> handleNotAcceptable(HttpMediaTypeNotAcceptableException ex) {
+        log.debug("Accept não atendido: {}", ex.getSupportedMediaTypes());
+        return clientError(HttpStatus.NOT_ACCEPTABLE, "NOT_ACCEPTABLE");
+    }
+
+    /**
+     * Toda resposta de erro é application/json (envelope padrão), qualquer que seja o Accept enviado: com o tipo
+     * já definido o Spring não negocia o conteúdo. Sem isso, `Accept: image/jpeg` fazia a escrita do erro falhar e o
+     * erro virava 401 no dispatch de erro do container (com ERROR e stack no log).
+     */
+    private static ResponseEntity.BodyBuilder json(HttpStatusCode status) {
+        return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON);
+    }
+
     private ResponseEntity<ApiResponse<Object>> clientError(HttpStatus status, String code) {
-        return ResponseEntity.status(status).body(error(code));
+        return json(status).body(error(code));
     }
 
     private ApiResponse<Object> error(String code) {
         return ApiResponse.error(code, messageSource.getMessage(code, null, LocaleContextHolder.getLocale()));
     }
 
-    /**
-     * ADR-0017: o log ERROR é o que leva o erro pro arquivo de log e pro
-     * Sentry (via sentry-logback) — como toda Exception é tratada aqui, a
-     * captura automática de exception não tratada do starter nunca dispara.
-     */
     /** ADR-0026: só a operação e a classe da causa vão para o log (o caminho tem UUID de atleta/série). */
     @ExceptionHandler(StorageException.class)
     public ResponseEntity<ApiResponse<Object>> handleStorage(StorageException ex) {
         log.error(ex.getMessage());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        return json(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("INTERNAL_ERROR", "Erro interno inesperado"));
     }
 
+    /**
+     * ADR-0017: o log ERROR é o que leva o erro pro arquivo de log e pro
+     * Sentry (via sentry-logback) — como toda Exception é tratada aqui, a
+     * captura automática de exception não tratada do starter nunca dispara.
+     * Erro esperado (negócio, validação, entrada do cliente) nunca chega aqui nem loga ERROR.
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleUnexpected(Exception ex) {
         log.error("Erro inesperado", ex);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        return json(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("INTERNAL_ERROR", "Erro interno inesperado"));
     }
 }

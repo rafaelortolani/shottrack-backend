@@ -37,7 +37,10 @@ public class ImageResponseCharsetFilter extends OncePerRequestFilter {
         chain.doFilter(request, new HttpServletResponseWrapper(response) {
             @Override
             public void setCharacterEncoding(String encoding) {
-                // imagem não tem charset
+                // imagem (status < 400) não tem charset; o erro JSON (ex.: 401 do filtro de segurança) mantém o UTF-8 pedido
+                if (getStatus() >= 400) {
+                    super.setCharacterEncoding(encoding);
+                }
             }
         });
     }

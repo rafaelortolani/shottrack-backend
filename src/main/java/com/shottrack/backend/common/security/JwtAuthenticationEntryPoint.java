@@ -44,7 +44,8 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         String message = messageSource.getMessage("UNAUTHORIZED", null, localeResolver.resolveLocale(request));
 
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE); // sempre JSON, qualquer que seja o Accept
+        response.setCharacterEncoding(java.nio.charset.StandardCharsets.UTF_8.name());
         response.getWriter().write(objectMapper.writeValueAsString(ApiResponse.error("UNAUTHORIZED", message)));
     }
 }
