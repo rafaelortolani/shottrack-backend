@@ -2,6 +2,7 @@ package com.shottrack.backend.application.visit.usecase;
 
 import com.shottrack.backend.application.dashboard.event.DashboardRecalculationRequestedEvent;
 import com.shottrack.backend.application.traininglocation.usecase.TrainingLocationService;
+import com.shottrack.backend.application.seriesphoto.usecase.SeriesPhotoFiles;
 import com.shottrack.backend.application.visit.dto.EditVisitDatesRequest;
 import com.shottrack.backend.application.visit.dto.StartVisitRequest;
 import com.shottrack.backend.application.visit.dto.TrainingResponse;
@@ -42,6 +43,7 @@ public class VisitService {
     private final VisitMapper visitMapper;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final Clock clock;
+    private final SeriesPhotoFiles seriesPhotoFiles;
 
     /**
      * UC31/ADR-0024: startedAt opcional (padrão agora). Transação própria porque a visita
@@ -170,7 +172,11 @@ public class VisitService {
      */
     @Transactional
     public void delete(UUID userId, UUID visitId) {
-        visitGateway.delete(findOwnedVisitOrThrow(userId, visitId));
+        Visit visit = findOwnedVisitOrThrow(userId, visitId);
+        // ADR-0026: fotos das séries da visita — linhas em cascata, arquivos só depois do commit
+        List<String> photoKeys = seriesPhotoFiles.keysOfVisit(visitId);
+        visitGateway.delete(visit);
+        seriesPhotoFiles.deleteAfterCommit(photoKeys);
         applicationEventPublisher.publishEvent(new DashboardRecalculationRequestedEvent(userId));
     }
 

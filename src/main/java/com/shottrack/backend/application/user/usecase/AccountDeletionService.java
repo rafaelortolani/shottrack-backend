@@ -13,6 +13,8 @@ import com.shottrack.backend.application.modality.gateway.PracticedModalityGatew
 import com.shottrack.backend.application.series.gateway.SeriesGateway;
 import com.shottrack.backend.application.series.gateway.SeriesResultGateway;
 import com.shottrack.backend.application.series.model.Series;
+import com.shottrack.backend.application.seriesphoto.gateway.SeriesPhotoGateway;
+import com.shottrack.backend.application.seriesphoto.usecase.SeriesPhotoFiles;
 import com.shottrack.backend.application.traininglocation.gateway.TrainingLocationGateway;
 import com.shottrack.backend.application.user.dto.DeleteAccountRequest;
 import com.shottrack.backend.application.user.gateway.EmailVerificationCodeGateway;
@@ -60,6 +62,8 @@ public class AccountDeletionService {
     private final AthleteHabitualityGateway athleteHabitualityGateway;
     private final SeriesResultGateway seriesResultGateway;
     private final SeriesGateway seriesGateway;
+    private final SeriesPhotoGateway seriesPhotoGateway;
+    private final SeriesPhotoFiles seriesPhotoFiles;
     private final TrainingGateway trainingGateway;
     private final VisitGateway visitGateway;
     private final TrainingLocationGateway trainingLocationGateway;
@@ -107,6 +111,11 @@ public class AccountDeletionService {
         // esperando — e, depois do commit, cai na checagem de "usuário inexistente".
         userGateway.findByIdForUpdate(userId)
                 .orElseThrow(() -> new BusinessException("UNAUTHORIZED", HttpStatus.UNAUTHORIZED));
+
+        // ADR-0026: fotos do atleta — as linhas saem aqui, os arquivos só depois do commit (se a exclusão desfizer, ficam)
+        List<String> photoKeys = seriesPhotoFiles.keysOfAthlete(userId);
+        seriesPhotoGateway.deleteAllByAthleteId(userId);
+        seriesPhotoFiles.deleteAfterCommit(photoKeys);
 
         dashboardSummaryGateway.deleteByUserId(userId);
         // ADR-0023: acompanhamento e meta de habitualidade são dados do atleta.

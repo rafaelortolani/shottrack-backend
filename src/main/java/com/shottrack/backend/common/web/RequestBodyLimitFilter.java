@@ -34,13 +34,18 @@ import java.util.Locale;
 @Order(-200)
 public class RequestBodyLimitFilter extends OncePerRequestFilter {
 
+    private static final java.util.regex.Pattern PHOTO_UPLOAD_PATH = java.util.regex.Pattern.compile("^/api/series/[^/]+/photos/?$");
+
     private final long maxBodyBytes;
+    private final long maxUploadBodyBytes;
     private final HandlerExceptionResolver handlerExceptionResolver;
     private final AcceptHeaderLocaleResolver localeResolver = new AcceptHeaderLocaleResolver();
 
     public RequestBodyLimitFilter(@Value("${app.request.max-body-bytes:65536}") long maxBodyBytes,
+                                  @Value("${app.request.max-upload-body-bytes:11534336}") long maxUploadBodyBytes,
                                   HandlerExceptionResolver handlerExceptionResolver) {
         this.maxBodyBytes = maxBodyBytes;
+        this.maxUploadBodyBytes = maxUploadBodyBytes;
         this.handlerExceptionResolver = handlerExceptionResolver;
         this.localeResolver.setDefaultLocale(Locale.forLanguageTag("pt"));
     }
@@ -48,7 +53,8 @@ public class RequestBodyLimitFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        if (request.getContentLengthLong() > maxBodyBytes) {
+        long limit = isPhotoUpload(request) ? maxUploadBodyBytes : maxBodyBytes;
+        if (request.getContentLengthLong() > limit) {
             LocaleContextHolder.setLocale(localeResolver.resolveLocale(request));
             try {
                 handlerExceptionResolver.resolveException(request, response, null,
@@ -58,7 +64,12 @@ public class RequestBodyLimitFilter extends OncePerRequestFilter {
             }
             return;
         }
-        chain.doFilter(request.getContentLengthLong() < 0 ? new LimitedBodyRequest(request, maxBodyBytes) : request, response);
+        chain.doFilter(request.getContentLengthLong() < 0 ? new LimitedBodyRequest(request, limit) : request, response);
+    }
+
+    /** ADR-0026: o único corpo grande da API é o upload de foto do alvo (multipart). */
+    private static boolean isPhotoUpload(HttpServletRequest request) {
+        return "POST".equals(request.getMethod()) && PHOTO_UPLOAD_PATH.matcher(request.getRequestURI().toLowerCase(Locale.ROOT)).matches();
     }
 
     /** Conta os bytes lidos de um corpo sem Content-Length e interrompe ao passar do teto. */

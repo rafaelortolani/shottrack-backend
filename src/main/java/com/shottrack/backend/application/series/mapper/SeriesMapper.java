@@ -17,7 +17,7 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface SeriesMapper {
 
-    SeriesResponse toResponse(Series series, List<SeriesResultResponse> results);
+    SeriesResponse toResponse(Series series, List<SeriesResultResponse> results, long photoCount);
 
     @Mapping(target = "id", source = "series.id")
     @Mapping(target = "notes", source = "series.notes")

@@ -9,6 +9,8 @@ import com.shottrack.backend.application.series.dto.UpdateSeriesRequest;
 import com.shottrack.backend.application.series.gateway.SeriesGateway;
 import com.shottrack.backend.application.series.mapper.SeriesMapper;
 import com.shottrack.backend.application.series.model.Series;
+import com.shottrack.backend.application.seriesphoto.gateway.SeriesPhotoGateway;
+import com.shottrack.backend.application.seriesphoto.usecase.SeriesPhotoFiles;
 import com.shottrack.backend.application.visit.model.Training;
 import com.shottrack.backend.application.visit.usecase.TrainingService;
 import com.shottrack.backend.application.weapon.usecase.WeaponService;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -33,6 +36,8 @@ public class SeriesService {
     private final AmmunitionService ammunitionService;
     private final SeriesResultService seriesResultService;
     private final SeriesMapper seriesMapper;
+    private final SeriesPhotoGateway seriesPhotoGateway;
+    private final SeriesPhotoFiles seriesPhotoFiles;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     /**
@@ -75,8 +80,11 @@ public class SeriesService {
     public List<SeriesResponse> listByTraining(UUID userId, UUID trainingId) {
         trainingService.findOwnedTrainingOrThrow(userId, trainingId);
 
-        return seriesGateway.findAllByTrainingId(trainingId).stream()
-                .map(this::toResponse)
+        List<Series> series = seriesGateway.findAllByTrainingId(trainingId);
+        // UC37: uma contagem agrupada para a lista inteira (sem uma consulta por série)
+        Map<UUID, Long> photoCounts = seriesPhotoGateway.countBySeriesIds(series.stream().map(Series::getId).toList());
+        return series.stream()
+                .map(s -> toResponse(s, photoCounts.getOrDefault(s.getId(), 0L)))
                 .toList();
     }
 
@@ -130,11 +138,16 @@ public class SeriesService {
      */
     @Transactional
     public void delete(UUID userId, UUID seriesId) {
-        seriesGateway.delete(findOwnedSeriesOrThrow(userId, seriesId));
+        Series series = findOwnedSeriesOrThrow(userId, seriesId);
+        // ADR-0026: as linhas das fotos somem em cascata; os arquivos, só depois do commit
+        List<String> photoKeys = seriesPhotoFiles.keysOfSeries(seriesId);
+        seriesGateway.delete(series);
+        seriesPhotoFiles.deleteAfterCommit(photoKeys);
         applicationEventPublisher.publishEvent(new DashboardRecalculationRequestedEvent(userId));
     }
 
-    private Series findOwnedSeriesOrThrow(UUID userId, UUID seriesId) {
+    /** Posse da série: reaproveitado pelo módulo de fotos (UC60-UC62). */
+    public Series findOwnedSeriesOrThrow(UUID userId, UUID seriesId) {
         Series series = seriesGateway.findById(seriesId)
                 .orElseThrow(() -> new BusinessException("SERIES_NOT_FOUND", HttpStatus.NOT_FOUND));
 
@@ -146,7 +159,11 @@ public class SeriesService {
     }
 
     private SeriesResponse toResponse(Series series) {
+        return toResponse(series, seriesPhotoGateway.countBySeriesId(series.getId()));
+    }
+
+    private SeriesResponse toResponse(Series series, long photoCount) {
         List<SeriesResultResponse> results = seriesResultService.listBySeriesId(series.getId());
-        return seriesMapper.toResponse(series, results);
+        return seriesMapper.toResponse(series, results, photoCount);
     }
 }

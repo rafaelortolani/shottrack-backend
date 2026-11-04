@@ -165,7 +165,7 @@ class RequestBodyLimitTest {
 
     @Test
     void shouldInterruptAChunkedBodyThatGrowsPastTheLimit() throws Exception {
-        RequestBodyLimitFilter filter = new RequestBodyLimitFilter(10, mock(HandlerExceptionResolver.class));
+        RequestBodyLimitFilter filter = new RequestBodyLimitFilter(10, 100, mock(HandlerExceptionResolver.class));
         MockHttpServletRequest raw = new MockHttpServletRequest("POST", "/api/auth/login");
         FilterChain chain = (request, response) -> drain(request);
 
@@ -175,7 +175,7 @@ class RequestBodyLimitTest {
 
     @Test
     void shouldLetAChunkedBodyAtTheLimitThrough() throws Exception {
-        RequestBodyLimitFilter filter = new RequestBodyLimitFilter(10, mock(HandlerExceptionResolver.class));
+        RequestBodyLimitFilter filter = new RequestBodyLimitFilter(10, 100, mock(HandlerExceptionResolver.class));
         MockHttpServletRequest raw = new MockHttpServletRequest("POST", "/api/auth/login");
         int[] read = {0};
         FilterChain chain = (request, response) -> read[0] = request.getInputStream().readAllBytes().length;
@@ -183,6 +183,34 @@ class RequestBodyLimitTest {
         filter.doFilter(new ChunkedRequest(raw, new byte[10]), new MockHttpServletResponse(), chain);
 
         assertThat(read[0]).isEqualTo(10);
+    }
+
+    @Test
+    void shouldAllowTheLargerBodyOnlyOnThePhotoUploadRoute() throws Exception {
+        RequestBodyLimitFilter filter = new RequestBodyLimitFilter(10, 100, mock(HandlerExceptionResolver.class));
+        FilterChain chain = (request, response) -> drain(request);
+
+        // ADR-0026: 50 bytes passam do teto comum (10) mas cabem no teto do upload de foto (100)
+        MockHttpServletRequest photo = new MockHttpServletRequest("POST", "/api/series/" + java.util.UUID.randomUUID() + "/photos");
+        photo.setContent(new byte[50]);
+        MockHttpServletResponse photoResponse = new MockHttpServletResponse();
+        filter.doFilter(photo, photoResponse, chain);
+        assertThat(photoResponse.getStatus()).isEqualTo(200);
+
+        MockHttpServletRequest other = new MockHttpServletRequest("POST", "/api/series");
+        other.setContent(new byte[50]);
+        HandlerExceptionResolver resolver = mock(HandlerExceptionResolver.class);
+        new RequestBodyLimitFilter(10, 100, resolver).doFilter(other, new MockHttpServletResponse(), chain);
+        org.mockito.Mockito.verify(resolver).resolveException(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(com.shottrack.backend.common.exception.BusinessException.class));
+
+        // e mesmo no upload há um teto: 101 bytes de Content-Length são recusados
+        HandlerExceptionResolver photoResolver = mock(HandlerExceptionResolver.class);
+        MockHttpServletRequest tooBig = new MockHttpServletRequest("POST", "/api/series/" + java.util.UUID.randomUUID() + "/photos");
+        tooBig.setContent(new byte[101]);
+        new RequestBodyLimitFilter(10, 100, photoResolver).doFilter(tooBig, new MockHttpServletResponse(), chain);
+        org.mockito.Mockito.verify(photoResolver).resolveException(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(com.shottrack.backend.common.exception.BusinessException.class));
     }
 
     @Test

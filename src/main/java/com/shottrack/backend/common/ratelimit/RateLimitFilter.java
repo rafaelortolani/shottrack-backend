@@ -58,6 +58,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final String EMAIL_CHANGE = "email-change";
     private static final String EMAIL_CHANGE_CONFIRMATION = "email-change-confirmation";
     private static final String REGISTRATION_COMPLETION = "registration-completion";
+    private static final String PHOTO_UPLOAD = "photo-upload";
+    /** ADR-0026: rota com id no caminho, então não entra no mapa exato: POST /api/series/{id}/photos. */
+    private static final java.util.regex.Pattern PHOTO_UPLOAD_PATH = java.util.regex.Pattern.compile("^/api/series/[^/]+/photos$");
     /** Chaves em minúsculas: o caminho é normalizado (decodificado, sem `;`, sem `//`) e minúsculo antes da busca. */
     private static final Map<String, String> RULE_BY_ENDPOINT = Map.ofEntries(
             Map.entry("POST /api/auth/login", LOGIN),
@@ -118,6 +121,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String canonical = path.length() > 1 && path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
         canonical = canonical.toLowerCase(Locale.ROOT);
         String rule = RULE_BY_ENDPOINT.get(request.getMethod() + " " + canonical);
+        if (rule == null && "POST".equals(request.getMethod()) && PHOTO_UPLOAD_PATH.matcher(canonical).matches()) {
+            rule = PHOTO_UPLOAD;
+        }
         return rule == null ? null : new Match(rule, !request.getRequestURI().equals(canonical));
     }
 
@@ -206,6 +212,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
                     properties.emailChange().attempts(), properties.emailChange().window());
             case EMAIL_CHANGE_CONFIRMATION -> addUserOrIpLimit(limits, rule, ip, subject,
                     properties.emailChangeConfirmation().attempts(), properties.emailChangeConfirmation().window());
+            case PHOTO_UPLOAD -> addUserOrIpLimit(limits, rule, ip, subject,
+                    properties.photoUpload().attempts(), properties.photoUpload().window());
             case REFRESH -> limits.add(new Limit(rule + ":ip:" + ip,
                     properties.refresh().attempts(), properties.refresh().window()));
             case PASSWORD_RESET_CONFIRM -> limits.add(new Limit(rule + ":ip:" + ip,

@@ -6,6 +6,8 @@ import com.shottrack.backend.application.ammunition.model.Ammunition;
 import com.shottrack.backend.application.ammunition.model.AmmunitionManufacturer;
 import com.shottrack.backend.application.series.model.Series;
 import com.shottrack.backend.application.series.model.SeriesResult;
+import com.shottrack.backend.application.seriesphoto.model.SeriesPhoto;
+import com.shottrack.backend.application.user.dto.UserDataExportResponse.PhotoExport;
 import com.shottrack.backend.application.traininglocation.model.TrainingLocation;
 import com.shottrack.backend.application.modality.model.ResultType;
 import com.shottrack.backend.application.user.dto.UserDataExportResponse.AccessoryExport;
@@ -101,7 +103,11 @@ public interface UserDataExportMapper {
     @Mapping(target = "shotCount", source = "series.shotCount")
     @Mapping(target = "notes", source = "series.notes")
     @Mapping(target = "results", source = "results")
-    SeriesExport toSeries(Series series, WeaponExport weapon, AmmunitionExport ammunition, List<ResultExport> results);
+    @Mapping(target = "photos", source = "photos")
+    SeriesExport toSeries(Series series, WeaponExport weapon, AmmunitionExport ammunition, List<ResultExport> results,
+                          List<PhotoExport> photos);
+
+    PhotoExport toPhoto(SeriesPhoto photo);
 
     @Mapping(target = "resultType", source = "type.name")
     @Mapping(target = "value", source = "result.value")

@@ -15,6 +15,7 @@ public record SeriesResponse(
         Integer shotCount,
         String notes,
         Instant createdAt,
-        List<SeriesResultResponse> results
+        List<SeriesResultResponse> results,
+        long photoCount
 ) {
 }

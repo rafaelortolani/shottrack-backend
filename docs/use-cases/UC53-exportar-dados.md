@@ -14,7 +14,10 @@ Atleta autenticado.
 Perfil (nome, e-mail, nível de experiência, data de cadastro, aceite dos
 termos), modalidades praticadas e tipos de resultado escolhidos, armas,
 munições, acessórios (com armas associadas), locais de treino, visitas com
-treinos, séries e resultados. NUNCA inclui hash de senha nem tokens.
+treinos, séries e resultados. Cada série traz a lista de **fotos do alvo**
+(`photos`: data de envio, largura e altura em pixels e tamanho em bytes). As
+imagens em si não vão dentro do JSON; continuam disponíveis no aplicativo
+(ADR-0026). NUNCA inclui hash de senha nem tokens.
 
 ## Observações
 - Rota: `POST /api/users/me/export` — resposta JSON propositalmente sem o
@@ -23,7 +26,9 @@ treinos, séries e resultados. NUNCA inclui hash de senha nem tokens.
 - Antes era `GET /api/users/me/export` (sem senha). A rota antiga responde
   `405 DATA_EXPORT_REQUIRES_PASSWORD` por uma versão, para o front migrar sem ambiguidade.
 - Sem ids internos: referências entre registros (ex: série → arma) vão
-  embutidas por nome. Datas em ISO-8601 (UTC).
+  embutidas por nome. Datas em ISO-8601 (UTC). Os metadados das fotos seguem a mesma regra
+  (sem id nem chave de armazenamento).
+- Exportar as imagens junto (arquivo ZIP) fica como evolução.
 - Limite: 3 exportações por hora por usuário — senha errada também conta, como na exclusão.
 
 ## Fluxos alternativos
@@ -43,6 +48,8 @@ treinos, séries e resultados. NUNCA inclui hash de senha nem tokens.
 - [x] Teste: cabeçalho de download e nome do arquivo
 - [x] Teste: sem senha / senha errada (sem vazar dados) / senha certa com `Cache-Control: no-store`
 - [x] Teste: rota GET antiga responde erro claro; senha errada conta no limite
+- [x] Teste: série com fotos — `photos` traz data, largura, altura e tamanho; sem id, sem chave de armazenamento e sem conteúdo da imagem
+- [x] Teste: fotos de OUTRO atleta não aparecem; série sem foto traz lista vazia (`SeriesPhotoExportTest`)
 
 ## Referências
-- ADR-0019, ADR-0018
+- ADR-0019, ADR-0018, ADR-0026

@@ -4,6 +4,7 @@ import com.shottrack.backend.application.dashboard.event.DashboardRecalculationR
 import com.shottrack.backend.application.modality.gateway.ModalityGateway;
 import com.shottrack.backend.application.modality.gateway.PracticedModalityGateway;
 import com.shottrack.backend.application.modality.model.Modality;
+import com.shottrack.backend.application.seriesphoto.usecase.SeriesPhotoFiles;
 import com.shottrack.backend.application.visit.dto.OpenTrainingRequest;
 import com.shottrack.backend.application.visit.dto.TrainingResponse;
 import com.shottrack.backend.application.visit.gateway.TrainingGateway;
@@ -38,6 +39,7 @@ public class TrainingService {
     private final ModalityGateway modalityGateway;
     private final TrainingMapper trainingMapper;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final SeriesPhotoFiles seriesPhotoFiles;
 
     public TrainingResponse open(UUID userId, OpenTrainingRequest request) {
         Visit visit = findOwnedVisitOrThrow(userId, request.visitId());
@@ -89,7 +91,11 @@ public class TrainingService {
      */
     @Transactional
     public void delete(UUID userId, UUID trainingId) {
-        trainingGateway.delete(findOwnedTrainingOrThrow(userId, trainingId));
+        Training training = findOwnedTrainingOrThrow(userId, trainingId);
+        // ADR-0026: fotos das séries do treino — linhas em cascata, arquivos só depois do commit
+        List<String> photoKeys = seriesPhotoFiles.keysOfTraining(trainingId);
+        trainingGateway.delete(training);
+        seriesPhotoFiles.deleteAfterCommit(photoKeys);
         applicationEventPublisher.publishEvent(new DashboardRecalculationRequestedEvent(userId));
     }
 
