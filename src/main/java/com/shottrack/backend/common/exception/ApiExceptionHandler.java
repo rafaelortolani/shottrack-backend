@@ -1,5 +1,6 @@
 package com.shottrack.backend.common.exception;
 
+import com.shottrack.backend.application.seriesphoto.storage.StorageException;
 import com.shottrack.backend.common.web.ApiResponse;
 import com.shottrack.backend.common.web.RequestBodyTooLargeException;
 import lombok.RequiredArgsConstructor;
@@ -138,6 +139,14 @@ public class ApiExceptionHandler {
      * Sentry (via sentry-logback) — como toda Exception é tratada aqui, a
      * captura automática de exception não tratada do starter nunca dispara.
      */
+    /** ADR-0026: só a operação e a classe da causa vão para o log (o caminho tem UUID de atleta/série). */
+    @ExceptionHandler(StorageException.class)
+    public ResponseEntity<ApiResponse<Object>> handleStorage(StorageException ex) {
+        log.error(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("INTERNAL_ERROR", "Erro interno inesperado"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleUnexpected(Exception ex) {
         log.error("Erro inesperado", ex);

@@ -48,3 +48,7 @@ app:
     # ADR-0026: sem default — faltou a variável ou o diretório não existe/não é gravável → a aplicação NÃO sobe.
     local-dir: ${APP_STORAGE_LOCAL_DIR}
     require-existing-dir: true
+    orphan-cleanup:
+      # só o prod liga (padrão false nos demais perfis); APP_STORAGE_ORPHAN_CLEANUP_ENABLED=false desliga,
+      # APP_STORAGE_ORPHAN_CLEANUP_DRY_RUN=true só registra quantos arquivos apagaria
+      enabled: ${APP_STORAGE_ORPHAN_CLEANUP_ENABLED:true}

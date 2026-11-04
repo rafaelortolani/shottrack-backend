@@ -2,6 +2,7 @@ package com.shottrack.backend.application.seriesphoto.usecase;
 
 import com.shottrack.backend.application.seriesphoto.gateway.SeriesPhotoGateway;
 import com.shottrack.backend.application.seriesphoto.model.SeriesPhoto;
+import com.shottrack.backend.application.seriesphoto.storage.StorageException;
 import com.shottrack.backend.application.seriesphoto.storage.StoragePort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -65,8 +66,10 @@ public class SeriesPhotoFiles {
         for (String key : keys) {
             try {
                 storage.delete(key);
+            } catch (StorageException e) {
+                log.warn(e.getMessage());
             } catch (RuntimeException e) {
-                log.warn("Falha ao apagar arquivo de foto ({})", e.getClass().getSimpleName());
+                log.warn("Falha de armazenamento (apagar): {}", e.getClass().getSimpleName());
             }
         }
     }

@@ -45,6 +45,24 @@ depois de um protótipo com fotos reais.
 - **Configuração**: `app.storage.local-dir` (`APP_STORAGE_LOCAL_DIR`; em prod é obrigatória, o diretório precisa existir e ser
   gravável, senão a aplicação não sobe), `app.photos.*` (limites, megapixels, concorrência, idade mínima de órfão e cron).
 
+### Operação: arquivos órfãos e logs (correções da verificação da etapa A)
+- **Processamento só com ImageIO**: o servidor usa apenas `javax.imageio`/`java.awt` (nenhuma biblioteca de imagem). **WebP não é
+  aceito no servidor** (415 `PHOTO_UNSUPPORTED_TYPE`); o navegador converte para JPEG antes de enviar.
+- **Rotina de órfãos desligada por padrão** (`app.storage.orphan-cleanup.enabled`, variável `APP_STORAGE_ORPHAN_CLEANUP_ENABLED`):
+  só o perfil `prod` liga (true); dev e testes ficam desligados. Apagar o arquivo errado é irreversível, então há quatro travas:
+  1. só considera caminhos que batem EXATAMENTE com `athletes/{uuid}/series/{uuid}/{uuid}.jpg` (ou `.thumb.jpg`); qualquer outro
+     arquivo ou pasta é ignorado e nunca apagado;
+  2. **marcador**: na subida, o sistema grava `.shottrack-storage` no diretório base se ele estiver vazio ou ausente. Diretório
+     com conteúdo e sem o marcador → a rotina se recusa a rodar e registra um erro. (Volume que já traz `lost+found` ou outros
+     arquivos: confirme que o diretório é só das fotos e crie o marcador à mão: `touch $APP_STORAGE_LOCAL_DIR/.shottrack-storage`);
+  3. **trava de volume**: se achar mais de max(`abort-min-candidates`, `abort-percent`% dos arquivos de foto) candidatos a órfão
+     (padrão: max(20, 10%)), aborta sem apagar nada e registra erro com as contagens;
+  4. só apaga arquivo com mais de `app.photos.orphan-min-age` (60 min).
+  `app.storage.orphan-cleanup.dry-run=true` (`APP_STORAGE_ORPHAN_CLEANUP_DRY_RUN`) só registra quantos arquivos apagaria. Ao ligar
+  em produção pela primeira vez, rode antes em simulação.
+- **Logs de falha de armazenamento** (gravar, ler, apagar, listar) trazem só a operação e o nome da CLASSE da exceção
+  (`StorageException`): sem caminho, sem UUID de atleta/série/foto, sem nome de arquivo, sem stack trace.
+
 ## Direção — Etapas B e C (a detalhar no ADR-0027, após o protótipo)
 - **B (assistida)**: serviço de visão computacional separado (Python/OpenCV no protótipo), chamado pelo backend por
   fila (RabbitMQ). Devolve candidatos a furo (coordenadas). O **atleta confirma** na tela (adiciona/remove furos).

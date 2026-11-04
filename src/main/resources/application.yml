@@ -77,6 +77,13 @@ app:
   storage:
     # ADR-0026: diretório das fotos (dev; ignorado pelo git). Em produção: APP_STORAGE_LOCAL_DIR, volume dedicado.
     local-dir: ./data/uploads
+    # ADR-0026: rotina de arquivos órfãos. DESLIGADA por padrão (só o perfil prod liga). Só considera caminhos no formato
+    # de chave do sistema, exige o marcador .shottrack-storage no diretório e aborta se achar candidatos demais.
+    orphan-cleanup:
+      enabled: ${APP_STORAGE_ORPHAN_CLEANUP_ENABLED:false}
+      dry-run: ${APP_STORAGE_ORPHAN_CLEANUP_DRY_RUN:false}   # true: só registra quantos apagaria
+      abort-min-candidates: 20   # aborta se candidatos > max(20, abort-percent % dos arquivos de foto)
+      abort-percent: 10
   photos:
     max-per-series: 5
     max-per-athlete: 500
@@ -84,7 +91,7 @@ app:
     max-megapixels: 40         # lido do cabeçalho, antes de decodificar
     max-concurrent-processing: 2
     orphan-min-age: 60m        # arquivo mais novo que isso nunca é tratado como órfão
-    orphan-cleanup-cron: "0 30 3 * * SUN"   # semanal, domingo 03:30 UTC (com app.cleanup.enabled=true)
+    orphan-cleanup-cron: "0 30 3 * * SUN"   # semanal, domingo 03:30 UTC (com app.storage.orphan-cleanup.enabled=true)
   rabbit:
     # S17: TTL (dias) das mensagens da dead-letter queue do recálculo do dashboard (ADR-0015).
     dlq-ttl-days: 7

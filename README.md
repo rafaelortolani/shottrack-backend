@@ -105,7 +105,15 @@ ou se o vhost do RabbitMQ for o padrão `/`. Sem a variável a trava não age.
 As fotos enviadas ficam em disco, atrás de `StoragePort`. Em desenvolvimento o diretório é `./data/uploads` (ignorado pelo
 git); nos testes, um diretório temporário. **Em produção** defina `APP_STORAGE_LOCAL_DIR` (volume dedicado): o diretório
 precisa existir e ser gravável pelo usuário do contêiner — senão a aplicação não sobe. Limites ajustáveis em `app.photos.*`
-(5 por série, 500 por atleta, 10 MB, 40 megapixels). A rotina semanal de arquivos órfãos roda com `app.cleanup.enabled=true`.
+(5 por série, 500 por atleta, 10 MB, 40 megapixels). O processamento usa só `ImageIO`: **WebP não é aceito no servidor**
+(o navegador converte para JPEG antes de enviar).
+
+**Rotina de arquivos órfãos** (semanal): **desligada por padrão**; só o perfil `prod` liga. Variáveis/propriedades:
+`APP_STORAGE_ORPHAN_CLEANUP_ENABLED` (`app.storage.orphan-cleanup.enabled`), `APP_STORAGE_ORPHAN_CLEANUP_DRY_RUN`
+(`...dry-run`: só registra quantos apagaria), `app.storage.orphan-cleanup.abort-min-candidates` (20) e `...abort-percent` (10).
+Trava de segurança: só apaga caminhos no formato `athletes/{uuid}/series/{uuid}/{uuid}(.thumb).jpg`, com mais de 60 min; exige o
+arquivo `.shottrack-storage` no diretório (criado na subida se o diretório estiver vazio; se o volume já tiver conteúdo, crie à
+mão com `touch`); e aborta, sem apagar nada, se achar mais de max(20, 10% dos arquivos de foto) candidatos. Detalhes no ADR-0026.
 
 ## Verificação de vulnerabilidades (CVEs)
 

@@ -101,6 +101,7 @@ class ProdProfileTest {
         assertThat(environment.getProperty("spring.datasource.url")).isEqualTo("jdbc:postgresql://x/db");
         assertThat(environment.getProperty("app.storage.local-dir")).isEqualTo("v");
         assertThat(environment.getProperty("app.storage.require-existing-dir")).isEqualTo("true");
+        assertThat(environment.getProperty("app.storage.orphan-cleanup.enabled")).as("só o prod liga a rotina de órfãos").isEqualTo("true");
         assertThat(environment.getProperty("springdoc.api-docs.enabled")).isEqualTo("false");
         assertThat(environment.getProperty("springdoc.swagger-ui.enabled")).isEqualTo("false");
         assertThat(environment.getProperty("management.endpoints.web.exposure.include")).isEqualTo("health");

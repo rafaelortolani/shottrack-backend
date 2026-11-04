@@ -6,12 +6,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * ADR-0026: dispara a limpeza de fotos órfãs toda semana. Desligado por app.cleanup.enabled=false (testes) — a
+ * ADR-0026: dispara a limpeza de fotos órfãs toda semana. Desligado por app.storage.orphan-cleanup.enabled (padrão false; só o perfil prod liga) — a
  * regra mora em OrphanPhotoCleanupService.
  */
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.cleanup.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "app.storage.orphan-cleanup.enabled", havingValue = "true")
 public class OrphanPhotoCleanupScheduler {
 
     private final OrphanPhotoCleanupService orphanPhotoCleanupService;
