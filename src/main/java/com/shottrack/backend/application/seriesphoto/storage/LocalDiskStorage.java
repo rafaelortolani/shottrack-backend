@@ -3,7 +3,6 @@ package com.shottrack.backend.application.seriesphoto.storage;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -21,6 +20,7 @@ import java.util.stream.Stream;
 class LocalDiskStorage implements StoragePort {
 
     private static final String TEMP_PREFIX = ".tmp-";
+    static final String MARKER = ".shottrack-storage";
 
     private final Path baseDir;
 
@@ -34,9 +34,28 @@ class LocalDiskStorage implements StoragePort {
             Files.createDirectories(baseDir);
             Path probe = Files.createTempFile(baseDir, TEMP_PREFIX, ".probe");
             Files.delete(probe);
+            writeMarkerIfEmpty();
         } catch (IOException e) {
             throw new IllegalStateException("O diretório de fotos '" + baseDir + "' não é gravável por este usuário", e);
         }
+    }
+
+    /** Diretório vazio ou recém-criado → é nosso: marca. Diretório com conteúdo e sem marcador → não marca. */
+    private void writeMarkerIfEmpty() throws IOException {
+        Path marker = baseDir.resolve(MARKER);
+        if (Files.exists(marker)) {
+            return;
+        }
+        try (Stream<Path> entries = Files.list(baseDir)) {
+            if (entries.findAny().isEmpty()) {
+                Files.writeString(marker, "Diretório de fotos do ShotTrack (ADR-0026). Não apague este arquivo.\n");
+            }
+        }
+    }
+
+    @Override
+    public boolean hasOwnershipMarker() {
+        return Files.isRegularFile(baseDir.resolve(MARKER));
     }
 
     @Override
@@ -56,7 +75,7 @@ class LocalDiskStorage implements StoragePort {
                     // a rotina de órfãos limpa o temporário
                 }
             }
-            throw new UncheckedIOException("Falha ao gravar arquivo de foto", e);
+            throw new StorageException("gravar", e);
         }
     }
 
@@ -71,7 +90,7 @@ class LocalDiskStorage implements StoragePort {
         } catch (java.nio.file.NoSuchFileException e) {
             return Optional.empty();
         } catch (IOException e) {
-            throw new UncheckedIOException("Falha ao ler arquivo de foto", e);
+            throw new StorageException("ler", e);
         }
     }
 
@@ -80,7 +99,7 @@ class LocalDiskStorage implements StoragePort {
         try {
             Files.deleteIfExists(resolve(key));
         } catch (IOException e) {
-            throw new UncheckedIOException("Falha ao apagar arquivo de foto", e);
+            throw new StorageException("apagar", e);
         }
     }
 
@@ -88,6 +107,7 @@ class LocalDiskStorage implements StoragePort {
     public List<StoredObject> list() {
         try (Stream<Path> files = Files.walk(baseDir)) {
             return files.filter(Files::isRegularFile)
+                    .filter(path -> !path.equals(baseDir.resolve(MARKER))) // o marcador é do armazenamento, não é foto
                     .map(path -> {
                         try {
                             return new StoredObject(baseDir.relativize(path).toString().replace('\\', '/'),
@@ -98,7 +118,7 @@ class LocalDiskStorage implements StoragePort {
                     })
                     .toList();
         } catch (IOException e) {
-            throw new UncheckedIOException("Falha ao listar arquivos de foto", e);
+            throw new StorageException("listar", e);
         }
     }
 

@@ -8,8 +8,6 @@ import com.shottrack.backend.application.user.gateway.repository.PendingRegistra
 import com.shottrack.backend.support.SeriesTestSupport;
 import com.shottrack.backend.support.TestImages;
 import com.shottrack.backend.support.TestUsers;
-import jakarta.persistence.EntityManagerFactory;
-import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,7 +18,6 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
@@ -46,7 +43,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Transactional
 @ExtendWith(OutputCaptureExtension.class)
-@TestPropertySource(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
 class SeriesPhotoTest {
 
     private static final String PASSWORD = "senha12345";
@@ -59,8 +55,6 @@ class SeriesPhotoTest {
     private PendingRegistrationRepository pendingRegistrationRepository;
     @Autowired
     private StoragePort storage;
-    @Autowired
-    private EntityManagerFactory entityManagerFactory;
 
     private String token;
     private UUID trainingId;
@@ -316,7 +310,9 @@ class SeriesPhotoTest {
         mockMvc.perform(get("/api/series/" + seriesId + "/photos/" + photo.get("id").asText() + "/content").header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.error.code").value("PHOTO_NOT_FOUND"));
 
-        assertThat(output.getAll()).contains("Arquivo de foto ausente do armazenamento (photoId=" + photo.get("id").asText() + ")");
+        assertThat(output.getAll()).contains("Arquivo de foto ausente do armazenamento");
+        assertThat(output.getAll().lines().filter(l -> l.contains("Arquivo de foto ausente")).toList())
+                .as("o log não cita a foto").allSatisfy(line -> assertThat(line).doesNotContain(photo.get("id").asText()));
     }
 
     @Test
@@ -359,15 +355,13 @@ class SeriesPhotoTest {
     // ---- UC37: photoCount sem N+1 ----
 
     @Test
-    void shouldReportThePhotoCountPerSeriesWithASingleGroupedQuery() throws Exception {
+    void shouldReportThePhotoCountPerSeriesInTheTrainingList() throws Exception {
         UUID second = registerSeries(token, trainingId);
         UUID third = registerSeries(token, trainingId);
         attach(TestImages.jpeg(64, 64));
         attach(TestImages.jpeg(64, 64));
         upload(token, second, "b.jpg", "image/jpeg", TestImages.jpeg(64, 64)).andExpect(status().isCreated());
 
-        SessionFactory sessionFactory = entityManagerFactory.unwrap(SessionFactory.class);
-        sessionFactory.getStatistics().clear();
         var result = mockMvc.perform(get("/api/trainings/" + trainingId + "/series").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk()).andReturn();
 
@@ -379,8 +373,7 @@ class SeriesPhotoTest {
             assertThat(series.get("photoCount").asLong()).as("photoCount de %s", id).isEqualTo(expected);
         }
         assertThat(third).isNotNull();
-        long photoQueries = java.util.Arrays.stream(sessionFactory.getStatistics().getQueries()).filter(q -> q.contains("SeriesPhoto")).count();
-        assertThat(photoQueries).as("uma única consulta de contagem para todas as séries").isEqualTo(1);
+        // a contagem de comandos SQL (constante com 1 ou 10 séries) está em SeriesPhotoCountQueriesTest
     }
 
     @Test

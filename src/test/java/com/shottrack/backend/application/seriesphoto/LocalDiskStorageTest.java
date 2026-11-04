@@ -1,5 +1,6 @@
 package com.shottrack.backend.application.seriesphoto;
 
+import com.shottrack.backend.application.seriesphoto.storage.StorageException;
 import com.shottrack.backend.application.seriesphoto.storage.StorageProperties;
 import com.shottrack.backend.application.seriesphoto.storage.StoragePort;
 import org.junit.jupiter.api.Test;
@@ -25,7 +26,7 @@ class LocalDiskStorageTest {
         Constructor<?> constructor = type.getDeclaredConstructor(StorageProperties.class);
         constructor.setAccessible(true);
         try {
-            return (StoragePort) constructor.newInstance(new StorageProperties(dir.toString(), requireExisting));
+            return (StoragePort) constructor.newInstance(new StorageProperties(dir.toString(), requireExisting, new StorageProperties.OrphanCleanup(false, false, 20, 10)));
         } catch (java.lang.reflect.InvocationTargetException e) {
             throw (Exception) e.getCause();
         }
@@ -52,7 +53,8 @@ class LocalDiskStorageTest {
         storage.put("x/y.jpg", new byte[]{9});
 
         try (Stream<Path> files = Files.walk(tempDir)) {
-            assertThat(files.filter(Files::isRegularFile).map(p -> p.getFileName().toString())).containsExactly("y.jpg");
+            assertThat(files.filter(Files::isRegularFile).map(p -> p.getFileName().toString()))
+                    .containsExactlyInAnyOrder("y.jpg", ".shottrack-storage");
         }
     }
 
@@ -106,5 +108,54 @@ class LocalDiskStorageTest {
     @Test
     void shouldReturnEmptyForAMissingFile() throws Exception {
         assertThat(storage(tempDir, false).get("nao/existe.jpg")).isEqualTo(Optional.empty());
+    }
+
+    // ---- marcador .shottrack-storage (rotina de órfãos) ----
+
+    @Test
+    void shouldWriteTheMarkerWhenTheDirectoryIsEmptyOrMissing() throws Exception {
+        Path vazio = Files.createDirectory(tempDir.resolve("vazio"));
+        Path ausente = tempDir.resolve("novo/uploads");
+
+        assertThat(storage(vazio, false).hasOwnershipMarker()).isTrue();
+        assertThat(storage(ausente, false).hasOwnershipMarker()).isTrue();
+        assertThat(vazio.resolve(".shottrack-storage")).isRegularFile();
+    }
+
+    @Test
+    void shouldNotWriteTheMarkerInANonEmptyDirectoryThatDoesNotHaveIt() throws Exception {
+        Path alheio = Files.createDirectory(tempDir.resolve("alheio"));
+        Files.writeString(alheio.resolve("de-outro-uso.txt"), "x");
+
+        StoragePort storage = storage(alheio, false);
+
+        assertThat(storage.hasOwnershipMarker()).isFalse();
+        assertThat(alheio.resolve(".shottrack-storage")).doesNotExist();
+        assertThat(alheio.resolve("de-outro-uso.txt")).exists();
+    }
+
+    @Test
+    void shouldKeepAnExistingMarkerAndStartAgainWithoutError() throws Exception {
+        Path dir = Files.createDirectory(tempDir.resolve("reinicio"));
+        storage(dir, false).put("athletes/x/y.jpg", new byte[]{1});
+        String marker = Files.readString(dir.resolve(".shottrack-storage"));
+
+        StoragePort again = storage(dir, true);
+
+        assertThat(again.hasOwnershipMarker()).isTrue();
+        assertThat(Files.readString(dir.resolve(".shottrack-storage"))).isEqualTo(marker);
+    }
+
+    // ---- falha de E/S: só operação e classe da causa, sem caminho ----
+
+    @Test
+    void shouldReportStorageFailuresWithOnlyTheOperationAndTheCauseClass() throws Exception {
+        StoragePort storage = storage(tempDir, false);
+        Files.writeString(tempDir.resolve("arquivo"), "x");
+
+        assertThatThrownBy(() -> storage.put("arquivo/dentro.jpg", new byte[]{1}))
+                .isInstanceOf(StorageException.class)
+                .hasMessage("Falha de armazenamento (gravar): FileAlreadyExistsException")
+                .hasNoCause();
     }
 }

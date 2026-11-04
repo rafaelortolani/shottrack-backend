@@ -18,4 +18,10 @@ public interface StoragePort {
 
     /** Todos os arquivos guardados (para a rotina de órfãos). */
     List<StoredObject> list();
+
+    /**
+     * O armazenamento foi criado por esta aplicação (arquivo marcador `.shottrack-storage`, gravado na subida quando o
+     * diretório estava vazio ou ausente). Sem ele, a rotina de órfãos não apaga nada: o diretório pode ser de outro uso.
+     */
+    boolean hasOwnershipMarker();
 }

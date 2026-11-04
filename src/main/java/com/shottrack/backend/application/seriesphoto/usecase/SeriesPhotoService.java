@@ -105,7 +105,7 @@ public class SeriesPhotoService {
     public byte[] content(UUID userId, UUID seriesId, UUID photoId, boolean thumbnail) {
         SeriesPhoto photo = findOwnedPhotoOrThrow(userId, seriesId, photoId);
         return storage.get(thumbnail ? photo.getThumbKey() : photo.getStorageKey()).orElseThrow(() -> {
-            log.error("Arquivo de foto ausente do armazenamento (photoId={})", photo.getId());
+            log.error("Arquivo de foto ausente do armazenamento");
             return new BusinessException("PHOTO_NOT_FOUND", HttpStatus.NOT_FOUND);
         });
     }
