@@ -293,12 +293,13 @@ public class UserService {
      * N1 (S05): falha de SMTP não pode mudar a resposta — o caminho do e-mail livre falhava com 500 enquanto o do
      * e-mail já cadastrado (aviso, que já engolia o erro) respondia 202, e isso revelava quem tem conta. Loga só o
      * tipo da exceção: a mensagem do SMTP costuma trazer o destinatário (ADR-0019). Quem não recebeu pede de novo.
+     * Nível WARN (não ERROR): cada falha seria um evento no Sentry, num volume que quem chama a rota controla.
      */
     private void sendQuietly(SimpleMailMessage message, String purpose) {
         try {
             mailSender.send(message);
         } catch (MailException e) {
-            log.error("Falha ao enviar e-mail de {} ({})", purpose, e.getClass().getSimpleName());
+            log.warn("Falha ao enviar e-mail de {} ({})", purpose, e.getClass().getSimpleName());
         }
     }
 }
