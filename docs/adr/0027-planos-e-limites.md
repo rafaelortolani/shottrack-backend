@@ -58,6 +58,7 @@ fixo (30). Cobrança e pagamento não existem ainda.
 - Novos UCs: UC63 a UC69 (UC68 criar plano, UC69 editar plano). Novos FUCs: FUC27 (admin) e FUC28 (atleta).
 - Mudar o plano de um atleta tem efeito imediato (respeitando o cache de até 60 s).
 - Quando a análise de IA existir (etapa B), `AI_ANALYSES_PER_MONTH` passa a ser aplicada, com ADR próprio.
+- **Segurança e acesso**: As rotas GET /api/admin/users?email= (mín. 3 caracteres, até 10 resultados) e GET /api/admin/plans/audit expõem nome e e-mail de atletas apenas a administradores, para atribuição de plano e auditoria; limitadas a 120 chamadas/min por administrador. A busca também devolve o uso do atleta (`photoCount` e `storageBytes`), calculado numa consulta agregada.
 - Dependência: o limite de envios por hora (rate limit) precisa aceitar valor por atleta em vez de constante.
 
 ## Referências

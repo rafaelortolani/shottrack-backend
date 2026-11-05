@@ -126,7 +126,7 @@ class UserPlanAdminTest extends PlanApiTest {
         assertThat(found).hasSize(1);
         assertThat(found.get(0).get("email").asText()).isEqualTo(email);
         assertThat(found.get(0).get("planCode").asText()).isEqualTo("FREE");
-        assertThat(found.get(0).fieldNames()).toIterable().containsExactlyInAnyOrder("id", "name", "email", "planCode", "planName");
+        assertThat(found.get(0).fieldNames()).toIterable().containsExactlyInAnyOrder("id", "name", "email", "planCode", "planName", "photoCount", "storageBytes");
         assertThat(body).doesNotContain("passwordHash").doesNotContain("password").doesNotContain("role").doesNotContain("token");
     }
 

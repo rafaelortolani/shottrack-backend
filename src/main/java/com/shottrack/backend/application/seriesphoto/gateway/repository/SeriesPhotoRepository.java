@@ -40,6 +40,10 @@ public interface SeriesPhotoRepository extends JpaRepository<SeriesPhoto, UUID> 
     @Query("select count(p), coalesce(sum(p.sizeBytes), 0) from SeriesPhoto p where p.athleteId = :athleteId")
     List<Object[]> usageByAthleteId(@Param("athleteId") UUID athleteId);
 
+    /** Linhas {atleta, contagem, soma de size_bytes}; atleta sem foto não aparece. */
+    @Query("select p.athleteId, count(p), coalesce(sum(p.sizeBytes), 0) from SeriesPhoto p where p.athleteId in :athleteIds group by p.athleteId")
+    List<Object[]> usageByAthleteIds(@Param("athleteIds") Collection<UUID> athleteIds);
+
     /** Lock consultivo da transação, por atleta (PostgreSQL). */
     @Query(value = "select 1 from (select pg_advisory_xact_lock(:key)) l", nativeQuery = true)
     int advisoryLock(@Param("key") long key);

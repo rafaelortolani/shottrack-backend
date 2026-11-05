@@ -56,6 +56,11 @@ Usuário logado (UC02) com access token válido. Série pertence ao atleta.
 - [x] Teste de `PHOTO_STORAGE_LIMIT_REACHED` e de limite por hora dinâmico (valor do plano)
 - [x] Teste de concorrência: envios simultâneos não ultrapassam o limite
 - [x] Atleta acima do novo limite: nada é apagado e novo envio é recusado
+- [x] Limite de taxa: acima do limite → `429 TOO_MANY_REQUESTS` com `Retry-After`
+
+## Testes
+`ImageProcessorTest`, `LocalDiskStorageTest`, `SeriesPhotoTest`, `SeriesPhotoIsolationTest`, `SeriesPhotoConsistencyTest`,
+`SeriesPhotoLimitsTest` (limites do plano e de taxa), `PlanEnforcementTest` e `PlanConcurrencyTest` (limites dinâmicos e atomicidade).
 
 ## Referências
 - ADR-0001, ADR-0013, ADR-0019, ADR-0026, ADR-0027
