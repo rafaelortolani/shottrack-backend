@@ -3,6 +3,7 @@ package com.shottrack.backend.application.plan.usecase;
 import com.shottrack.backend.application.plan.dto.AdminUserResponse;
 import com.shottrack.backend.application.plan.gateway.PlanGateway;
 import com.shottrack.backend.application.plan.model.Plan;
+import com.shottrack.backend.application.seriesphoto.gateway.SeriesPhotoGateway;
 import com.shottrack.backend.application.user.gateway.UserGateway;
 import com.shottrack.backend.application.user.model.User;
 import com.shottrack.backend.common.exception.BusinessException;
@@ -27,9 +28,11 @@ public class UserPlanAdminService {
 
     static final int MIN_SEARCH_CHARS = 3;
     static final int MAX_SEARCH_RESULTS = 10;
+    private static final SeriesPhotoGateway.Usage NO_USAGE = new SeriesPhotoGateway.Usage(0, 0);
 
     private final UserGateway userGateway;
     private final PlanGateway planGateway;
+    private final SeriesPhotoGateway photoGateway;
     private final PlanLimitService planLimitService;
     private final PlanAuditRecorder auditRecorder;
 
@@ -41,7 +44,9 @@ public class UserPlanAdminService {
         }
         List<User> users = userGateway.searchByEmailFragment(escapeLike(fragment), MAX_SEARCH_RESULTS);
         Map<UUID, Plan> plans = plansOf(users);
-        return users.stream().map(user -> toResponse(user, plans.get(user.getPlanId()))).toList();
+        Map<UUID, SeriesPhotoGateway.Usage> usage = photoGateway.usageOf(users.stream().map(User::getId).toList());
+        return users.stream().map(user -> toResponse(user, plans.get(user.getPlanId()),
+                usage.getOrDefault(user.getId(), NO_USAGE))).toList();
     }
 
     @Transactional
@@ -59,7 +64,7 @@ public class UserPlanAdminService {
             auditRecorder.planAssigned(actorId, user.getId(), oldCode, plan.getCode());
             planLimitService.invalidate();
         }
-        return toResponse(user, plan);
+        return toResponse(user, plan, photoGateway.usageOf(user.getId()));
     }
 
     private Map<UUID, Plan> plansOf(List<User> users) {
@@ -68,8 +73,9 @@ public class UserPlanAdminService {
                 .collect(Collectors.toMap(Plan::getId, Function.identity()));
     }
 
-    private static AdminUserResponse toResponse(User user, Plan plan) {
-        return new AdminUserResponse(user.getId(), user.getName(), user.getEmail(), plan.getCode(), plan.getName());
+    private static AdminUserResponse toResponse(User user, Plan plan, SeriesPhotoGateway.Usage usage) {
+        return new AdminUserResponse(user.getId(), user.getName(), user.getEmail(), plan.getCode(), plan.getName(),
+                usage.photos(), usage.storageBytes());
     }
 
     /** `!`, `%` e `_` são literais na busca (o `escape '!'` está na consulta). */

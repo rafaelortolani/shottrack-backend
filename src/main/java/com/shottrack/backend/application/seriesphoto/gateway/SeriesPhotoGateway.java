@@ -37,6 +37,9 @@ public interface SeriesPhotoGateway {
     /** UC66/UC60: quantidade de fotos e soma de size_bytes do atleta, numa só consulta. */
     Usage usageOf(UUID athleteId);
 
+    /** UC65: o uso de vários atletas numa só consulta agrupada; atleta sem foto não aparece no mapa. */
+    Map<UUID, Usage> usageOf(Collection<UUID> athleteIds);
+
     /**
      * UC60: trava (até o fim da transação) os envios do atleta, para checar os limites e gravar a foto sem corrida
      * entre dois envios simultâneos.

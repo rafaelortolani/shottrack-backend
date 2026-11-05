@@ -37,6 +37,7 @@ erro de permissão (`FORBIDDEN`).
 - Todas as rotas `/api/admin/**` futuras herdam a proteção.
 - Dados pessoais: administrador não ganha acesso a dados de atletas; ele só edita
   catálogos e regras. Qualquer rota admin que exponha dado de atleta exige novo ADR.
+- As rotas GET /api/admin/users?email= (mín. 3 caracteres, até 10 resultados) e GET /api/admin/plans/audit expõem nome e e-mail de atletas apenas a administradores, para atribuição de plano e auditoria; limitadas a 120 chamadas/min por administrador (ADR-0027).
 
 ## Referências
-- ADR-0001 (JWT), ADR-0018 (rate limit), ADR-0019 (LGPD)
+- ADR-0001 (JWT), ADR-0018 (rate limit), ADR-0019 (LGPD), ADR-0027 (rotas admin que expõem nome e e-mail de atletas)

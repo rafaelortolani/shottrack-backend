@@ -11,6 +11,11 @@ Usuário logado (UC02) com papel ADMIN.
 (a localização do atleta por e-mail usa a busca de usuários do painel de admin já existente, ADR-0021; se não houver
 busca por e-mail, criar `GET /api/admin/users?email=` somente leitura, sem devolver hash de senha nem tokens)
 
+**Resultado da busca** (mín. 3 caracteres, até 10 itens): `id`, `name`, `email`, `planCode`, `planName`, `photoCount` (total de fotos do
+atleta) e `storageBytes` (soma do tamanho das imagens processadas, sem miniaturas — a mesma fonte do limite
+`STORAGE_BYTES_PER_ATHLETE`), para o administrador decidir a troca com informação. Atleta sem fotos → `0` e `0`. Nunca
+devolve hash, tokens nem ids de fotos.
+
 ## Fluxo principal
 1. Administrador informa o atleta e o novo plano
 2. Sistema valida, troca o plano, registra a auditoria (quem, quando, plano anterior e novo) e invalida o cache
@@ -37,3 +42,4 @@ busca por e-mail, criar `GET /api/admin/users?email=` somente leitura, sem devol
 
 ## Referências
 - ADR-0021, ADR-0027
+- [x] Busca devolve `photoCount` e `storageBytes` corretos (0 e 0 sem fotos; fotos de outro atleta não entram), numa única consulta agregada (sem N+1)

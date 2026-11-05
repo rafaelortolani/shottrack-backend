@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -85,6 +86,15 @@ class SeriesPhotoGatewayImpl implements SeriesPhotoGateway {
     public Usage usageOf(UUID athleteId) {
         Object[] row = repository.usageByAthleteId(athleteId).get(0);
         return new Usage(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+    }
+
+    @Override
+    public Map<UUID, Usage> usageOf(Collection<UUID> athleteIds) {
+        if (athleteIds.isEmpty()) {
+            return Map.of();
+        }
+        return repository.usageByAthleteIds(athleteIds).stream().collect(Collectors.toMap(
+                row -> (UUID) row[0], row -> new Usage(((Number) row[1]).longValue(), ((Number) row[2]).longValue())));
     }
 
     @Override
