@@ -9,7 +9,6 @@ import com.shottrack.backend.application.weapon.gateway.WeaponCaliberGateway;
 import com.shottrack.backend.application.weapon.gateway.WeaponModelGateway;
 import com.shottrack.backend.application.weapon.gateway.WeaponTypeGateway;
 import com.shottrack.backend.application.weapon.mapper.WeaponMapper;
-import com.shottrack.backend.application.weapon.model.WeaponCaliber;
 import com.shottrack.backend.application.weapon.model.WeaponModel;
 import com.shottrack.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -30,12 +29,19 @@ public class WeaponCatalogService {
     private final WeaponCaliberGateway weaponCaliberGateway;
     private final WeaponMapper weaponMapper;
 
+    /** Catálogo sempre em ordem alfabética (sem diferenciar maiúsculas de minúsculas), qualquer que seja a ordem do banco. */
+    private static final Comparator<String> BY_NAME = String.CASE_INSENSITIVE_ORDER;
+
     public List<WeaponTypeResponse> listTypes() {
-        return weaponTypeGateway.findAll().stream().map(weaponMapper::toResponse).toList();
+        return weaponTypeGateway.findAll().stream().map(weaponMapper::toResponse)
+                .sorted(Comparator.comparing(WeaponTypeResponse::name, BY_NAME))
+                .toList();
     }
 
     public List<WeaponBrandResponse> listBrands() {
-        return weaponBrandGateway.findAll().stream().map(weaponMapper::toResponse).toList();
+        return weaponBrandGateway.findAll().stream().map(weaponMapper::toResponse)
+                .sorted(Comparator.comparing(WeaponBrandResponse::name, BY_NAME))
+                .toList();
     }
 
     /**
@@ -49,11 +55,14 @@ public class WeaponCatalogService {
         return weaponModelGateway.findAllByBrandId(brandId).stream()
                 .map(model -> weaponMapper.toCatalogResponse(model,
                         weaponTypeGateway.findById(model.getWeaponTypeId()).orElseThrow()))
+                .sorted(Comparator.comparing(WeaponCatalogModelResponse::name, BY_NAME))
                 .toList();
     }
 
     public List<WeaponCaliberResponse> listCalibers() {
-        return weaponCaliberGateway.findAll().stream().map(weaponMapper::toResponse).toList();
+        return weaponCaliberGateway.findAll().stream().map(weaponMapper::toResponse)
+                .sorted(Comparator.comparing(WeaponCaliberResponse::name, BY_NAME))
+                .toList();
     }
 
     /**
@@ -65,8 +74,8 @@ public class WeaponCatalogService {
                 .orElseThrow(() -> new BusinessException("WEAPON_MODEL_NOT_FOUND", HttpStatus.NOT_FOUND));
 
         return weaponCaliberGateway.findAllById(model.getCaliberIds()).stream()
-                .sorted(Comparator.comparing(WeaponCaliber::getName))
                 .map(weaponMapper::toResponse)
+                .sorted(Comparator.comparing(WeaponCaliberResponse::name, BY_NAME))
                 .toList();
     }
 }
