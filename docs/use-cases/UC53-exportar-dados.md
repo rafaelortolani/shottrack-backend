@@ -12,7 +12,7 @@ Atleta autenticado.
 
 ## Conteúdo do arquivo
 Perfil (nome, e-mail, nível de experiência, data de cadastro, aceite dos
-termos), modalidades praticadas e tipos de resultado escolhidos, armas,
+termos, **nome do plano** — `plan`), modalidades praticadas e tipos de resultado escolhidos, armas,
 munições, acessórios (com armas associadas), locais de treino, visitas com
 treinos, séries e resultados. Cada série traz a lista de **fotos do alvo**
 (`photos`: data de envio, largura e altura em pixels e tamanho em bytes). As
@@ -50,6 +50,7 @@ imagens em si não vão dentro do JSON; continuam disponíveis no aplicativo
 - [x] Teste: rota GET antiga responde erro claro; senha errada conta no limite
 - [x] Teste: série com fotos — `photos` traz data, largura, altura e tamanho; sem id, sem chave de armazenamento e sem conteúdo da imagem
 - [x] Teste: fotos de OUTRO atleta não aparecem; série sem foto traz lista vazia (`SeriesPhotoExportTest`)
+- [x] Teste: exportação traz o nome do plano (`plan`), sem id interno do plano
 
 ## Referências
-- ADR-0019, ADR-0018, ADR-0026
+- ADR-0019, ADR-0018, ADR-0026, ADR-0027

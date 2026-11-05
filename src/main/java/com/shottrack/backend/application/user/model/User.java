@@ -49,6 +49,12 @@ public class User extends AbstractBaseEntity {
     @Column(nullable = false)
     private Role role = Role.USER;
 
+    /** ADR-0027: plano do atleta (obrigatório). Cadastro novo recebe o plano padrão; o administrador troca (UC65). */
+    @Setter
+    @NonNull
+    @Column(name = "plan_id", nullable = false)
+    private UUID planId;
+
     @Column(name = "profile_completed_at")
     private Instant profileCompletedAt;
 
@@ -59,9 +65,10 @@ public class User extends AbstractBaseEntity {
     private String termsVersion;
 
     @Builder
-    private User(@NonNull String name, @NonNull String email, @NonNull String passwordHash,
+    private User(@NonNull String name, @NonNull String email, @NonNull String passwordHash, @NonNull UUID planId,
                  ExperienceLevel experienceLevel, Instant termsAcceptedAt, String termsVersion) {
         this.name = name;
+        this.planId = planId;
         this.email = email;
         this.passwordHash = passwordHash;
         this.termsAcceptedAt = termsAcceptedAt;

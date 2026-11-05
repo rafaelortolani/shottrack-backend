@@ -1,5 +1,7 @@
 package com.shottrack.backend.application.seriesphoto.usecase;
 
+import com.shottrack.backend.application.plan.model.PlanLimit;
+import com.shottrack.backend.application.plan.usecase.PlanLimitService;
 import com.shottrack.backend.application.series.model.Series;
 import com.shottrack.backend.application.series.usecase.SeriesService;
 import com.shottrack.backend.application.seriesphoto.PhotoProperties;
@@ -19,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -35,10 +38,12 @@ public class SeriesPhotoService {
     private final ImageProcessor imageProcessor;
     private final SeriesPhotoFiles photoFiles;
     private final PhotoProperties properties;
+    private final PlanLimitService planLimitService;
+    private final SeriesPhotoRegistrar photoRegistrar;
 
     /**
      * Sem @Transactional de propósito: o processamento da imagem não segura conexão do banco. Ordem (UC60):
-     * arquivos primeiro, depois a linha; se a linha falhar, os arquivos são apagados; se um arquivo falhar,
+     * arquivos primeiro, depois a linha (conferência atômica dos limites do plano + gravação, no SeriesPhotoRegistrar); se a linha falhar, os arquivos são apagados; se um arquivo falhar,
      * não há linha.
      */
     public SeriesPhotoResponse attach(UUID userId, UUID seriesId, MultipartFile file) {
@@ -50,10 +55,12 @@ public class SeriesPhotoService {
         if (file.getSize() > properties.maxBytes()) {
             throw new BusinessException("PHOTO_TOO_LARGE", HttpStatus.PAYLOAD_TOO_LARGE);
         }
-        if (photoGateway.countBySeriesId(series.getId()) >= properties.maxPerSeries()) {
+        // conferência rápida, antes de processar a imagem (poupa CPU); a definitiva e atômica é a do registrar, mais abaixo
+        Map<PlanLimit, Long> limits = planLimitService.limitsOf(userId);
+        if (photoGateway.countBySeriesId(series.getId()) >= limits.get(PlanLimit.PHOTOS_PER_SERIES)) {
             throw new BusinessException("PHOTO_LIMIT_PER_SERIES_REACHED", HttpStatus.CONFLICT);
         }
-        if (photoGateway.countByAthleteId(userId) >= properties.maxPerAthlete()) {
+        if (photoGateway.countByAthleteId(userId) >= limits.get(PlanLimit.PHOTOS_PER_ATHLETE)) {
             throw new BusinessException("PHOTO_LIMIT_PER_ATHLETE_REACHED", HttpStatus.CONFLICT);
         }
 
@@ -79,17 +86,14 @@ public class SeriesPhotoService {
         }
 
         try {
-            SeriesPhoto saved = photoGateway.save(SeriesPhoto.builder()
+            SeriesPhoto saved = photoRegistrar.register(SeriesPhoto.builder()
                     .id(photoId)
                     .seriesId(series.getId())
                     .athleteId(userId)
                     .storageKey(storageKey)
                     .thumbKey(thumbKey)
-                    .position(photoGateway.nextPosition(series.getId()))
                     .widthPx(processed.widthPx())
-                    .heightPx(processed.heightPx())
-                    .sizeBytes(processed.image().length)
-                    .build());
+                    .heightPx(processed.heightPx()), userId, series.getId(), processed.image().length);
             return toResponse(saved);
         } catch (RuntimeException e) {
             photoFiles.deleteQuietly(List.of(storageKey, thumbKey));

@@ -27,7 +27,8 @@ public record UserDataExportResponse(
             String experienceLevel,
             Instant registeredAt,
             Instant termsAcceptedAt,
-            String termsVersion
+            String termsVersion,
+            String plan
     ) {
     }
 

@@ -82,6 +82,17 @@ class SeriesPhotoGatewayImpl implements SeriesPhotoGateway {
     }
 
     @Override
+    public Usage usageOf(UUID athleteId) {
+        Object[] row = repository.usageByAthleteId(athleteId).get(0);
+        return new Usage(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+    }
+
+    @Override
+    public void lockAthleteUploads(UUID athleteId) {
+        repository.advisoryLock(athleteId.getMostSignificantBits() ^ athleteId.getLeastSignificantBits());
+    }
+
+    @Override
     public boolean existsByAnyKey(String key) {
         return repository.existsByAnyKey(key);
     }

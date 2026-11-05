@@ -26,7 +26,8 @@ public record RateLimitProperties(
         @DefaultValue EmailChange emailChange,
         @DefaultValue EmailChangeConfirmation emailChangeConfirmation,
         @DefaultValue RegistrationCompletion registrationCompletion,
-        @DefaultValue PhotoUpload photoUpload
+        @DefaultValue PhotoUpload photoUpload,
+        @DefaultValue Admin admin
 ) {
 
     /**
@@ -91,10 +92,19 @@ public record RateLimitProperties(
     }
 
     /** ADR-0019 (UC53): exportações de dados por usuário (ou IP, sem usuário) na janela. */
-    /** ADR-0026: uploads de foto do alvo por atleta (ou IP, sem usuário) na janela. */
+    /**
+     * ADR-0026/0027: janela dos envios de foto do alvo. A QUANTIDADE por atleta vem do plano (limite UPLOADS_PER_HOUR),
+     * não daqui; sem usuário no token vale o padrão do enum.
+     */
     public record PhotoUpload(
-            @DefaultValue("30") int attempts,
             @DefaultValue("1h") Duration window
+    ) {
+    }
+
+    /** ADR-0027: chamadas às rotas de administração de planos e atletas, por administrador (ou IP) na janela. */
+    public record Admin(
+            @DefaultValue("120") int attempts,
+            @DefaultValue("1m") Duration window
     ) {
     }
 

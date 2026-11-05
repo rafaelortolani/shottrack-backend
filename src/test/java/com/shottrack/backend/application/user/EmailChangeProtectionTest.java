@@ -2,6 +2,7 @@ package com.shottrack.backend.application.user;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shottrack.backend.application.plan.usecase.PlanIntegrityVerifier;
 import com.shottrack.backend.application.user.gateway.UserGateway;
 import com.shottrack.backend.application.user.gateway.repository.EmailVerificationCodeRepository;
 import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
@@ -70,6 +71,8 @@ class EmailChangeProtectionTest {
 
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private PlanIntegrityVerifier planIntegrityVerifier;
 
     @MockBean
     private JavaMailSenderImpl mailSender;
@@ -323,7 +326,7 @@ class EmailChangeProtectionTest {
 
     private void takeEmailDirectly(String email) {
         userRepository.saveAndFlush(User.builder().name("Dono do e-mail").email(email)
-                .passwordHash("hash-qualquer").build());
+                .passwordHash("hash-qualquer").planId(planIntegrityVerifier.defaultPlanId()).build());
     }
 
     private ResultActions complete(String token) throws Exception {

@@ -1,6 +1,7 @@
 package com.shottrack.backend.application.user.usecase;
 
 import com.shottrack.backend.application.auth.gateway.RefreshTokenGateway;
+import com.shottrack.backend.application.plan.usecase.PlanIntegrityVerifier;
 import com.shottrack.backend.application.user.dto.ChangeEmailRequest;
 import com.shottrack.backend.application.user.dto.ChangePasswordRequest;
 import com.shottrack.backend.application.user.dto.CompleteRegistrationRequest;
@@ -48,6 +49,7 @@ public class UserService {
     private static final String VERIFICATION_EMAIL_FROM = "noreply@shottrack.com";
 
     private final UserGateway userGateway;
+    private final PlanIntegrityVerifier planIntegrityVerifier;
     private final EmailVerificationCodeGateway emailVerificationCodeGateway;
     private final PendingRegistrationGateway pendingRegistrationGateway;
     private final RefreshTokenGateway refreshTokenGateway;
@@ -123,6 +125,7 @@ public class UserService {
                 .name(request.name())
                 .email(pendingRegistration.getEmail())
                 .passwordHash(passwordHash)
+                .planId(planIntegrityVerifier.defaultPlanId())
                 .termsAcceptedAt(Instant.now())
                 .termsVersion(legalVersion)
                 .build();

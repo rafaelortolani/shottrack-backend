@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /** UC60 (ADR-0026): o processamento da imagem — tipo pelo conteúdo, megapixels antes de decodificar, EXIF, metadados. */
 class ImageProcessorTest {
 
-    private final ImageProcessor processor = new ImageProcessor(new PhotoProperties(5, 500, 10_485_760, 40, 2, Duration.ofMinutes(60)));
+    private final ImageProcessor processor = new ImageProcessor(new PhotoProperties(10_485_760, 40, 2, Duration.ofMinutes(60)));
 
     private static void assertCode(Runnable action, String code) {
         assertThatThrownBy(action::run).isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getCode()).isEqualTo(code));

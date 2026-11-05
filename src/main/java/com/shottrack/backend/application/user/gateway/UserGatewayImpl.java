@@ -4,8 +4,13 @@ import com.shottrack.backend.application.user.gateway.repository.UserRepository;
 import com.shottrack.backend.application.user.model.Role;
 import com.shottrack.backend.application.user.model.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -58,5 +63,34 @@ class UserGatewayImpl implements UserGateway {
     @Override
     public void deleteById(UUID id) {
         userRepository.deleteById(id);
+    }
+
+    @Override
+    public List<User> findAllByIdIn(Collection<UUID> ids) {
+        return ids.isEmpty() ? List.of() : userRepository.findAllByIdIn(ids);
+    }
+
+    @Override
+    public List<User> searchByEmailFragment(String fragment, int limit) {
+        return userRepository.searchByEmailFragment(fragment, PageRequest.of(0, limit));
+    }
+
+    @Override
+    public Map<UUID, Long> countByPlanIds() {
+        Map<UUID, Long> counts = new HashMap<>();
+        for (Object[] row : userRepository.countGroupedByPlan()) {
+            counts.put((UUID) row[0], (Long) row[1]);
+        }
+        return counts;
+    }
+
+    @Override
+    public long countByPlanId(UUID planId) {
+        return userRepository.countByPlanId(planId);
+    }
+
+    @Override
+    public Optional<UUID> findPlanIdById(UUID id) {
+        return userRepository.findPlanIdById(id);
     }
 }

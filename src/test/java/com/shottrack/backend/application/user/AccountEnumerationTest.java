@@ -1,6 +1,7 @@
 package com.shottrack.backend.application.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shottrack.backend.application.plan.usecase.PlanIntegrityVerifier;
 import com.shottrack.backend.application.user.dto.ChangeEmailRequest;
 import com.shottrack.backend.application.user.gateway.repository.EmailVerificationCodeRepository;
 import com.shottrack.backend.application.user.gateway.repository.PendingRegistrationRepository;
@@ -73,6 +74,8 @@ class AccountEnumerationTest {
 
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private PlanIntegrityVerifier planIntegrityVerifier;
 
     @MockBean
     private JavaMailSenderImpl mailSender;
@@ -299,7 +302,7 @@ class AccountEnumerationTest {
 
     @Test
     void shouldLetTheDatabaseRefuseACaseVariantDuplicate() {
-        User variant = User.builder().name("Variante").email(OWNER.toUpperCase()).passwordHash("hash")
+        User variant = User.builder().name("Variante").email(OWNER.toUpperCase()).passwordHash("hash").planId(planIntegrityVerifier.defaultPlanId())
                 .termsAcceptedAt(Instant.now()).termsVersion("2026-10").build();
 
         assertThatThrownBy(() -> userRepository.saveAndFlush(variant)).isInstanceOf(DataIntegrityViolationException.class);

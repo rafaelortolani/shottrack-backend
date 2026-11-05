@@ -8,14 +8,15 @@ Existe um cadastro pendente com token válido (gerado pelo UC01).
 
 ## Fluxo principal
 1. Visitante acessa a tela com o token (vindo do link)
-2. Visitante informa nome e senha e aceita os Termos de Uso e a Política de
-   Privacidade (`acceptedTerms: true` — ADR-0019)
+2. Visitante informa nome e senha e confirma o aceite dos Termos de Uso e da
+   Política de Privacidade (`acceptedTerms: true`)
 3. Sistema valida o token (existe, não expirado, não usado) e os dados
-   informados
-4. Sistema cria a conta de verdade, grava o aceite (`terms_accepted_at` = agora,
-   `terms_version` = `app.legal.version`), marca o token como usado, e retorna
-   os dados do usuário criado (sem logar automaticamente — mesmo
-   comportamento do UC01 original: visitante vai pro login depois)
+   informados, incluindo o aceite
+4. Sistema cria a conta de verdade, grava `terms_accepted_at` (agora) e
+   `terms_version` (valor de `app.legal.version`), **associa o usuário ao plano
+   padrão** (o único plano marcado como padrão e ativo, ADR-0027), marca o token
+   como usado, e retorna os dados do usuário criado (sem logar automaticamente —
+   mesmo comportamento do UC01 original: visitante vai pro login depois)
 
 ## Fluxos alternativos
 - 3a. Token não existe → erro `REGISTRATION_TOKEN_INVALID`
@@ -36,6 +37,9 @@ Existe um cadastro pendente com token válido (gerado pelo UC01).
 - [x] Teste: conclusão com aceite grava data e versão
 - [x] Teste: sem aceite → `TERMS_NOT_ACCEPTED`, link ainda utilizável
 - [x] Teste: email ocupado antes de concluir → `EMAIL_ALREADY_REGISTERED` (e corrida no banco), link não consumido
+- [x] Teste: usuário novo nasce no plano padrão
+- [x] Teste de integridade: existe exatamente 1 plano padrão e ativo (senão a
+  aplicação falha de forma clara na subida)
 
 ## Limite de tentativas (ADR-0018)
 `POST /api/users/registration/completion`: 10 tentativas / hora por IP → `429 TOO_MANY_REQUESTS`.
@@ -47,4 +51,5 @@ Existe um cadastro pendente com token válido (gerado pelo UC01).
 ## Referências
 - ADR-0009 (cadastro em duas etapas via link)
 - ADR-0019 (aceite de termos)
+- ADR-0027 (planos e limites)
 - UC01 (revisado — gera o token que este use case consome)
