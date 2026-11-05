@@ -42,13 +42,14 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface UserDataExportMapper {
 
-    @Mapping(target = "name", source = "name")
-    @Mapping(target = "email", source = "email")
-    @Mapping(target = "experienceLevel", source = "experienceLevel")
-    @Mapping(target = "registeredAt", source = "createdAt")
-    @Mapping(target = "termsAcceptedAt", source = "termsAcceptedAt")
-    @Mapping(target = "termsVersion", source = "termsVersion")
-    ProfileExport toProfile(User user);
+    @Mapping(target = "name", source = "user.name")
+    @Mapping(target = "email", source = "user.email")
+    @Mapping(target = "experienceLevel", source = "user.experienceLevel")
+    @Mapping(target = "registeredAt", source = "user.createdAt")
+    @Mapping(target = "termsAcceptedAt", source = "user.termsAcceptedAt")
+    @Mapping(target = "termsVersion", source = "user.termsVersion")
+    @Mapping(target = "plan", source = "planName")
+    ProfileExport toProfile(User user, String planName);
 
     @Mapping(target = "modality", source = "modality")
     @Mapping(target = "resultTypes", source = "resultTypes")

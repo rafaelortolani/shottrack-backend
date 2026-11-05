@@ -19,6 +19,8 @@ import com.shottrack.backend.application.modality.gateway.ResultTypeGateway;
 import com.shottrack.backend.application.modality.model.Modality;
 import com.shottrack.backend.application.modality.model.ModalityResultTypeSelection;
 import com.shottrack.backend.application.modality.model.ResultType;
+import com.shottrack.backend.application.plan.gateway.PlanGateway;
+import com.shottrack.backend.application.plan.model.Plan;
 import com.shottrack.backend.application.series.gateway.SeriesGateway;
 import com.shottrack.backend.application.series.gateway.SeriesResultGateway;
 import com.shottrack.backend.application.series.model.Series;
@@ -82,6 +84,7 @@ import java.util.stream.Collectors;
 public class UserDataExportService {
 
     private final UserGateway userGateway;
+    private final PlanGateway planGateway;
     private final PracticedModalityGateway practicedModalityGateway;
     private final ModalityResultTypeSelectionGateway modalityResultTypeSelectionGateway;
     private final ModalityGateway modalityGateway;
@@ -130,7 +133,7 @@ public class UserDataExportService {
 
         return new UserDataExportResponse(
                 Instant.now(),
-                mapper.toProfile(user),
+                mapper.toProfile(user, planGateway.findById(user.getPlanId()).map(Plan::getName).orElse(null)),
                 practicedModalities(userId, catalogs),
                 weapons.stream().map(weapon -> weaponExportById.get(weapon.getId())).toList(),
                 ammunitions.stream().map(ammunition -> ammunitionExportById.get(ammunition.getId())).toList(),

@@ -41,6 +41,8 @@ Atleta autenticado.
   tipo do erro (nunca o endereço).
 - Limite: 5 tentativas por hora por usuário (por IP quando não há usuário),
   contando também as de senha errada.
+- Auditoria de planos (ADR-0027): as linhas de auditoria em que o usuário aparece como ator ou alvo permanecem, com essa
+  referência anonimizada (nula), na mesma transação. O plano do usuário some junto com a linha de `users`.
 - Um access token já emitido continua válido até expirar (JWT stateless,
   ADR-0001): as rotas `/me` respondem `UNAUTHORIZED`, e criar registros com ele
   falha pela FK do usuário.
@@ -56,6 +58,7 @@ Atleta autenticado.
 - [x] Teste: atleta com fotos de alvos — nenhuma linha em `series_photos` e nenhum arquivo (imagem
       ou miniatura) restante do atleta; arquivos de OUTRO atleta permanecem intactos
 - [x] Teste: falha ao apagar arquivo de foto não desfaz a exclusão da conta (`SeriesPhotoCascadeTest`)
+- [x] Teste: conta que foi ator ou alvo de alteração de plano/limite é excluída; o registro de auditoria permanece com a referência anonimizada
 
 ## Referências
-- ADR-0019, ADR-0018, ADR-0006, ADR-0026
+- ADR-0019, ADR-0018, ADR-0006, ADR-0026, ADR-0027

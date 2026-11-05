@@ -4,9 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.shottrack.backend.application.plan.model.PlanLimit;
+import com.shottrack.backend.application.plan.usecase.PlanLimitService;
 import com.shottrack.backend.common.exception.BusinessException;
 import com.shottrack.backend.common.exception.TooManyRequestsException;
 import io.github.bucket4j.Bucket;
+import io.github.bucket4j.BucketConfiguration;
+import io.github.bucket4j.TokensInheritanceStrategy;
 import io.github.bucket4j.ConsumptionProbe;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -59,6 +63,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final String EMAIL_CHANGE_CONFIRMATION = "email-change-confirmation";
     private static final String REGISTRATION_COMPLETION = "registration-completion";
     private static final String PHOTO_UPLOAD = "photo-upload";
+    private static final String ADMIN = "admin";
+    /** ADR-0027: rotas de administração de planos e atletas (o caminho tem códigos de plano em maiúsculas). */
+    private static final java.util.regex.Pattern ADMIN_PATH = java.util.regex.Pattern.compile("^/api/admin/(plans|users)(/.*)?$");
     /** ADR-0026: rota com id no caminho, então não entra no mapa exato: POST /api/series/{id}/photos. */
     private static final java.util.regex.Pattern PHOTO_UPLOAD_PATH = java.util.regex.Pattern.compile("^/api/series/[^/]+/photos$");
     /** Chaves em minúsculas: o caminho é normalizado (decodificado, sem `;`, sem `//`) e minúsculo antes da busca. */
@@ -88,10 +95,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final HandlerExceptionResolver handlerExceptionResolver;
     private final AcceptHeaderLocaleResolver localeResolver = new AcceptHeaderLocaleResolver();
     private final Cache<String, Bucket> buckets;
+    private final PlanLimitService planLimitService;
 
     public RateLimitFilter(RateLimitProperties properties, ObjectMapper objectMapper,
-                           HandlerExceptionResolver handlerExceptionResolver) {
+                           HandlerExceptionResolver handlerExceptionResolver, PlanLimitService planLimitService) {
         this.properties = properties;
+        this.planLimitService = planLimitService;
         this.objectMapper = objectMapper;
         this.handlerExceptionResolver = handlerExceptionResolver;
         this.localeResolver.setDefaultLocale(Locale.forLanguageTag("pt"));
@@ -118,11 +127,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
         } catch (RuntimeException e) {
             return null;
         }
-        String canonical = path.length() > 1 && path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
-        canonical = canonical.toLowerCase(Locale.ROOT);
+        String canonicalCase = path.length() > 1 && path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
+        String canonical = canonicalCase.toLowerCase(Locale.ROOT);
         String rule = RULE_BY_ENDPOINT.get(request.getMethod() + " " + canonical);
         if (rule == null && "POST".equals(request.getMethod()) && PHOTO_UPLOAD_PATH.matcher(canonical).matches()) {
             rule = PHOTO_UPLOAD;
+        }
+        if (rule == null && ADMIN_PATH.matcher(canonical).matches()) {
+            // o código do plano vai em maiúsculas no caminho: aqui só se compara a forma, sem trocar a caixa
+            return new Match(ADMIN, !request.getRequestURI().equals(canonicalCase));
         }
         return rule == null ? null : new Match(rule, !request.getRequestURI().equals(canonical));
     }
@@ -176,6 +189,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private void consume(String rule, String ip, String subject) {
         for (Limit limit : limitsFor(rule, ip, subject)) {
             Bucket bucket = buckets.get(limit.key(), key -> newBucket(limit));
+            if (limit.adjustable()) {
+                adjustCapacity(bucket, limit);
+            }
             ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
             if (!probe.isConsumed()) {
                 long seconds = Math.max(1, (long) Math.ceil(probe.getNanosToWaitForRefill() / 1_000_000_000d));
@@ -212,8 +228,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
                     properties.emailChange().attempts(), properties.emailChange().window());
             case EMAIL_CHANGE_CONFIRMATION -> addUserOrIpLimit(limits, rule, ip, subject,
                     properties.emailChangeConfirmation().attempts(), properties.emailChangeConfirmation().window());
-            case PHOTO_UPLOAD -> addUserOrIpLimit(limits, rule, ip, subject,
-                    properties.photoUpload().attempts(), properties.photoUpload().window());
+            case PHOTO_UPLOAD -> limits.add(new Limit(rule + ":" + (subject != null ? "user:" + subject : "ip:" + ip),
+                    uploadsPerHour(subject), properties.photoUpload().window(), true));
+            case ADMIN -> addUserOrIpLimit(limits, rule, ip, subject, properties.admin().attempts(), properties.admin().window());
             case REFRESH -> limits.add(new Limit(rule + ":ip:" + ip,
                     properties.refresh().attempts(), properties.refresh().window()));
             case PASSWORD_RESET_CONFIRM -> limits.add(new Limit(rule + ":ip:" + ip,
@@ -223,6 +240,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
             default -> throw new IllegalStateException("Regra de rate limit desconhecida: " + rule);
         }
         return limits;
+    }
+
+    /** ADR-0027: o limite de envios por hora é do plano do atleta (cache de até 60 s); sem usuário, o padrão do enum. */
+    private int uploadsPerHour(String userId) {
+        long value = userId == null ? PlanLimit.UPLOADS_PER_HOUR.getDefaultValue()
+                : planLimitService.limitFor(UUID.fromString(userId), PlanLimit.UPLOADS_PER_HOUR);
+        return (int) Math.max(1, value);
     }
 
     /** Por usuário autenticado; sem usuário válido no token, cai para o IP. */
@@ -236,6 +260,20 @@ public class RateLimitFilter extends OncePerRequestFilter {
             limits.add(new Limit(rule + ":email:" + email, config.perEmail(), config.window()));
         }
         limits.add(new Limit(rule + ":ip:" + ip, config.perIp(), config.window()));
+    }
+
+    /**
+     * Limite vindo do plano: se o administrador mudou o valor, o bucket existente passa a usar a nova capacidade
+     * (a diferença de capacidade é somada aos tokens restantes: o que o atleta já consumiu continua contando; aumentar libera
+     * na hora a diferença, reduzir tira dela).
+     */
+    private void adjustCapacity(Bucket bucket, Limit limit) {
+        long current = bucket.asVerbose().getAvailableTokens().getConfiguration().getBandwidths()[0].getCapacity();
+        if (current != limit.capacity()) {
+            bucket.replaceConfiguration(BucketConfiguration.builder()
+                    .addLimit(bandwidth -> bandwidth.capacity(limit.capacity()).refillIntervally(limit.capacity(), limit.window()))
+                    .build(), TokensInheritanceStrategy.ADDITIVE);
+        }
     }
 
     private Bucket newBucket(Limit limit) {
@@ -299,11 +337,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
                         properties.accountDeletion().window(), properties.dataExport().window(),
                         properties.refresh().window(), properties.passwordResetConfirm().window(),
                         properties.passwordChange().window(), properties.emailChange().window(),
-                        properties.emailChangeConfirmation().window(), properties.registrationCompletion().window()).stream()
+                        properties.emailChangeConfirmation().window(), properties.registrationCompletion().window(),
+                        properties.photoUpload().window(), properties.admin().window()).stream()
                 .max(Duration::compareTo)
                 .orElseThrow();
     }
 
-    private record Limit(String key, int capacity, Duration window) {
+    /** `adjustable`: a capacidade vem de fora (plano) e pode mudar com o bucket já criado. */
+    private record Limit(String key, int capacity, Duration window, boolean adjustable) {
+
+        Limit(String key, int capacity, Duration window) {
+            this(key, capacity, window, false);
+        }
     }
 }

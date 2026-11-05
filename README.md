@@ -104,8 +104,9 @@ ou se o vhost do RabbitMQ for o padrão `/`. Sem a variável a trava não age.
 
 As fotos enviadas ficam em disco, atrás de `StoragePort`. Em desenvolvimento o diretório é `./data/uploads` (ignorado pelo
 git); nos testes, um diretório temporário. **Em produção** defina `APP_STORAGE_LOCAL_DIR` (volume dedicado): o diretório
-precisa existir e ser gravável pelo usuário do contêiner — senão a aplicação não sobe. Limites ajustáveis em `app.photos.*`
-(5 por série, 500 por atleta, 10 MB, 40 megapixels). O processamento usa só `ImageIO`: **WebP não é aceito no servidor**
+precisa existir e ser gravável pelo usuário do contêiner — senão a aplicação não sobe. Proteções do servidor em `app.photos.*`
+(10 MB por arquivo, 40 megapixels, concorrência); os limites de fotos por série/atleta, de espaço e de envios por hora **vêm do
+plano do atleta** (ADR-0027, abaixo). O processamento usa só `ImageIO`: **WebP não é aceito no servidor**
 (o navegador converte para JPEG antes de enviar).
 
 **Rotina de arquivos órfãos** (semanal): **desligada por padrão**; só o perfil `prod` liga. Variáveis/propriedades:
@@ -114,6 +115,16 @@ precisa existir e ser gravável pelo usuário do contêiner — senão a aplica�
 Trava de segurança: só apaga caminhos no formato `athletes/{uuid}/series/{uuid}/{uuid}(.thumb).jpg`, com mais de 60 min; exige o
 arquivo `.shottrack-storage` no diretório (criado na subida se o diretório estiver vazio; se o volume já tiver conteúdo, crie à
 mão com `touch`); e aborta, sem apagar nada, se achar mais de max(20, 10% dos arquivos de foto) candidatos. Detalhes no ADR-0026.
+
+## Planos e limites (ADR-0027)
+
+Todo atleta tem um plano (`users.plan_id`); a migration V59 cria o plano `FREE` ("Gratuito", ativo e padrão) com os limites
+`PHOTOS_PER_SERIES` 5, `PHOTOS_PER_ATHLETE` 500, `STORAGE_BYTES_PER_ATHLETE` 512 MB e `UPLOADS_PER_HOUR` 30. O administrador
+(papel `ADMIN`, ADR-0021) cria/edita planos, edita limites e troca o plano de um atleta em `/api/admin/plans/**` e
+`/api/admin/users/**`, sem reiniciar o backend (cache de até 60 s, invalidado na alteração). As chaves de limite são o enum
+`PlanLimit`; planos nunca são excluídos. Cada alteração fica em `plan_audit`. O atleta vê plano e uso em `GET /api/users/me/plan`.
+Sempre existe exatamente um plano padrão e ativo (conferido na subida: sem ele a aplicação não inicia). As rotas admin de planos
+têm rate limit por administrador (`app.rate-limit.admin`, padrão 120 por minuto).
 
 ## Verificação de vulnerabilidades (CVEs)
 

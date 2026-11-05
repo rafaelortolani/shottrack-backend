@@ -55,7 +55,7 @@ class OrphanPhotoCleanupServiceTest {
 
     private OrphanPhotoCleanupService service(boolean dryRun, int floor, int percent) {
         return new OrphanPhotoCleanupService(storage, gateway,
-                new PhotoProperties(5, 500, 10485760, 40, 2, Duration.ofMinutes(60)),
+                new PhotoProperties(10485760, 40, 2, Duration.ofMinutes(60)),
                 new StorageProperties("x", false, new StorageProperties.OrphanCleanup(true, dryRun, floor, percent)),
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }

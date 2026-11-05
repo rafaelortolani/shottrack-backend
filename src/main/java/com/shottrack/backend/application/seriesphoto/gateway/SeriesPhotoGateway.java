@@ -34,6 +34,18 @@ public interface SeriesPhotoGateway {
     /** Série → quantidade de fotos; séries sem foto não aparecem no mapa. */
     Map<UUID, Long> countBySeriesIds(Collection<UUID> seriesIds);
 
+    /** UC66/UC60: quantidade de fotos e soma de size_bytes do atleta, numa só consulta. */
+    Usage usageOf(UUID athleteId);
+
+    /**
+     * UC60: trava (até o fim da transação) os envios do atleta, para checar os limites e gravar a foto sem corrida
+     * entre dois envios simultâneos.
+     */
+    void lockAthleteUploads(UUID athleteId);
+
+    record Usage(long photos, long storageBytes) {
+    }
+
     boolean existsByAnyKey(String key);
 
     void delete(SeriesPhoto photo);
