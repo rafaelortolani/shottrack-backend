@@ -6,6 +6,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -39,8 +40,10 @@ public class WeaponModel extends AbstractBaseEntity {
     /**
      * ADR-0004 (Revisão 2): calibres permitidos pra esse modelo
      * (weapon_model_calibers). EAGER: é um catálogo pequeno, e a validação
-     * do UC06/UC10 sempre precisa dele junto com o modelo.
+     * do UC06/UC10 sempre precisa dele junto com o modelo. @BatchSize: ao listar
+     * os modelos de uma marca os calibres vêm em poucas consultas, não uma por modelo.
      */
+    @BatchSize(size = 100)
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "weapon_model_calibers", joinColumns = @JoinColumn(name = "weapon_model_id"))
     @Column(name = "weapon_caliber_id")

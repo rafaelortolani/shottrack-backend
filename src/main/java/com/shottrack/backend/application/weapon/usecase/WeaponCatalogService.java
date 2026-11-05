@@ -10,6 +10,7 @@ import com.shottrack.backend.application.weapon.gateway.WeaponModelGateway;
 import com.shottrack.backend.application.weapon.gateway.WeaponTypeGateway;
 import com.shottrack.backend.application.weapon.mapper.WeaponMapper;
 import com.shottrack.backend.application.weapon.model.WeaponModel;
+import com.shottrack.backend.application.weapon.model.WeaponType;
 import com.shottrack.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,7 +18,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -52,9 +56,12 @@ public class WeaponCatalogService {
             throw new BusinessException("WEAPON_BRAND_NOT_FOUND", HttpStatus.NOT_FOUND);
         }
 
+        // os tipos são poucos: uma consulta só, em vez de uma por modelo
+        Map<UUID, WeaponType> typesById = weaponTypeGateway.findAll().stream()
+                .collect(Collectors.toMap(WeaponType::getId, Function.identity()));
+
         return weaponModelGateway.findAllByBrandId(brandId).stream()
-                .map(model -> weaponMapper.toCatalogResponse(model,
-                        weaponTypeGateway.findById(model.getWeaponTypeId()).orElseThrow()))
+                .map(model -> weaponMapper.toCatalogResponse(model, typesById.get(model.getWeaponTypeId())))
                 .sorted(Comparator.comparing(WeaponCatalogModelResponse::name, BY_NAME))
                 .toList();
     }
